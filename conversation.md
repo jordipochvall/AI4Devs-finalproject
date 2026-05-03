@@ -137,3 +137,132 @@ Decisiones consolidadas que entran en el PRD:
 | Recomendación PM por defecto | Auto-spin con safeguards |
 | Fuera de scope v1 | Pagos, jackpots progresivos, informes RFJ, WCAG completa, autoexclusión y límites de pérdida |
 | Riesgo abierto | Estimación ~50.5 h frente al techo de 40 h; documentadas las palancas de recorte |
+
+---
+
+## Fase 1 · Rol Arquitecto Senior — Arquitectura del sistema (punto 2 del readme)
+
+### Prompt 9 — Cambio de rol a arquitecto senior y encargo del punto 2
+
+**Pregunta del usuario:**
+
+> A partir de ahora quiero que actues como un arquitecto senior con experiencia en patrones de diseño de software y especialmente de aquellos aplicados a la industria del gambling. Ya no eres product manager. Ahora vamos a generar el punto 2 del `readme.md`. La parte correspondiente a la parte de arquitectura del sistema. Igual que antes consúltame cualquier duda que puedas tener y justifícame las decisiones que vayas tomando. No dudes en usar gráficos allí donde sea posible para ayudar a clarificar los conceptos. Si quedan muy grandes trocéalos con sentido. Sigue actualizando el fichero `conversation.md`.
+
+**Respuesta del asistente:** se asume el nuevo rol y se identifican las decisiones arquitectónicas críticas que condicionan todo el punto 2. Se preparan dos rondas de preguntas para cerrar: estilo macro, patrón interno, comunicación cliente-servidor, organización del simulador, persistencia, testing y frontend stack.
+
+---
+
+### Prompt 10 — Ronda 1 de decisiones arquitectónicas
+
+**Pregunta del asistente al usuario (4 preguntas):**
+
+1. ¿Qué estilo de arquitectura macro para el backend?
+2. ¿Qué patrón interno aplico en el backend?
+3. ¿Cómo modelo la comunicación cliente-servidor para la pantalla del juego?
+4. ¿Cómo organizo el simulador y la persistencia para alcanzar 10M/<10 min?
+
+**Respuesta del usuario:**
+
+1. **Monolito modular Maven multi-módulo**.
+2. **Arquitectura hexagonal (ports & adapters) + DDD ligero**.
+3. **REST puro request/response por cada giro**.
+4. **Mismo proceso, módulo Maven separado, ForkJoinPool, sin BBDD durante la run**.
+
+---
+
+### Prompt 11 — Ronda 2: persistencia, testing y frontend stack
+
+**Pregunta del asistente al usuario (3 preguntas):**
+
+1. ¿Persistencia y estrategia de auditoría inmutable?
+2. ¿Qué estrategia de testing dejo recogida en la arquitectura?
+3. ¿Frontend state management y librerías auxiliares?
+
+**Respuesta del usuario:**
+
+1. *Comentario abierto*: "Considera el uso de bases de datos no relacionales (como MongoDB) para mejorar la performance" → se transforma en una nueva ronda de preguntas (Prompt 12).
+2. **Pirámide clásica: unit del motor + integration con Testcontainers + 1 E2E feliz con Playwright**.
+3. **React + Zustand + TanStack Query + i18next**.
+
+---
+
+### Prompt 12 — Ronda 3: análisis MongoDB vs PostgreSQL e integridad anti-tampering
+
+**Pregunta del asistente al usuario (2 preguntas):**
+
+1. Sobre la persistencia con MongoDB en el mix, ¿qué modelo prefieres? (Polyglot Postgres+Mongo / Mongo todo en uno / Postgres todo en uno)
+2. Si vamos polyglot, ¿añado hash-chain en `game_round`?
+
+**Respuesta del usuario:**
+
+1. **"Si MongoDB no da mejor performance entonces quizás no es necesario meterlo"**. El asistente analiza honestamente los números (volumen MVP esperado: miles de spins/día, no 100k/seg) y concluye que MongoDB no aporta perf suficiente para justificar la complejidad operacional. Se cierra la decisión: **PostgreSQL único + JSONB para configs + particionado mensual de `game_round` + hash-chain implementado como trigger Postgres con `pgcrypto`**.
+2. **Sí, hash-chain** (mantenido aunque se implementa en Postgres en lugar de Mongo).
+
+---
+
+### Prompt 13 — Ejecución del punto 2
+
+**Pregunta del usuario:** aprobación tácita tras cerrar todas las decisiones arquitectónicas.
+
+**Respuesta del asistente:** redacción del punto 2 completo del `readme.md` con seis subsecciones:
+
+- **2.1 Diagrama de arquitectura** — tres diagramas C4 (contexto, contenedores, componentes del backend) en Mermaid + tabla de patrones aplicados (Hexagonal, DDD, Strategy, Builder, Command+Event, Repository, Adapter, Map-Reduce, Hash-chain) + análisis de beneficios y sacrificios.
+- **2.2 Descripción de componentes principales** — desglose de los 6 módulos Maven del backend (`nova-domain`, `nova-application`, `nova-infrastructure`, `nova-simulator`, `nova-web-api`, `nova-common`), del frontend (React + Zustand + TanStack Query + i18next + Howler.js) y de los servicios externos (Anthropic).
+- **2.3 Descripción de alto nivel del proyecto y estructura de ficheros** — árbol completo del repo con explicación de la regla de dependencia hexagonal y la convención de carpetas verticales en frontend.
+- **2.4 Infraestructura y despliegue** — diagrama Mermaid de la topología Docker Compose (3 contenedores: `web` nginx, `api` Spring Boot, `postgres`) + diagrama del pipeline CI/CD (GitHub Actions) con la nota de que cloud queda fuera de MVP.
+- **2.5 Seguridad** — cuatro bloques: autenticación (JWT + BCrypt + verificación >18), integridad de auditoría (diagrama Mermaid del hash-chain + trigger Postgres), RNG criptográficamente fuerte (SecureRandom + seeds reproducibles + replay determinista), defensa en profundidad (CORS, rate limiting con Bucket4j, validación, CSP) y específicas de gambling/DGOJ (server-side game logic, trazabilidad total, sello DGOJ, juego responsable).
+- **2.6 Tests** — diagrama de pirámide (unit denso + property-based con jqwik + ArchUnit + integration con Testcontainers + 1 E2E con Playwright) + ejemplos representativos + tabla de cobertura objetivo por módulo.
+
+Decisiones consolidadas que entran en el punto 2 del PRD:
+
+| Tema | Decisión |
+|---|---|
+| Estilo macro | Monolito modular Maven multi-módulo |
+| Patrón interno | Hexagonal + DDD ligero |
+| Comunicación cliente-juego | REST puro |
+| Simulador | In-process, módulo Maven separado, ForkJoinPool, sin BBDD durante la run |
+| Persistencia | PostgreSQL 16 con JSONB + particionado mensual de `game_round` |
+| Inmutabilidad auditoría | Hash-chain SHA-256 vía trigger Postgres + `pgcrypto` + trigger anti-UPDATE/DELETE |
+| RNG | `SecureRandom` aislado en adapter; puerto en dominio; seeds registradas para replay |
+| Frontend stack | React 18 + TS + Vite + Zustand + TanStack Query + i18next + Howler.js |
+| Testing | JUnit + AssertJ + jqwik (property-based) + ArchUnit + Testcontainers + Playwright (1 E2E) |
+| Despliegue | Docker Compose (`web`, `api`, `postgres`); cloud explícitamente fuera de MVP |
+| CI | GitHub Actions: `mvn verify` + `pnpm test/build` + cobertura Jacoco |
+
+---
+
+### Prompt 14 — Correcciones tras revisión del usuario al punto 2
+
+**Pregunta del usuario:**
+
+> He revisado el punto 2 del `readme.md`. Veo varias cosas a corregir:
+> - El diagrama 2.1.1 no se ve bien, da error.
+> - El diagrama 2.1.2 tiene una presentación mejorable y no entiendo por qué has puesto la versión 16 de PostgreSQL en vez de la 18 (también en punto 2.2.3).
+> - El diagrama 2.1.3 tiene la letra demasiado pequeña, no es fácilmente legible. Divídelo en 3 diferentes, una para cada actor del sistema.
+> - ¿Por qué motivo haces la *hash chain* del punto 2.5.2?
+> - Quiero que los tests de integración del punto 2.6 estén en un directorio separado de test llamado `it`, es decir `src/it` en vez de `src/test`.
+
+**Respuesta del asistente:** se justifica honestamente la decisión del hash-chain (en MVP single-node sin firma externa no aporta seguridad real adicional sobre el trigger anti-UPDATE/DELETE; lo metí como diferencial de posicionamiento y preparación para fases futuras con firma externa) y se hace una ronda de 2 preguntas finales para cerrar:
+
+- **Hash-chain:** **quitarlo del MVP**, dejar nota explícita en 2.5.2 difiriéndolo a fases con firma externa.
+- **Tests de integración:** confirmado uso de `maven-failsafe-plugin` con `src/it/java` y `src/it/resources` por módulo (registrados con `build-helper-maven-plugin`).
+
+A continuación se aplican las cinco correcciones al `readme.md`:
+
+1. **Diagrama 2.1.1**: simplificada la sintaxis Mermaid (sustituido el cylinder `[(...)]` por rectángulo en Anthropic, eliminado el guion largo `—` problemático y renombrado el actor `Math` a `Mathematician` para evitar colisiones con palabras reservadas en algún parser).
+2. **Diagrama 2.1.2**: dirección cambiada a `LR`, añadido el container `web` (nginx) explícitamente diferenciado del SPA en el navegador, añadido el actor `Usuario` y actualizado a **PostgreSQL 18**.
+3. **Diagrama 2.1.3**: dividido en tres diagramas independientes — **2.1.3.1 Flujo del Jugador**, **2.1.3.2 Flujo del Operador**, **2.1.3.3 Flujo del Matemático** —, cada uno mostrando solo los componentes implicados en sus casos de uso. Letra legible.
+4. **Hash-chain quitado**:
+   - Eliminada la fila "Hash-chain" de la tabla 2.1.4 de patrones aplicados.
+   - Reformulada la viñeta de "Auditabilidad" en 2.1.5 (ahora la cubre el trigger anti-UPDATE/DELETE).
+   - Eliminado `HashChain` del listado de clases de dominio en 2.2.1.
+   - Renombrada la migración Flyway `V3__hashchain_trigger.sql` por `V2__immutable_audit_trigger.sql` (sin hash-chain) en la estructura del 2.3.
+   - 2.5.2 renombrada de "Integridad de la auditoría — hash-chain" a "Inmutabilidad de la auditoría", sustituyendo el diagrama del hash-chain por la explicación del trigger BBDD anti-UPDATE/DELETE y una nota explícita que difiere el hash-chain a fases con firma externa.
+   - Eliminada la mención a "hashes" en la fila de logs de 2.5.4 y la mención a "hash válido encadenado" del ejemplo de integration tests en 2.6.
+5. **Tests en `src/it`**:
+   - Actualizada la estructura de ficheros del 2.3: cada módulo Maven muestra ahora explícitamente `src/test/java` (unit, Surefire) y, en `nova-infrastructure` y `nova-web-api`, también `src/it/java` y `src/it/resources` (Failsafe).
+   - Añadida al final de 2.6 una tabla "Convención de carpetas y plugins Maven" con la separación Surefire/Failsafe, naming `*Test` vs `*IT`, registro vía `build-helper-maven-plugin` y nota sobre `mvn test` (solo unit) vs `mvn verify` (ambos).
+
+Adicional: actualizado **PostgreSQL 16 → 18** en 2.2.3 y en el diagrama de Docker Compose 2.4.1 (incluida la imagen `postgres:18-alpine` en la tabla de servicios).
+
+

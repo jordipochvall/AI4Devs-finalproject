@@ -52,11 +52,36 @@ Este prompt cerró el alcance del MVP: la accesibilidad WCAG queda documentada c
 
 ### **2.1. Diagrama de arquitectura:**
 
-**Prompt 1:**
+**Prompt 1:** (Encargo inicial del rol arquitecto — define el alcance del punto 2 y el estilo de trabajo)
 
-**Prompt 2:**
+> A partir de ahora quiero que actues como un arquitecto senior con experiencia en patrones de diseño de software y especialmente de aquellos aplicados a la industria del gambling. Ya no eres product manager. Ahora vamos a generar el punto 2 del `readme.md`. La parte correspondiente a la parte de arquitectura del sistema. Igual que antes consúltame cualquier duda que puedas tener y justifícame las decisiones que vayas tomando. No dudes en usar gráficos allí donde sea posible para ayudar a clarificar los conceptos. Si quedan muy grandes trocéalos con sentido. Sigue actualizando el fichero `conversation.md`.
 
-**Prompt 3:**
+Este prompt provocó dos rondas de preguntas estructuradas que cerraron las decisiones macro: **monolito modular Maven multi-módulo**, **arquitectura hexagonal + DDD ligero**, **REST puro** para la pantalla del juego y **simulador in-process con `ForkJoinPool` sin persistencia durante la run**.
+
+---
+
+**Prompt 2:** (Cuestionamiento del stack de persistencia — fuerza un análisis crítico y honesto en lugar de seguir el camino por defecto)
+
+> Considera el uso de bases de datos no relacionales (como MongoDB) para mejorar la performance.
+>
+> [tras la propuesta polyglot del asistente]
+>
+> Si el MongoDB no da mejor performance entonces quizás no es necesario meterlo.
+
+Este prompt fue clave porque obligó a hacer un análisis cuantitativo real (volumen MVP esperado: miles de spins/día, no decenas de miles/segundo) y descartar MongoDB por **complejidad operacional sin retorno** en este contexto. Cerró la decisión: **PostgreSQL único + JSONB para configuraciones + particionado mensual de `game_round`**, manteniendo ACID estricto en el wallet (requisito DGOJ).
+
+---
+
+**Prompt 3:** (Revisión crítica del usuario al primer borrador — afina diagramas, versión de stack, alcance y convención de tests)
+
+> He revisado el punto 2 del `readme.md`. Veo varias cosas a corregir:
+> - El diagrama 2.1.1 no se ve bien, da error.
+> - El diagrama 2.1.2 tiene una presentación mejorable y no entiendo por qué has puesto la versión 16 de PostgreSQL en vez de la 18 (también en punto 2.2.3).
+> - El diagrama 2.1.3 tiene la letra demasiado pequeña, no es fácilmente legible. Divídelo en 3 diferentes, una para cada actor del sistema.
+> - ¿Por qué motivo haces la *hash chain* del punto 2.5.2?
+> - Quiero que los tests de integración del punto 2.6 estén en un directorio separado de test llamado `it`, es decir `src/it` en vez de `src/test`.
+
+Este prompt cerró cinco correcciones que mejoraron sustancialmente la calidad del punto 2: arreglo de Mermaid en el diagrama de contexto, mejora de presentación y actualización a **PostgreSQL 18**, **división del C4 nivel 3 en tres diagramas (uno por actor)** para legibilidad, **eliminación del *hash-chain* del MVP** (tras justificar que en single-node sin firma externa no aporta seguridad real adicional sobre el trigger anti-UPDATE/DELETE) y adopción de la convención **`src/it/java` con `maven-failsafe-plugin`** para los tests de integración, separados de los unit en `src/test/java`.
 
 ### **2.2. Descripción de componentes principales:**
 
