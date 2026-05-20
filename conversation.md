@@ -265,4 +265,169 @@ A continuación se aplican las cinco correcciones al `readme.md`:
 
 Adicional: actualizado **PostgreSQL 16 → 18** en 2.2.3 y en el diagrama de Docker Compose 2.4.1 (incluida la imagen `postgres:18-alpine` en la tabla de servicios).
 
+---
+
+## Fase 2 · Rol Arquitecto Senior — Modelo de datos (punto 3 del readme)
+
+### Prompt 15 — Encargo del punto 3
+
+**Pregunta del usuario:**
+
+> Vamos a hacer el apartado 3 del `readme.md` ahora. Ahora toca el modelo de datos. Teniendo presente lo definido en la descripción general del producto y de la arquitectura vamos a diseñar el modelo de datos teniendo presente lo ya escrito en el apartado 3 como requerimiento (aunque quítalo para la versión definitiva).
+
+**Respuesta del asistente:** se asumen como guía los textos previos del apartado 3 (que se eliminan en la versión final) y se prepara una ronda de preguntas de modelado de datos para cerrar las decisiones que más impacto tienen en el schema antes de pintarlo.
+
+---
+
+### Prompt 16 — Ronda de decisiones de modelado
+
+**Pregunta del asistente al usuario (3 preguntas):**
+
+1. ¿Qué estrategia de PK uso para las entidades? (BIGSERIAL / UUID v7 sólo en `game_round` / UUID v7 en todo)
+2. ¿Multi-tenancy en el modelo desde el día 0? (single-tenant puro / tabla `operators` con FK en todo)
+3. ¿Cómo modelo los Free Spins en `game_round`? (rows independientes con `triggering_round_id` / `free_spin_session` aparte / un row con array JSONB)
+
+**Respuesta del usuario:**
+
+1. **`BIGSERIAL` para todo** — secuencial, óptimo para B-tree y particionado de `game_round`.
+2. **Sí, multi-tenant desde el día 0** — tabla `operators` + FK `operator_id` en `users`, `games`, `wallets` y `game_round`. Aunque MVP es single-operador, se prepara la arquitectura para evitar migración masiva en fases posteriores.
+3. **Cada free spin es un row independiente con `is_free_spin=true` y `triggering_round_id`** — granularidad máxima de auditoría y replay individual de cada spin, agrupable por sesión de free spins.
+
+**Respuesta del asistente:** redacción del punto 3 completo del `readme.md` con la siguiente estructura:
+
+- **Cabecera del punto 3** — tabla con las 8 decisiones transversales del modelo (PK BIGSERIAL, multi-tenant, dinero en BIGINT céntimos, JSONB+GIN, particionado mensual de `game_round`, inmutabilidad por trigger, optimistic locking en `wallets`, naming snake_case en inglés y plural).
+- **3.1 Diagrama del modelo de datos** — dividido en dos diagramas Mermaid `erDiagram` para mantener la legibilidad:
+  - **3.1.1 Núcleo: operadores, cuentas y catálogo de juegos** — `operators`, `users`, `wallets`, `games`, `game_configs`.
+  - **3.1.2 Superficie operacional: partidas, transacciones y simulaciones** — `game_round`, `wallet_transactions`, `simulation_runs`.
+- **3.2 Descripción de entidades principales** — nueve subapartados (3.2.1 a 3.2.9) detallando cada tabla con tabla de columnas (tipo, restricciones, notas), constraints, índices, triggers, particionado y relaciones. El último (3.2.9) recoge los tipos enumerados (`role_enum`, `theme_enum`, `tx_type_enum`, `sim_status_enum`) que se crean en `V1__schema.sql`.
+
+**Decisiones consolidadas que entran en el punto 3:**
+
+| Tema | Decisión |
+|---|---|
+| BBDD | PostgreSQL 18, esquema único `novacasino`, migraciones Flyway |
+| PKs | `BIGSERIAL` en todas las entidades |
+| Multi-tenant | Tabla `operators` + FK `operator_id` en `users`, `games`, `wallets`, `game_round`, `simulation_runs` |
+| Dinero | `BIGINT` en céntimos + `CHAR(3)` currency |
+| Configs y resultados de juego | `JSONB` + índices GIN |
+| `game_round` | PK compuesta `(id, created_at)`, particionada mensualmente con `pg_partman`, inmutable por trigger anti-UPDATE/DELETE |
+| Free spins | Cada spin es un row con `is_free_spin=TRUE` y `triggering_round_id` self-FK al spin disparador |
+| Concurrencia wallet | Optimistic locking con columna `version` |
+| Versionado matemático | `game_configs` con UNIQUE `(game_id, version)`; `games.active_config_id` apunta a la versión publicada (FK DEFERRABLE para resolver el ciclo en INSERT) |
+| Auditoría de simulaciones | `simulation_runs` solo guarda agregados; los 10M de spins individuales no se persisten |
+| AI explainability | `simulation_runs.ai_explanation_log` (JSONB) registra el histórico de Q&A con Claude para trazabilidad |
+| Verificación >18 | CHECK en `users.birth_date` |
+| Tipos | Cuatro `ENUM` nativos: `role_enum`, `theme_enum`, `tx_type_enum`, `sim_status_enum` |
+
+> Nota: varias de estas decisiones se revisaron y corrigieron en el Prompt 17.
+
+---
+
+### Prompt 17 — Revisión crítica DBA del modelo de datos y correcciones
+
+**Pregunta del usuario:**
+
+> Quiero que revises con ojos críticos el modelo de datos como si fueras un DBA experto en bases de datos relacionales en busca de posibles fallos de diseño.
+>
+> [tras la revisión] Vamos a resolver los puntos que has encontrado. Ve ofreciéndome opciones para cada problema.
+
+**Respuesta del asistente:** revisión crítica que identificó **2 fallos críticos** (el schema no se podía crear tal cual), **3 importantes** y varios de criterio:
+
+- **C1 (crítico)** — FK a tabla particionada: con `game_round` particionada y PK compuesta `(id, created_at)`, las FK `wallet_transactions.game_round_id` y el self-FK `triggering_round_id` no podían referenciar solo `id`.
+- **C2 (crítico)** — `CHECK` de edad con `AGE()`/`NOW()`: expresión no inmutable, se re-evalúa de forma inconsistente en un `restore`. Anti-patrón.
+- **I1** — varias FK sin índice (locks y seq scans).
+- **I2** — justificación técnicamente falsa de por qué `wallet_transactions` no llevaba trigger (un `ROLLBACK` de `INSERT` no dispara triggers de `DELETE`).
+- **I3** — inconsistencia de naming `game_round` (singular) vs convención plural.
+- Criterio: enums nativos rígidos, `ai_explanation_log` JSONB con riesgo de *row bloat*, `DEFERRABLE` innecesario, falta de auditoría de publicación de matemática, inmutabilidad asimétrica de `game_configs`, login multi-tenant ambiguo, `password_hash VARCHAR(60)` sin margen.
+
+Se resolvió en dos rondas de preguntas con opciones. **Decisiones tomadas:**
+
+| Problema | Decisión |
+|---|---|
+| C1 — particionado | **Quitar el particionado en MVP**; `game_rounds` con PK simple `id`. Particionado documentado como evolución futura. |
+| C2 — verificación de edad | **Quitar el `CHECK`**; la mayoría de edad se valida solo en la capa de aplicación. |
+| I2 — ledger inmutable | **Añadir trigger anti-UPDATE/DELETE** a `wallet_transactions`, igual que `game_rounds`. |
+| Enums | **Migrar a `VARCHAR` + `CHECK IN (...)`**; se elimina la dependencia `hypersistence-utils`. |
+| AI Q&A log | **Nueva tabla hija `simulation_explanations`** (sustituye al JSONB `ai_explanation_log`). |
+| Publicación de matemática | **Nueva tabla `game_config_publications`** con historial completo (quién publicó qué versión y cuándo). |
+| Inmutabilidad de `game_configs` | **Añadir trigger anti-UPDATE/DELETE**. |
+
+**Correcciones triviales aplicadas sin trade-off:** índices explícitos en todas las FK huérfanas (I1); naming unificado a plural (`game_rounds`, `simulation_runs`); eliminación del `DEFERRABLE` innecesario en `games.active_config_id`; `password_hash` ampliado a `VARCHAR(255)`; `UNIQUE (game_round_id, type)` en `wallet_transactions`; nota sobre la resolución del tenant en el login multi-tenant.
+
+**Resultado:** el punto 3 se reescribió por completo. El modelo pasa de 8 tablas + tipos enum a **10 tablas** (`operators`, `users`, `wallets`, `wallet_transactions`, `games`, `game_configs`, `game_config_publications`, `game_rounds`, `simulation_runs`, `simulation_explanations`). Las cuatro tablas histórico-regulatorias (`game_rounds`, `wallet_transactions`, `game_configs`, `game_config_publications`) comparten la función `fn_forbid_update_delete` y un trigger de inmutabilidad cada una (migración `V2__immutability_triggers.sql`). Se alinearon además dos referencias en el punto 2 (se elimina la mención a `pg_partman` en 2.2.3 y se actualiza el nombre de la migración en 2.3 y 2.5.2).
+
+---
+
+## Fase 3 · Rol Documentalista — Revisión de coherencia (puntos 0-3 del readme)
+
+### Prompt 18 — Revisión documental de coherencia y lagunas
+
+**Pregunta del usuario:**
+
+> Antes de pasar a los siguientes apartados quiero que actúes como un documentalista experto y revises si el contenido generado hasta ahora es coherente o si detectas algunas lagunas para que un desarrollador, un product manager o una IA puedan hacerse una idea precisa de lo que se pretende. [tras la revisión] Resuelve tanto las incoherencias como las lagunas.
+
+**Respuesta del asistente:** revisión documental de los puntos 0-3 que detectó **5 incoherencias** y **6 lagunas** (más varias menores). Tras presentarlas, se resolvieron todas.
+
+**Incoherencias corregidas:**
+
+| # | Incoherencia | Corrección |
+|---|---|---|
+| INC-1 | El punto 2.5.1 aún describía el `CHECK` de edad eliminado en el Prompt 17 | Reescrito: la verificación ≥18 vive en la capa de aplicación; se explica por qué no hay `CHECK`. |
+| INC-2 | `game_round` (singular) residual en los puntos 1 y 2 | Unificado a `game_rounds` en 1.2-D3, 2.1.5, 2.5.5, 2.6 y 3.2.1. |
+| INC-3 | "Verificación de edad en login" vs "en registro" | Unificado a **en el registro** en 1.1, A1 y el Flujo 1. |
+| INC-4 | `apps/web` (2.2.2) no existía en la estructura de ficheros (2.3) | Cambiado a `frontend/`. |
+| INC-5 | Cardinalidad `USERS ||--\|\| WALLETS` (uno-a-uno obligatorio) pese a que operador/matemático no tienen wallet | Corregida a `USERS ||--o| WALLETS` (cero o uno). |
+
+**Lagunas resueltas:**
+
+| # | Laguna | Resolución |
+|---|---|---|
+| LAG-A | El esquema del JSON de configuración de juego (pilar del motor *data-driven*) no estaba especificado | Nuevo apartado **3.3** con estructura campo a campo, ejemplo completo de un juego 5x3 y reglas de validación. |
+| LAG-B | El contrato del puerto `RngEngine` no permitía el *replay* (solo `nextInt`/`getSeed`) | 2.5.3 reescrito: se separa `SecureRandom` (genera el seed) de un PRNG determinista reproducible (genera la secuencia), y se añade el puerto `RngFactory` con `create()` y `createWithSeed(long)`. |
+| LAG-C | El estado de una sesión de free spins en curso no estaba modelado | Decisión documentada (A6 y nota en 3.2.8): la ronda completa de free spins se computa y persiste **atómicamente** junto al spin disparador; no hay estado de sesión intermedio. |
+| LAG-D | "Perfil de jugador" del simulador mencionado pero no definido ni modelado | Eliminada la mención en C2 (el simulador se configura solo con nº de spins y apuesta fija). |
+| LAG-E | Idempotencia de las operaciones de juego no abordada | Añadida fila "Idempotencia" en 2.5.4: `POST .../spin` con cabecera `Idempotency-Key` y deduplicación en backend. |
+| LAG-F | Ausencia de glosario de términos de gambling | Añadido un **glosario** al inicio del punto 1 (RTP, volatilidad, reel, payline, paytable, wild, scatter, free spins, RNG, seed, GGR, DGOJ, RFJ…). |
+
+**Lagunas menores:** se aclara que el MVP solo soporta `EUR` (decisión transversal 3), que el umbral de desviación de RTP de C5 es un parámetro de aplicación, y que `nova-common` es la excepción a la regla de dependencia hexagonal.
+
+---
+
+## Fase 4 · Rol Experto en APIs — Especificación de la API (punto 4 del readme)
+
+### Prompt 19 — Encargo del punto 4 y diseño de la API
+
+**Pregunta del usuario:**
+
+> Quiero ahora que te comportes como un experto en diseño de APIs y microservicios y definas la API del backend necesaria para la aplicación.
+
+**Respuesta del asistente:** se asume el rol y se hace una ronda de 2 preguntas de diseño:
+
+1. **Versionado** → **Sí, prefijo `/api/v1/...`** (implica alinear las referencias del punto 2).
+2. **Endpoints a detallar en OpenAPI** → el usuario pide **detallarlos todos**, marcando como **prioritarios** el spin, la simulación, el replay y el login/registro de jugador.
+
+A continuación se ejecuta:
+
+- **Alineación del versionado** en los puntos 1-2: `/api/player/*`, `/api/operator/*`, `/api/math/*`, `/api/auth/login`, `POST /api/player/spin` y la URL local de la API pasan a `/api/v1/...`.
+- **Ajuste de coherencia** en 3.2.8: el campo `result` (JSONB) pasa de `{reels, winning_paylines, scatter_count}` a `{view, winningPaylines, scatterCount, multiplier}` en camelCase, para no colisionar con `reels` (las *strips* de configuración del apartado 3.3) y alinearse con la API.
+- **Redacción del punto 4 completo** con cuatro subapartados:
+  - **4.1 Principios de diseño** — REST, versionado `/api/v1`, OpenAPI 3.1 + springdoc, JWT por rol, errores RFC 9457 *Problem Details*, paginación envuelta, idempotencia (`Idempotency-Key`), operaciones largas asíncronas (simulación = `202` + *polling*, sin WebSockets), *microservice-readiness* y tabla de códigos HTTP.
+  - **4.2 Catálogo de endpoints** — ~26 endpoints en 4 tablas (Auth, Player, Operator, Math), con marca ★ de prioridad.
+  - **4.3 Ficha de cada endpoint** — todos los endpoints detallados (acceso, parámetros, cuerpo, respuestas).
+  - **4.4 OpenAPI 3.1 + ejemplos** — especificación formal en YAML de los 5 endpoints prioritarios (registro, login, spin, lanzar simulación, replay) con ejemplos request/response JSON.
+- Se reutiliza el vocabulario del apartado 3.3 (`grid`, `symbols`, `reels`, `paylines`, `paytable`, `bonus`) en los contratos de la API, según lo acordado.
+
+**Decisiones consolidadas que entran en el punto 4:**
+
+| Tema | Decisión |
+|---|---|
+| Estilo / base | REST JSON, base `/api/v1`, contrato OpenAPI 3.1 autogenerado con springdoc |
+| Auth | JWT Bearer; autorización por rol; `/auth/register` y `/auth/login` públicos |
+| Errores | RFC 9457 *Problem Details* (`application/problem+json`), i18n ES/EN |
+| Paginación | `page`/`size` + envoltorio `{content, page, size, totalElements, totalPages}` |
+| Idempotencia | Cabecera `Idempotency-Key` en `spin` y `recharge` |
+| Operación larga | Lanzar simulación → `202 Accepted` + *polling* sobre `GET .../simulations/{id}` |
+| Endpoints prioritarios | registro, login, spin, lanzar simulación, replay (detallados en OpenAPI con ejemplos) |
+
+
 
