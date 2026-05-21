@@ -2,9 +2,27 @@
 
 0. [Ficha del proyecto](#0-ficha-del-proyecto)
 1. [Descripción general del producto](#1-descripción-general-del-producto)
+   - 1.1. [Objetivo](#11-objetivo)
+   - 1.2. [Características y funcionalidades principales](#12-características-y-funcionalidades-principales)
+   - 1.3. [Diseño y experiencia de usuario](#13-diseño-y-experiencia-de-usuario)
+   - 1.4. [Instrucciones de instalación](#14-instrucciones-de-instalación)
+   - 1.5. [Supuestos y decisiones diferidas](#15-supuestos-y-decisiones-diferidas)
 2. [Arquitectura del sistema](#2-arquitectura-del-sistema)
+   - 2.1. [Diagrama de arquitectura](#21-diagrama-de-arquitectura)
+   - 2.2. [Descripción de componentes principales](#22-descripción-de-componentes-principales)
+   - 2.3. [Estructura de alto nivel del proyecto](#23-descripción-de-alto-nivel-del-proyecto-y-estructura-de-ficheros)
+   - 2.4. [Infraestructura y despliegue](#24-infraestructura-y-despliegue)
+   - 2.5. [Seguridad](#25-seguridad)
+   - 2.6. [Tests](#26-tests)
 3. [Modelo de datos](#3-modelo-de-datos)
+   - 3.1. [Diagrama del modelo de datos](#31-diagrama-del-modelo-de-datos)
+   - 3.2. [Descripción de entidades principales](#32-descripción-de-entidades-principales)
+   - 3.3. [Esquema del JSON de configuración de juego](#33-esquema-del-json-de-configuración-de-juego-game_configsconfig)
 4. [Especificación de la API](#4-especificación-de-la-api)
+   - 4.1. [Principios de diseño y convenciones](#41-principios-de-diseño-y-convenciones)
+   - 4.2. [Catálogo de endpoints](#42-catálogo-de-endpoints)
+   - 4.3. [Ficha de cada endpoint](#43-ficha-de-cada-endpoint)
+   - 4.4. [Especificación OpenAPI y ejemplos](#44-especificación-openapi-31-y-ejemplos--endpoints-prioritarios)
 5. [Historias de usuario](#5-historias-de-usuario)
 6. [Tickets de trabajo](#6-tickets-de-trabajo)
 7. [Pull requests](#7-pull-requests)
@@ -43,8 +61,6 @@ Repositorio público de GitHub: `https://github.com/<owner>/AI4Devs-finalproject
 ---
 
 ## 1. Descripción general del producto
-
-> Describe en detalle los siguientes aspectos del producto:
 
 ### Glosario de términos
 
@@ -258,13 +274,27 @@ BACKOFFICE MATEMÁTICO — SIMULADOR + IA
 
 ### **1.4. Instrucciones de instalación:**
 
-> Las instrucciones definitivas se publicarán en la fase de implementación. A continuación se documenta el procedimiento previsto, alineado con la arquitectura aprobada en este PRD.
+Las instrucciones definitivas se publicarán en la fase de implementación. A continuación se documenta el procedimiento previsto, alineado con la arquitectura aprobada en este PRD.
 
 #### Requisitos previos
 
 - Docker Desktop 4.x o Docker Engine + Docker Compose v2
 - Git
 - Una API key de Anthropic (variable `ANTHROPIC_API_KEY`) para la funcionalidad de *AI explainability* en el backoffice matemático. Sin ella, el resto de la plataforma funciona; solo se desactiva esa feature.
+
+#### Variables de entorno
+
+Todas se declaran en `.env` (copiado de `.env.example`). El `docker-compose.yml` las inyecta en los contenedores correspondientes.
+
+| Variable | Descripción | Obligatoria | Valor por defecto |
+|---|---|---|---|
+| `POSTGRES_DB` | Nombre de la base de datos. | Sí | `novacasino` |
+| `POSTGRES_USER` | Usuario de PostgreSQL. | Sí | `novacasino` |
+| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL. | Sí | `novacasino` (cambiar fuera de local) |
+| `JWT_SECRET` | Secreto HS256 para firmar los JWT. | Sí | — (generar uno; mín. 32 bytes) |
+| `JWT_TTL_SECONDS` | Validez del access token, en segundos. | No | `3600` |
+| `ANTHROPIC_API_KEY` | API key de Anthropic para *AI explainability*. Si falta, la feature se desactiva. | No | — (vacío) |
+| `ANTHROPIC_MODEL` | Modelo de Claude usado por el *explainer*. | No | `claude-haiku-4-5` |
 
 #### Pasos de instalación local
 
@@ -312,7 +342,39 @@ docker compose down -v           # Para y borra los volúmenes (resetea la BBDD)
 
 ---
 
-## 2. Arquitectura del Sistema
+### **1.5. Supuestos y decisiones diferidas:**
+
+Este apartado consolida en un único lugar los supuestos sobre los que se construye el MVP y las decisiones aplazadas a fases posteriores (mencionadas de forma dispersa en los puntos 2-4). Amplía la lista escueta de [1.2.E](#12-características-y-funcionalidades-principales).
+
+#### Supuestos del MVP
+
+| # | Supuesto | Implicación |
+|---|---|---|
+| S1 | **Operación single-tenant**: existe un único operador (`novacasino-default`). | El modelo es multi-tenant, pero no se prueba con varios operadores ni se resuelve el *tenant* por subdominio. |
+| S2 | **Moneda única `EUR`**. | No hay conversión de divisa ni tabla de tipos de cambio. |
+| S3 | **Volumen esperado: miles de spins/día**. | Justifica no particionar `game_rounds`, *rate limiting* en memoria y BBDD única sin réplica. |
+| S4 | **El jugador se registra por sí mismo**; el operador le añade saldo virtual. No hay pagos reales. | El wallet es *fun money*; la recarga es una acción manual del operador. |
+| S5 | **Los assets gráficos y de audio se generan con IA** o se toman de packs con licencia libre. | Su calidad/licencia no es un riesgo de ingeniería pero sí una dependencia de contenido. |
+
+#### Decisiones diferidas (post-MVP)
+
+| # | Diferido | Motivo / disparador para abordarlo |
+|---|---|---|
+| D1 | Endpoints de soporte secundarios (ver marcas *post-MVP* en el [catálogo 4.2](#42-catálogo-de-endpoints)) | El MVP implementa los 5 endpoints ★ + el soporte mínimo; el resto se especifica pero no se construye. |
+| D2 | Refresh tokens y renovación silenciosa de sesión | Comodidad de UX; el MVP re-autentica al expirar el token. |
+| D3 | *Hash-chain* con firma externa para *tamper-evidence* | Requiere un *anchor* de confianza externo (clave fuera del servidor o BBDD append-only). |
+| D4 | Particionado mensual de `game_rounds` | Se reintroduce cuando el volumen supere lo que una tabla única maneja con holgura. |
+| D5 | Auditoría de cambios de configuración comercial de los juegos | El MVP audita la matemática (`game_config_publications`) pero no los cambios de apuestas/monedas. |
+| D6 | Generación de informes oficiales RFJ para la DGOJ | La arquitectura los soporta; no se generan en esta versión. |
+| D7 | Límites de pérdida y autoexclusión completos | Preparados a nivel de diseño; no implementados. |
+| D8 | Accesibilidad WCAG 2.1 AA | Fuera del alcance v1. |
+| D9 | Despliegue cloud público | El MVP solo contempla ejecución local con Docker Compose. |
+| D10 | *Prompt caching* en la integración con Claude | Optimización de coste; se aborda si el uso de la feature de IA crece. |
+| D11 | Pasarelas de pago/cobro y jackpots progresivos | Fuera del roadmap inmediato. |
+
+---
+
+## 2. Arquitectura del sistema
 
 ### **2.1. Diagrama de arquitectura:**
 
@@ -357,7 +419,7 @@ flowchart LR
 
     subgraph Compose["Docker Compose"]
         WEB["web<br/>nginx 1.27<br/>:5173"]
-        API["api<br/>Spring Boot 3<br/>Java 21<br/>:8080"]
+        API["api<br/>Spring Boot 3.4<br/>Java 21<br/>:8080"]
         DB[("postgres<br/>PostgreSQL 18<br/>:5432")]
     end
 
@@ -570,6 +632,43 @@ flowchart LR
 - **Curva inicial mayor que un monolito layered**: hay que entender hexagonal para no acoplar. Mitigado por la estructura Maven (las fronteras son físicas, no convencionales).
 - **PostgreSQL como SPOF en runtime**: aceptable para MVP local; en producción se mitigaría con réplica/HA en otra fase.
 
+#### 2.1.6 Flujo de un giro (diagrama de secuencia)
+
+El `spin` es el flujo crítico de la plataforma. El siguiente diagrama muestra su orquestación a través de las capas, **la idempotencia** y la **transaccionalidad** (toda la operación ocurre dentro de una única transacción de BBDD: si cualquier paso falla, se revierte por completo).
+
+```mermaid
+sequenceDiagram
+    actor P as Jugador
+    participant API as PlayerController
+    participant UC as SpinUseCase
+    participant W as Wallet (dominio)
+    participant E as Slot Engine (dominio)
+    participant R as RngFactory
+    participant DB as PostgreSQL
+
+    P->>API: POST /player/games/{id}/spin<br/>(betCents, Idempotency-Key)
+    API->>UC: execute(playerId, gameId, bet, idemKey)
+
+    rect rgb(238, 232, 213)
+    Note over UC,DB: Única transacción — rollback total ante cualquier fallo
+    UC->>DB: ¿Idempotency-Key ya registrada?
+    alt Key ya procesada
+        DB-->>UC: resultado previo
+        UC-->>API: SpinResult (deduplicado)
+    else Key nueva
+        UC->>W: debitar apuesta (optimistic lock)
+        UC->>R: createWithSeed() / create()
+        UC->>E: spin(config, rng)
+        E-->>UC: resultado del giro (+ free spins)
+        UC->>W: acreditar premio
+        UC->>DB: INSERT game_rounds + wallet_transactions<br/>+ idempotency_keys
+        UC-->>API: SpinResult
+    end
+    end
+
+    API-->>P: 200 SpinResult
+```
+
 ---
 
 ### **2.2. Descripción de componentes principales:**
@@ -581,8 +680,8 @@ flowchart LR
 | **nova-domain** | Java 21 puro (sin Spring) | Núcleo de negocio: `Game`, `Round`, `Reels`, `Paytable`, `Symbol`, `Payline`, `BonusFeature`, `Wallet`, `Money`, `Bet`, `RngEngine` (puerto), `GameRound`. Cero dependencias externas más allá de la JDK. |
 | **nova-application** | Java 21 + `jakarta.transaction` | Casos de uso (`SpinUseCase`, `ReplayRoundUseCase`, `RechargeWalletUseCase`, `RunSimulationUseCase`, `ExplainSimulationUseCase`…). Orquesta dominio + puertos. |
 | **nova-infrastructure** | Spring Data JPA · Flyway · Anthropic SDK · BCrypt | Adaptadores: repositorios JPA, migraciones, cliente Anthropic, implementación `SecureRandom` del RNG. |
-| **nova-simulator** | Java 21 + `ForkJoinPool` + `LongAdder` | Ejecuta `SpinUseCase` sin auditoría ni BBDD. Agrega métricas en memoria. Devuelve `SimulationResult`. |
-| **nova-web-api** | Spring Boot 3 · Spring Security 6 · springdoc-openapi | Punto de entrada HTTP. Controllers por perfil (`/api/v1/player/*`, `/api/v1/operator/*`, `/api/v1/math/*`). Filtro JWT, CORS, manejo de errores i18n. |
+| **nova-simulator** | Java 21 + `ForkJoinPool` + `LongAdder` | Reutiliza el **motor de dominio** (`Game`, `Reels`, `Paytable`, `RngEngine`) para ejecutar giros en memoria — sin wallet, sin auditoría y sin BBDD. Agrega métricas con `LongAdder` (lock-free) y devuelve `SimulationResult`. |
+| **nova-web-api** | Spring Boot 3.4 · Spring Security 6 · springdoc-openapi | Punto de entrada HTTP. Controllers por perfil (`/api/v1/player/*`, `/api/v1/operator/*`, `/api/v1/math/*`). Filtro JWT, CORS, manejo de errores i18n. |
 | **nova-common** | — | DTOs compartidos, utilidades, constantes. |
 
 #### 2.2.2 Frontend — workspaces
@@ -609,18 +708,18 @@ PostgreSQL 18, esquema único `novacasino`. Migraciones gestionadas con Flyway. 
 
 ### **2.3. Descripción de alto nivel del proyecto y estructura de ficheros**
 
-El repositorio sigue un *monorepo* con dos raíces lógicas: `backend/` (Maven multi-módulo) y `frontend/` (npm workspace).
+El repositorio sigue un *monorepo* con tres raíces: `backend/` (Maven multi-módulo), `frontend/` (SPA con Vite) y `e2e/` (suite de tests Playwright).
 
 ```text
 AI4Devs-finalproject/
 ├── docker-compose.yml             # Orquestación local: api + web + postgres
-├── .env.example                   # Variables de entorno (ANTHROPIC_API_KEY, JWT_SECRET, DB_*)
+├── .env.example                   # Variables de entorno (ANTHROPIC_API_KEY, JWT_SECRET, POSTGRES_*)
 ├── readme.md                      # Este documento
 ├── conversation.md                # Log numerado de prompts del proyecto
 ├── prompts.md                     # Prompts más relevantes por sección del readme
 │
 ├── backend/
-│   ├── pom.xml                    # POM padre (Spring Boot 3, Java 21)
+│   ├── pom.xml                    # POM padre (Spring Boot 3.4, Java 21)
 │   ├── nova-domain/               # Núcleo puro DDD — sin Spring, sin JPA
 │   │   ├── src/main/java/com/novacasino/domain/
 │   │   │   ├── game/              # Game, Reels, Paytable, Symbol, Payline
@@ -660,28 +759,33 @@ AI4Devs-finalproject/
 │   │   │       ├── db/migration/  # Flyway: V1__schema.sql, V2__immutability_triggers.sql, V3__seed.sql
 │   │   │       └── games/         # JSON de configuración de los 3 juegos (semilla)
 │   │   ├── src/test/java/         # Unit tests de controllers (MockMvc + Surefire)
-│   │   ├── src/it/java/           # E2E API tests (Failsafe + Testcontainers + Playwright)
+│   │   ├── src/it/java/           # Integration tests de API (Failsafe + Testcontainers)
 │   │   └── src/it/resources/
 │   ├── nova-common/
 │   └── Dockerfile                 # Multi-stage: maven build + JRE 21 slim
 │
-└── frontend/
+├── frontend/
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── Dockerfile                 # Multi-stage: pnpm build + nginx alpine
+│   ├── public/
+│   │   └── assets/                # Assets temáticos (símbolos, fondos, audio)
+│   │       ├── egyptian/
+│   │       ├── fruits/
+│   │       └── space/
+│   └── src/
+│       ├── main.tsx
+│       ├── App.tsx                # Router + providers (i18n, query, auth)
+│       ├── shared/                # Componentes UI, hooks, axios client, audio service
+│       ├── i18n/                  # es.json, en.json
+│       ├── player/                # Lobby, SlotGame (data-driven), Wallet, Login
+│       ├── operator/              # Players, GameConfig, Audit, Replay
+│       └── math/                  # MathEditor, Simulator, MetricsDashboard, Explainer
+│
+└── e2e/                           # Tests E2E de navegador con Playwright (TypeScript)
     ├── package.json
-    ├── vite.config.ts
-    ├── Dockerfile                 # Multi-stage: pnpm build + nginx alpine
-    ├── public/
-    │   └── assets/                # Assets temáticos (símbolos, fondos, audio)
-    │       ├── egyptian/
-    │       ├── fruits/
-    │       └── space/
-    └── src/
-        ├── main.tsx
-        ├── App.tsx                # Router + providers (i18n, query, auth)
-        ├── shared/                # Componentes UI, hooks, axios client, audio service
-        ├── i18n/                  # es.json, en.json
-        ├── player/                # Lobby, SlotGame (data-driven), Wallet, Login
-        ├── operator/              # Players, GameConfig, Audit, Replay
-        └── math/                  # MathEditor, Simulator, MetricsDashboard, Explainer
+    ├── playwright.config.ts
+    └── tests/                     # Suite happy-path: login → spin → resultado
 ```
 
 **Convenciones clave**:
@@ -701,7 +805,7 @@ flowchart LR
     subgraph Host["Máquina del desarrollador"]
         subgraph Compose["docker-compose.yml"]
             WEB["Container: web<br/>nginx + SPA<br/>:5173"]
-            API["Container: api<br/>JRE 21 + Spring Boot<br/>:8080"]
+            API["Container: api<br/>JRE 21 + Spring Boot 3.4<br/>:8080"]
             PG[("Container: postgres<br/>PostgreSQL 18<br/>:5432<br/>Volume: pgdata")]
         end
         Browser([Navegador<br/>localhost])
@@ -748,13 +852,11 @@ flowchart LR
     class CD futuro
 ```
 
-**Pipeline CI (GitHub Actions, fichero `.github/workflows/ci.yml`)**:
+**Pipeline CI (GitHub Actions, fichero `.github/workflows/ci.yml`)** — tres *jobs*:
 
-1. *Checkout* + setup JDK 21 + setup Node 20.
-2. `mvn -B verify` — compila, corre tests unitarios e integration con Testcontainers, ArchUnit y property-based.
-3. `pnpm install && pnpm test && pnpm build` en frontend.
-4. *Cache* de dependencias Maven y pnpm para acelerar.
-5. Publica reportes de cobertura (Jacoco) como artefactos.
+1. **`build-test`** — *Checkout*, setup JDK 21 y Node 20, *cache* de dependencias Maven y pnpm. Ejecuta `mvn -B verify` (unit con Surefire + integration con Failsafe/Testcontainers + ArchUnit + property-based) y `pnpm install && pnpm test && pnpm build` en el frontend. Publica los reportes de cobertura (Jacoco) como artefactos.
+2. **`perf`** — *job* dedicado que ejecuta el test de rendimiento del simulador (10M de spins en <10 min). Se separa de `build-test` para no penalizar cada commit, pero forma parte del pipeline: una regresión de rendimiento rompe el build.
+3. **`e2e`** — levanta el stack con `docker compose up` y ejecuta la suite Playwright de `e2e/` (*happy path*: login → spin → resultado visible).
 
 **Despliegue cloud**: queda explícitamente fuera del MVP. La arquitectura está preparada para Render / Railway / Fly.io publicando las imágenes Docker, pero no se entrega en esta fase.
 
@@ -778,7 +880,7 @@ Las prácticas se agrupan en cuatro bloques: autenticación, integridad de datos
 Las tablas histórico-regulatorias (`game_rounds`, `wallet_transactions`, `game_configs`, `game_config_publications`) son *append-only*. La inmutabilidad se garantiza a dos niveles, siendo el segundo el realmente vinculante:
 
 1. **Por contrato**: ningún caso de uso del módulo `nova-application` expone una operación que modifique o borre filas de esas tablas.
-2. **Por la base de datos**: una función PL/pgSQL compartida `fn_forbid_update_delete()` y un trigger `BEFORE UPDATE OR DELETE` en cada una de esas tablas que **lanza excepción siempre**. Cualquier UPDATE o DELETE — incluso ejecutado a mano por un DBA descuidado — falla. Migración Flyway: `V2__immutability_triggers.sql`. El detalle se documenta en el punto 3.2.11.
+2. **Por la base de datos**: una función PL/pgSQL compartida `fn_forbid_update_delete()` y un trigger `BEFORE UPDATE OR DELETE` en cada una de esas tablas que **lanza excepción siempre**. Cualquier UPDATE o DELETE — incluso ejecutado a mano por un DBA descuidado — falla. Migración Flyway: `V2__immutability_triggers.sql`. El detalle se documenta en el punto 3.2.12.
 
 > **Nota sobre tamper-evidence (fuera de scope v1).** La arquitectura está preparada para incorporar en fases posteriores un *hash-chain* SHA-256 sobre `game_rounds` con firma externa de los hashes (clave privada fuera del servidor o replicación a un sistema append-only externo como Amazon QLDB). En un MVP single-node sin esa firma externa, el hash-chain por sí solo no añade seguridad real frente al trigger anti-UPDATE/DELETE — un atacante con acceso DBA podría deshabilitar el trigger y recalcular hashes en cascada porque el algoritmo es público y determinista. Por eso se difiere a la fase donde exista anchor de confianza externo.
 
@@ -856,10 +958,10 @@ flowchart TB
 
 - **Unit del motor (JUnit + AssertJ)**: dado un `Game` con paytable conocido y un `seed` fijo, `SpinUseCase.execute(...)` devuelve el `Round` esperado símbolo a símbolo. Garantiza determinismo y reemplazabilidad de fix.
 - **Property-based (jqwik)**: para 100 configuraciones aleatorias de juego con RTP teórico calculable, ejecutar 1M de spins debe converger al RTP teórico ±0.5%. Detecta regresiones matemáticas sutiles que un unit no atrapa.
-- **Simulador**: `SimulationRunner.run(10_000_000)` debe completar en <10 min en un entorno reproducible (anotado `@Tag("perf")`, no se ejecuta en CI por defecto). Y los `MetricsAccumulator` agregados deben coincidir con la suma directa para datasets pequeños.
+- **Simulador — rendimiento**: `SimulationRunner.run(10_000_000)` debe completar en <10 min. Al ser un requisito funcional del producto, **se ejecuta en CI** en el *job* `perf` dedicado (separado del `mvn verify` de cada commit) para detectar regresiones de rendimiento. Además, los `MetricsAccumulator` agregados deben coincidir con la suma directa para datasets pequeños (test unitario rápido).
 - **ArchUnit**: regla "ninguna clase de `nova-domain.*` importa `org.springframework.*` ni `jakarta.persistence.*`". Falla el build si alguien acopla por error.
 - **Integration con Testcontainers** (en `src/it/java`): arranca un Postgres 18 real, aplica migraciones Flyway, ejecuta `POST /api/v1/player/spin` con JWT y verifica que (a) la respuesta es correcta, (b) hay una nueva fila en `game_rounds` con todos sus campos, (c) cualquier intento de UPDATE/DELETE sobre el row falla con la excepción del trigger.
-- **E2E con Playwright**: un único *happy path* que arranca el `docker-compose`, abre el navegador, hace login con un usuario semilla, entra a un juego, hace spin y verifica que el balance cambia.
+- **E2E con Playwright** (en `e2e/`): un único *happy path* que arranca el `docker-compose`, abre el navegador, hace login con un usuario semilla, entra a un juego, hace spin y verifica que el balance cambia.
 
 **Cobertura objetivo**:
 
@@ -871,21 +973,22 @@ flowchart TB
 | `nova-infrastructure` | 60 % |
 | `nova-web-api` | 60 % (controllers cubiertos por integration tests) |
 
-**Convención de carpetas y plugins Maven:**
+**Convención de carpetas:**
 
-| Carpeta | Tipo de test | Plugin | Fase Maven | Naming |
+| Carpeta | Tipo de test | Herramienta | Ejecución | Naming |
 |---|---|---|---|---|
-| `src/test/java` | Unit tests (rápidos, sin I/O) | `maven-surefire-plugin` | `test` | `*Test.java` |
-| `src/it/java` | Integration / E2E (Testcontainers, Playwright) | `maven-failsafe-plugin` | `integration-test`, `verify` | `*IT.java` |
+| `src/test/java` | Unit (rápidos, sin I/O) | `maven-surefire-plugin` | `mvn test` (fase `test`) | `*Test.java` |
+| `src/it/java` | Integration (Testcontainers) | `maven-failsafe-plugin` | `mvn verify` (fase `integration-test`) | `*IT.java` |
+| `e2e/tests` | E2E de navegador | Playwright CLI (Node/TS) | *job* `e2e` de CI | `*.spec.ts` |
 
 - `src/it/java` y `src/it/resources` se registran como *test source roots* adicionales mediante `build-helper-maven-plugin` (`add-test-source` en la fase `generate-test-sources`), de modo que IDEs (IntelliJ, VS Code) y Maven los reconocen automáticamente.
-- `mvn test` ejecuta solo los unit tests (rápido, ~30 s, parte de cada commit).
-- `mvn verify` ejecuta primero unit y luego integration; es el comando que corre en CI y antes de cada *push*.
+- `mvn test` ejecuta solo los unit tests (rápido, ~30 s, parte de cada commit); `mvn verify` ejecuta además los de integración.
 - Solo los módulos con tests de integración reales (`nova-infrastructure`, `nova-web-api`) declaran la carpeta `src/it`. El resto opera solo con `src/test`.
+- El **E2E no es un test Maven**: vive en el proyecto `e2e/` (Playwright en TypeScript) y se ejecuta en su propio *job* de CI, que levanta el `docker-compose` completo. Se mantiene fuera de `src/it` porque arrancar toda la *stack* no encaja en el ciclo de vida de Maven/Failsafe.
 
 ---
 
-## 3. Modelo de Datos
+## 3. Modelo de datos
 
 El modelo de datos persiste en **PostgreSQL 18** (esquema único `novacasino`) y se materializa con migraciones Flyway. Sigue ocho decisiones transversales que aplican a todas las tablas:
 
@@ -906,7 +1009,7 @@ El modelo de datos persiste en **PostgreSQL 18** (esquema único `novacasino`) y
 
 ### **3.1. Diagrama del modelo de datos:**
 
-Para mantener la legibilidad, se divide el modelo en dos diagramas: el **núcleo de configuración y cuentas** (operadores, usuarios, wallets, juegos, configs matemáticas y su histórico de publicación) y la **superficie operacional** (rounds auditables, transacciones de wallet, simulaciones y sus explicaciones IA).
+Para mantener la legibilidad, se divide el modelo en dos diagramas: el **núcleo de configuración y cuentas** (operadores, usuarios, wallets, juegos, configs matemáticas y su histórico de publicación) y la **superficie operacional** (rounds auditables, transacciones de wallet, simulaciones, explicaciones IA y claves de idempotencia).
 
 #### 3.1.1 Núcleo: operadores, cuentas, catálogo de juegos y matemática
 
@@ -961,8 +1064,6 @@ erDiagram
         varchar code "UNIQUE con operator_id"
         varchar name
         varchar theme "CHECK EGYPTIAN FRUITS SPACE"
-        smallint grid_rows
-        smallint grid_cols
         varchar cover_image_url
         bigint min_bet_cents
         bigint max_bet_cents
@@ -1011,6 +1112,7 @@ erDiagram
     GAME_CONFIGS ||--o{ SIMULATION_RUNS : "es simulada"
     SIMULATION_RUNS ||--o{ SIMULATION_EXPLANATIONS : "preguntas IA"
     USERS ||--o{ SIMULATION_EXPLANATIONS : "pregunta"
+    USERS ||--o{ IDEMPOTENCY_KEYS : "deduplica"
 
     GAME_ROUNDS {
         bigserial id PK
@@ -1074,11 +1176,22 @@ erDiagram
         varchar model "modelo Claude usado"
         timestamptz asked_at
     }
+
+    IDEMPOTENCY_KEYS {
+        bigserial id PK
+        uuid idem_key "UNIQUE con user_id"
+        bigint user_id FK
+        varchar endpoint "spin, recharge"
+        char request_hash "SHA-256 del payload"
+        int response_status
+        jsonb response_body "respuesta original"
+        timestamptz created_at
+    }
 ```
 
 ### **3.2. Descripción de entidades principales:**
 
-A continuación se describen las diez entidades del modelo. Por cada una se documenta el propósito, el detalle de columnas (tipo, restricción, valor por defecto), las relaciones con otras entidades y los índices o triggers asociados.
+A continuación se describen las once entidades del modelo. Por cada una se documenta el propósito, el detalle de columnas (tipo, restricción, valor por defecto), las relaciones con otras entidades y los índices o triggers asociados.
 
 > **Índices de claves foráneas.** PostgreSQL **no** crea índices automáticamente sobre las columnas FK (solo sobre PK y `UNIQUE`). Para evitar *seq scans* en joins y *locks* de tabla al borrar la fila padre, **toda columna FK lleva un índice explícito**, salvo cuando ya es prefijo de un índice compuesto o de una constraint `UNIQUE` existente. Se indica en cada entidad.
 
@@ -1119,7 +1232,7 @@ Cuenta de cualquier rol (jugador, operador, matemático). El rol determina la su
 
 **Índices:** `idx_users_operator_role` sobre `(operator_id, role)` para listados del backoffice — cubre además el índice de la FK `operator_id` por prefijo.
 
-**Relaciones:** 1 → 1 con `wallets`; 1 → N con `game_rounds` (player), `wallet_transactions` (`performed_by_user_id`), `game_configs` (`created_by_user_id`), `game_config_publications` (`published_by_user_id`), `simulation_runs` (`launched_by_user_id`), `simulation_explanations` (`asked_by_user_id`).
+**Relaciones:** 1 → 0..1 con `wallets` (los roles `OPERATOR` y `MATH_ANALYST` no tienen wallet); 1 → N con `game_rounds` (player), `wallet_transactions` (`performed_by_user_id`), `game_configs` (`created_by_user_id`), `game_config_publications` (`published_by_user_id`), `simulation_runs` (`launched_by_user_id`), `simulation_explanations` (`asked_by_user_id`), `idempotency_keys` (`user_id`).
 
 #### 3.2.3 `wallets`
 
@@ -1175,9 +1288,7 @@ Catálogo de juegos del operador. Define los parámetros **comerciales** (apuest
 | `operator_id` | `BIGINT` | NOT NULL · FK `operators(id)` | |
 | `code` | `VARCHAR(50)` | NOT NULL | Identificador estable (`egyptian-5x3`, `fruits-3x3`, `space-5x3`). |
 | `name` | `VARCHAR(100)` | NOT NULL | Nombre comercial mostrado al jugador. |
-| `theme` | `theme_enum` | NOT NULL | `'EGYPTIAN' \| 'FRUITS' \| 'SPACE'`. Carga assets. |
-| `grid_rows` | `SMALLINT` | NOT NULL · CHECK `IN (3)` | |
-| `grid_cols` | `SMALLINT` | NOT NULL · CHECK `IN (3, 5)` | |
+| `theme` | `VARCHAR(20)` | NOT NULL · CHECK `IN ('EGYPTIAN','FRUITS','SPACE')` | Determina los assets temáticos. |
 | `cover_image_url` | `VARCHAR(255)` | NOT NULL | Carátula del lobby. |
 | `min_bet_cents` | `BIGINT` | NOT NULL · CHECK `> 0` | |
 | `max_bet_cents` | `BIGINT` | NOT NULL · CHECK `>= min_bet_cents` | |
@@ -1194,6 +1305,8 @@ Catálogo de juegos del operador. Define los parámetros **comerciales** (apuest
 
 **Índices:** `idx_games_active_config` sobre `(active_config_id)` — índice de la FK.
 
+> **Auditoría de cambios comerciales (post-MVP).** Las modificaciones de la configuración comercial de un juego (apuestas, monedas, `active`) vía `PUT /operator/games/{id}` **no se auditan en el MVP**. La matemática sí queda trazada en `game_config_publications`; la auditoría de los cambios comerciales se difiere a una fase posterior (ver [1.5](#15-supuestos-y-decisiones-diferidas), D5).
+
 #### 3.2.6 `game_configs`
 
 Versión inmutable de la matemática de un juego. Cada vez que un matemático guarda cambios en el editor se inserta una nueva fila; nunca se modifican filas existentes (las filas pasadas son históricas). El campo `games.active_config_id` apunta a la versión actualmente servida; el histórico de qué versión estuvo publicada y cuándo vive en `game_config_publications`.
@@ -1203,7 +1316,7 @@ Versión inmutable de la matemática de un juego. Cada vez que un matemático gu
 | `id` | `BIGSERIAL` | PK | |
 | `game_id` | `BIGINT` | NOT NULL · FK `games(id)` | |
 | `version` | `INT` | NOT NULL · CHECK `>= 1` | Auto-incrementada por el `EditConfigUseCase`. |
-| `config` | `JSONB` | NOT NULL | Schema validado en aplicación: `{symbols, reels, paytable, paylines, bonus}`. |
+| `config` | `JSONB` | NOT NULL | Schema validado en aplicación: `{grid, symbols, reels, paylines, paytable, bonus}` (ver apartado 3.3). |
 | `rtp_theoretical` | `NUMERIC(7,4)` | NOT NULL · CHECK `BETWEEN 0 AND 1` | Calculado por el motor matemático al guardar. |
 | `volatility_theoretical` | `NUMERIC(8,2)` | NULL | Opcional; se rellena tras simular. |
 | `created_by_user_id` | `BIGINT` | NOT NULL · FK `users(id)` | Matemático que la creó. |
@@ -1272,7 +1385,9 @@ Tabla auditable que registra **cada giro**, incluyendo los free spins. Es la pie
 - `idx_game_rounds_config` sobre `(game_config_id)` — índice de la FK.
 - `idx_game_rounds_triggering` sobre `(triggering_round_id) WHERE triggering_round_id IS NOT NULL` — agrupa las sesiones de free spins; índice parcial de la self-FK.
 
-**Free spins y atomicidad.** Un spin que dispara free spins genera **varias filas en una única transacción**: la fila del spin disparador (`is_free_spin = FALSE`) y una fila por cada free spin otorgado (`is_free_spin = TRUE`, `bet_cents = 0`, `triggering_round_id` apuntando al disparador). Toda la ronda se computa y persiste atómicamente — **no existe un estado de "sesión de free spins a medias"** que mantener entre peticiones. El cliente recibe la secuencia completa en la respuesta del spin y la reproduce visualmente giro a giro; si el jugador refresca el navegador, la ronda ya está resuelta y en su historial.
+**Atomicidad del spin.** Un giro completo —débito de la apuesta en `wallets`, ejecución del motor, crédito del premio, e inserción de las filas en `game_rounds`, `wallet_transactions` e `idempotency_keys`— se ejecuta dentro de **una única transacción de base de datos**. Si cualquier paso falla, la transacción entera revierte: nunca queda un giro a medias (apuesta descontada sin `game_round`, o `game_round` sin su `wallet_transactions`). El diagrama de secuencia [2.1.6](#216-flujo-de-un-giro-diagrama-de-secuencia) lo ilustra.
+
+**Free spins y atomicidad.** Un spin que dispara free spins genera **varias filas en esa misma transacción**: la fila del spin disparador (`is_free_spin = FALSE`) y una fila por cada free spin otorgado (`is_free_spin = TRUE`, `bet_cents = 0`, `triggering_round_id` apuntando al disparador). Toda la ronda se computa y persiste atómicamente — **no existe un estado de "sesión de free spins a medias"** que mantener entre peticiones. El cliente recibe la secuencia completa en la respuesta del spin y la reproduce visualmente giro a giro; si el jugador refresca el navegador, la ronda ya está resuelta y en su historial.
 
 #### 3.2.9 `simulation_runs`
 
@@ -1324,7 +1439,29 @@ Histórico de preguntas en lenguaje natural que el matemático hace a Claude sob
 - `idx_sim_expl_run` sobre `(simulation_run_id, asked_at)` — hilo de preguntas de una simulación; cubre la FK `simulation_run_id`.
 - `idx_sim_expl_asked_by` sobre `(asked_by_user_id)` — índice de la FK.
 
-#### 3.2.11 Dominios de estado y triggers de inmutabilidad
+#### 3.2.11 `idempotency_keys`
+
+Soporte de la **idempotencia** de las operaciones con efecto económico (`spin` y `recharge`; ver [2.5.4](#254-defensa-en-profundidad) y [4.1](#41-principios-de-diseño-y-convenciones)). Cada petición que llega con cabecera `Idempotency-Key` se registra aquí junto con su resultado; si la misma clave vuelve a llegar (doble-submit, reintento de red), el backend devuelve la respuesta original sin re-ejecutar la operación.
+
+| Columna | Tipo | Restricciones | Notas |
+|---|---|---|---|
+| `id` | `BIGSERIAL` | PK | |
+| `idem_key` | `UUID` | NOT NULL | Valor de la cabecera `Idempotency-Key` enviada por el cliente. |
+| `user_id` | `BIGINT` | NOT NULL · FK `users(id)` | Usuario que originó la petición. |
+| `endpoint` | `VARCHAR(40)` | NOT NULL | Operación deduplicada (`'spin'`, `'recharge'`). |
+| `request_hash` | `CHAR(64)` | NOT NULL | SHA-256 del cuerpo de la petición. Si una misma `idem_key` llega con un `request_hash` distinto, el backend responde `409` (uso indebido de la clave). |
+| `response_status` | `INT` | NOT NULL | Código HTTP de la respuesta original. |
+| `response_body` | `JSONB` | NOT NULL | Respuesta original serializada; se reenvía tal cual ante un reintento. |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL · DEFAULT `NOW()` | |
+
+**Constraints:**
+- `UNIQUE (user_id, idem_key)` — una clave es única por usuario; cubre además el índice de la FK `user_id` por prefijo.
+
+**Retención:** las filas son efímeras. Un *job* programado purga las anteriores a una ventana de retención (p. ej. 48 h), suficiente para cubrir reintentos razonables. **No** es una tabla histórico-regulatoria, por lo que no lleva trigger de inmutabilidad.
+
+**Relaciones:** N → 1 con `users`.
+
+#### 3.2.12 Dominios de estado y triggers de inmutabilidad
 
 **Dominios de estado.** En lugar de tipos `ENUM` nativos de PostgreSQL, los campos de estado son `VARCHAR` con una constraint `CHECK ... IN (...)`. Añadir o renombrar un valor es una migración Flyway que recrea el `CHECK`, sin el coste y la rigidez de `ALTER TYPE`. JPA los mapea con `@Enumerated(EnumType.STRING)` sin librerías auxiliares.
 
@@ -1448,58 +1585,62 @@ El backend `nova-web-api` expone una **API REST** consumida por la SPA. Este apa
 
 ### **4.2. Catálogo de endpoints**
 
-★ = endpoint prioritario, con especificación OpenAPI y ejemplos en 4.4.
+El MVP implementa **16 endpoints**: los 5 prioritarios (★) más el soporte mínimo imprescindible para que los tres flujos (jugador, operador, matemático) funcionen de principio a fin. Los 11 restantes quedan **especificados pero no implementados** en esta versión (ver [1.5](#15-supuestos-y-decisiones-diferidas), D1). La columna *Fase* indica:
+
+- **★ MVP** — endpoint prioritario; núcleo de valor, con especificación OpenAPI y ejemplos en 4.4.
+- **MVP** — endpoint de soporte imprescindible; se implementa en esta versión.
+- **post-MVP** — especificado en el contrato pero no implementado en el MVP.
 
 **Auth — `/api/v1/auth`**
 
-| | Método | Ruta | Descripción | Acceso |
+| Fase | Método | Ruta | Descripción | Acceso |
 |---|---|---|---|---|
-| ★ | `POST` | `/auth/register` | Registro de jugador; valida mayoría de edad (≥18). | Público |
-| ★ | `POST` | `/auth/login` | Autenticación; emite el JWT. | Público |
-| | `POST` | `/auth/refresh` | Renueva el access token a partir de uno válido. **post-MVP** — definido en el contrato pero no implementado en esta versión. | Autenticado |
+| ★ MVP | `POST` | `/auth/register` | Registro de jugador; valida mayoría de edad (≥18). | Público |
+| ★ MVP | `POST` | `/auth/login` | Autenticación; emite el JWT. | Público |
+| post-MVP | `POST` | `/auth/refresh` | Renueva el access token a partir de uno válido. | Autenticado |
 
 **Player — `/api/v1/player`** (rol `PLAYER`)
 
-| | Método | Ruta | Descripción |
+| Fase | Método | Ruta | Descripción |
 |---|---|---|---|
-| | `GET` | `/player/games` | Catálogo del lobby: juegos activos con carátula. |
-| | `GET` | `/player/games/{gameId}` | Detalle del juego + su `config` (`grid`, `symbols`, `reels`, `paylines`, `paytable`, `bonus`) para renderizar el `<SlotGame>`. |
-| ★ | `POST` | `/player/games/{gameId}/spin` | Ejecuta un giro; resuelve la ronda completa (incl. free spins). |
-| | `GET` | `/player/wallet` | Saldo virtual actual del jugador. |
-| | `GET` | `/player/wallet/transactions` | Movimientos del wallet (paginado). |
-| | `GET` | `/player/rounds` | Historial de partidas propias (paginado). |
+| MVP | `GET` | `/player/games` | Catálogo del lobby: juegos activos con carátula. |
+| MVP | `GET` | `/player/games/{gameId}` | Detalle del juego + su `config` (`grid`, `symbols`, `reels`, `paylines`, `paytable`, `bonus`) para renderizar el `<SlotGame>`. |
+| ★ MVP | `POST` | `/player/games/{gameId}/spin` | Ejecuta un giro; resuelve la ronda completa (incl. free spins). |
+| MVP | `GET` | `/player/wallet` | Saldo virtual actual del jugador. |
+| post-MVP | `GET` | `/player/wallet/transactions` | Movimientos del wallet (paginado). |
+| post-MVP | `GET` | `/player/rounds` | Historial de partidas propias (paginado). |
 
 **Operator — `/api/v1/operator`** (rol `OPERATOR`)
 
-| | Método | Ruta | Descripción |
+| Fase | Método | Ruta | Descripción |
 |---|---|---|---|
-| | `GET` | `/operator/players` | Listar/buscar jugadores (paginado, filtro por email). |
-| | `POST` | `/operator/players/{playerId}/wallet/recharge` | Recargar saldo virtual de un jugador. |
-| | `GET` | `/operator/games` | Listar juegos con su configuración comercial. |
-| | `PUT` | `/operator/games/{gameId}` | Actualizar configuración comercial (apuestas, monedas, activo). |
-| | `GET` | `/operator/rounds` | Auditoría: listar/filtrar partidas (paginado). |
-| | `GET` | `/operator/rounds/{roundId}` | Detalle de una partida auditada. |
-| ★ | `GET` | `/operator/rounds/{roundId}/replay` | Datos completos para el *replay* visual determinista. |
-| | `GET` | `/operator/dashboard` | Métricas de actividad: jugadores activos, GGR, juegos más jugados. |
+| MVP | `GET` | `/operator/players` | Listar/buscar jugadores (paginado, filtro por email). |
+| MVP | `POST` | `/operator/players/{playerId}/wallet/recharge` | Recargar saldo virtual de un jugador. |
+| post-MVP | `GET` | `/operator/games` | Listar juegos con su configuración comercial. |
+| post-MVP | `PUT` | `/operator/games/{gameId}` | Actualizar configuración comercial (apuestas, monedas, activo). |
+| MVP | `GET` | `/operator/rounds` | Auditoría: listar/filtrar partidas (paginado). |
+| post-MVP | `GET` | `/operator/rounds/{roundId}` | Detalle de una partida auditada. |
+| ★ MVP | `GET` | `/operator/rounds/{roundId}/replay` | Datos completos para el *replay* visual determinista. |
+| post-MVP | `GET` | `/operator/dashboard` | Métricas de actividad: jugadores activos, GGR, juegos más jugados. |
 
 **Math — `/api/v1/math`** (rol `MATH_ANALYST`)
 
-| | Método | Ruta | Descripción |
+| Fase | Método | Ruta | Descripción |
 |---|---|---|---|
-| | `GET` | `/math/games` | Juegos disponibles para el equipo matemático. |
-| | `GET` | `/math/games/{gameId}/configs` | Versiones de matemática de un juego (paginado). |
-| | `GET` | `/math/configs/{configId}` | Detalle de una versión de `config`. |
-| | `POST` | `/math/games/{gameId}/configs` | Crear una nueva versión de matemática (editor). |
-| | `POST` | `/math/games/{gameId}/publish` | Publicar (activar) una versión de `config`. |
-| ★ | `POST` | `/math/configs/{configId}/simulations` | Lanzar una simulación masiva (asíncrona). |
-| | `GET` | `/math/simulations/{simulationId}` | Estado y resultado de una simulación (*polling*). |
-| | `GET` | `/math/simulations` | Historial de simulaciones (paginado). |
-| | `POST` | `/math/simulations/{simulationId}/explain` | Preguntar a Claude sobre los resultados (IA explainability). |
-| | `GET` | `/math/simulations/{simulationId}/explanations` | Historial de preguntas y respuestas IA. |
+| MVP | `GET` | `/math/games` | Juegos disponibles para el equipo matemático. |
+| post-MVP | `GET` | `/math/games/{gameId}/configs` | Versiones de matemática de un juego (paginado). |
+| MVP | `GET` | `/math/configs/{configId}` | Detalle de una versión de `config`. |
+| MVP | `POST` | `/math/games/{gameId}/configs` | Crear una nueva versión de matemática (editor). |
+| post-MVP | `POST` | `/math/games/{gameId}/publish` | Publicar (activar) una versión de `config`. |
+| ★ MVP | `POST` | `/math/configs/{configId}/simulations` | Lanzar una simulación masiva (asíncrona). |
+| MVP | `GET` | `/math/simulations/{simulationId}` | Estado y resultado de una simulación (*polling*). |
+| post-MVP | `GET` | `/math/simulations` | Historial de simulaciones (paginado). |
+| MVP | `POST` | `/math/simulations/{simulationId}/explain` | Preguntar a Claude sobre los resultados (IA explainability). |
+| post-MVP | `GET` | `/math/simulations/{simulationId}/explanations` | Historial de preguntas y respuestas IA. |
 
 ### **4.3. Ficha de cada endpoint**
 
-Cada endpoint con su petición (parámetros de ruta, *query*, cabeceras y cuerpo) y las respuestas relevantes. ★ = endpoint prioritario (especificación OpenAPI y ejemplos en 4.4).
+Cada endpoint con su petición (parámetros de ruta, *query*, cabeceras y cuerpo) y las respuestas relevantes. ★ = endpoint prioritario (especificación OpenAPI y ejemplos en 4.4). La fase **MVP / post-MVP** de cada endpoint figura en el catálogo [4.2](#42-catálogo-de-endpoints).
 
 En las columnas *Petición* y *Respuestas*, cada elemento ocupa su propia línea con el formato `clave — valor`.
 
@@ -1509,7 +1650,7 @@ En las columnas *Petición* y *Respuestas*, cada elemento ocupa su propia línea
 |---|---|---|---|
 | `POST /auth/register` ★ | Registra un jugador e inicia sesión. | Body — `email`<br>Body — `password`<br>Body — `birthDate`<br>Body — `locale` | `201` — Usuario creado + JWT<br>`409` — Email ya registrado<br>`422` — Edad inferior a 18 |
 | `POST /auth/login` ★ | Autentica a cualquier rol. | Body — `email`<br>Body — `password` | `200` — JWT + datos de usuario<br>`401` — Credenciales inválidas |
-| `POST /auth/refresh` | Renueva el access token. *(post-MVP)* | Auth — token válido | `200` — Nuevo JWT<br>`401` — Token no renovable |
+| `POST /auth/refresh` | Renueva el access token. | Auth — token válido | `200` — Nuevo JWT<br>`401` — Token no renovable |
 
 #### 4.3.2 Player — `/api/v1/player` (rol `PLAYER`)
 
@@ -1914,7 +2055,7 @@ paths:
 
 ---
 
-## 5. Historias de Usuario
+## 5. Historias de usuario
 
 > Documenta 3 de las historias de usuario principales utilizadas durante el desarrollo, teniendo en cuenta las buenas prácticas de producto al respecto.
 
@@ -1926,7 +2067,7 @@ paths:
 
 ---
 
-## 6. Tickets de Trabajo
+## 6. Tickets de trabajo
 
 > Documenta 3 de los tickets de trabajo principales del desarrollo, uno de backend, uno de frontend, y uno de bases de datos. Da todo el detalle requerido para desarrollar la tarea de inicio a fin teniendo en cuenta las buenas prácticas al respecto. 
 
@@ -1938,7 +2079,7 @@ paths:
 
 ---
 
-## 7. Pull Requests
+## 7. Pull requests
 
 > Documenta 3 de las Pull Requests realizadas durante la ejecución del proyecto
 

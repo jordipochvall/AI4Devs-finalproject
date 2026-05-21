@@ -429,5 +429,40 @@ A continuación se ejecuta:
 | Operación larga | Lanzar simulación → `202 Accepted` + *polling* sobre `GET .../simulations/{id}` |
 | Endpoints prioritarios | registro, login, spin, lanzar simulación, replay (detallados en OpenAPI con ejemplos) |
 
+---
+
+## Fase 5 · Rol Auditor Externo — Revisión integral del readme (puntos 0-4)
+
+### Prompt 20 — Auditoría del documento y corrección de hallazgos
+
+**Pregunta del usuario:**
+
+> Puedes hacer una revisión del presente documento como si fueras un auditor externo experto en proyectos de desarrollo de software? Analiza el documento `readme.md` desde diferentes puntos de vista y busca formas de mejora a cualquier nivel.
+
+**Respuesta del asistente:** auditoría integral de los puntos 0-4 que identificó **2 hallazgos de severidad alta**, **6 medios**, **7 bajos** y **3 mejoras de valor añadido**. Tras presentar el informe, el usuario aprobó las correcciones (con una matización en H2). Cambios aplicados:
+
+| Ref | Hallazgo | Resolución |
+|---|---|---|
+| H1 | Idempotencia prometida sin soporte en el modelo de datos | Nueva tabla `idempotency_keys` (entidad 11ª): diagrama 3.1.2, apartado 3.2.11, relación con `users`. |
+| H2 | Riesgo de alcance frente a las 30-40 h | El MVP se acota a **16 endpoints** (5 ★ + soporte imprescindible); el catálogo 4.2 marca cada endpoint como ★ MVP / MVP / post-MVP. |
+| H3 | `games.theme` seguía como `theme_enum` | Migrado a `VARCHAR(20)` + `CHECK IN (...)`, coherente con la decisión transversal 7. |
+| H4 | "`nova-simulator` ejecuta `SpinUseCase`" (impreciso) | Corregido: el simulador reutiliza el motor de dominio (`Game`, `Reels`, `Paytable`, `RngEngine`), sin wallet ni BBDD. |
+| H5 | Dimensión de rejilla duplicada (`games` y `config`) | Eliminados `grid_rows`/`grid_cols` de `games`; la rejilla vive solo en `game_configs.config.grid`. |
+| H6 | Cambios de configuración comercial sin auditar | Documentada la decisión de no auditarlos en MVP (nota en 3.2.5 y en 1.5-D5). |
+| H7 | Transaccionalidad del `spin` no explícita | Explicada en la nota "Atomicidad del spin" (3.2.8) y en el nuevo diagrama de secuencia 2.1.6. |
+| H8 | Test de rendimiento del simulador fuera de CI | Pasa a ejecutarse en CI en un *job* `perf` dedicado (pipeline 2.4.2 y apartado 2.6). |
+| H9 | Cardinalidad `users`–`wallets` ("1→1") | Corregida a "1 → 0..1" también en el texto de relaciones de 3.2.2. |
+| H10 | La nota de `config` omitía `grid` | Añadido `grid` a la lista de campos en 3.2.6. |
+| H11 | Textos-guía de plantilla inconsistentes | Eliminado el texto-plantilla del punto 1 y des-*blockquoteada* la nota de 1.4. |
+| H12 | Índice de un solo nivel | Añadido segundo nivel (subapartados 1.1-1.5, 2.1-2.6, 3.1-3.3, 4.1-4.4). |
+| H13 | Capitalización de títulos inconsistente | Normalizados los encabezados de los puntos 2, 3, 5, 6 y 7 a *sentence case*. |
+| H14 | "Spring Boot 3" impreciso | Fijada la versión **Spring Boot 3.4** en todas las referencias. |
+| H15 | E2E Playwright dentro de `src/it/java` | Movido a un proyecto `e2e/` propio (Playwright en TS), ejecutado en un *job* `e2e` de CI. |
+| M1 | Falta diagrama de secuencia del `spin` | Añadido apartado 2.1.6 con un `sequenceDiagram` que muestra idempotencia y transaccionalidad. |
+| M2 | Variables de entorno dispersas | Añadida tabla consolidada de variables de entorno en 1.4. |
+| M3 | "post-MVP" disperso por el documento | Consolidado en el nuevo apartado **1.5 Supuestos y decisiones diferidas** (5 supuestos + 11 decisiones diferidas). |
+
+**Matización del usuario en H2:** en lugar de implementar solo los 5 endpoints ★ (que dejarían el producto no demostrable end-to-end) o los 26 completos, se acota el MVP a **5 ★ + ~11 endpoints de soporte imprescindibles = 16**, marcando el resto como post-MVP en el catálogo.
+
 
 
