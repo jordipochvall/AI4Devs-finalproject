@@ -464,5 +464,23 @@ A continuación se ejecuta:
 
 **Matización del usuario en H2:** en lugar de implementar solo los 5 endpoints ★ (que dejarían el producto no demostrable end-to-end) o los 26 completos, se acota el MVP a **5 ★ + ~11 endpoints de soporte imprescindibles = 16**, marcando el resto como post-MVP en el catálogo.
 
+---
+
+## Fase 6 · Rol Product Engineer — Historias de usuario (punto 5 del readme)
+
+### Prompt 21 — Generación de las 3 historias de usuario del MVP
+
+**Pregunta del usuario:**
+
+> Ahora quiero que generes las 3 historias de usuario principales necesarias para el MVP. Quiero que actúes como un product engineer y apliques las buenas prácticas como seguir los criterios INVEST y el uso de BDD.
+
+**Respuesta del asistente:** se redacta el punto 5 del `readme.md` con las tres historias de usuario principales — una por perfil, cada una asociada a uno de los endpoints prioritarios (★):
+
+- **HU-1 — El jugador realiza un giro** (`POST .../spin`): escenarios de giro sin premio, giro con premio, activación de free spins, saldo insuficiente e idempotencia.
+- **HU-2 — El matemático valida un juego con el simulador** (`POST .../simulations`): lanzar simulación, objetivo de rendimiento 10M/<10 min, consulta de métricas, convergencia del RTP y validación de parámetros.
+- **HU-3 — El operador resuelve una reclamación con el replay** (`GET .../replay`): localizar la partida, replay determinista, reproducibilidad y partida inexistente.
+
+Cada historia incluye narrativa estándar (*Como… quiero… para…*), prioridad/estimación, **criterios de aceptación en formato BDD (Gherkin en español)** y una tabla de **verificación INVEST** (Independiente, Negociable, Valiosa, Estimable, Small, Testable) más el alcance excluido.
+
 
 

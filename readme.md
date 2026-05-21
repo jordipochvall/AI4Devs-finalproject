@@ -2057,13 +2057,189 @@ paths:
 
 ## 5. Historias de usuario
 
-> Documenta 3 de las historias de usuario principales utilizadas durante el desarrollo, teniendo en cuenta las buenas prácticas de producto al respecto.
+Se documentan las **tres historias de usuario principales** del MVP, una por perfil, cada una asociada a uno de los tres endpoints prioritarios (★): el jugador **gira** (`spin`), el matemático **valida con el simulador** (`simulations`) y el operador **reproduce una partida** (`replay`). Cada historia se redacta con narrativa estándar, criterios de aceptación en formato **BDD (Gherkin)** y una verificación explícita de los criterios **INVEST**.
 
-**Historia de Usuario 1**
+### Historia de Usuario 1 — El jugador realiza un giro
 
-**Historia de Usuario 2**
+> **Como** jugador registrado,
+> **quiero** girar un slot apostando saldo virtual,
+> **para** entretenerme y tener la posibilidad de ganar premios.
 
-**Historia de Usuario 3**
+**Contexto y valor.** Es la interacción central del producto y el flujo más recorrido (lobby → juego → giro). Sostiene la propuesta de valor para el perfil jugador.
+
+**Prioridad:** Must Have · **Estimación:** L · **Endpoint:** `POST /player/games/{gameId}/spin` ★
+
+**Criterios de aceptación (BDD):**
+
+```gherkin
+# language: es
+Característica: Giro en un juego de slot
+
+  Antecedentes:
+    Dado un jugador autenticado con 1.000,00 € de saldo virtual
+    Y el juego "Espacial" (5x3) activo, con apuesta entre 0,20 € y 10,00 €
+
+  Escenario: Giro sin premio
+    Dado que selecciono una apuesta de 1,00 €
+    Cuando ejecuto un giro cuyo resultado no tiene combinaciones ganadoras
+    Entonces mi saldo pasa a 999,00 €
+    Y se muestra la rejilla resultante
+    Y la partida queda registrada en mi historial
+
+  Escenario: Giro con premio en línea de pago
+    Dado que selecciono una apuesta de 1,00 €
+    Cuando ejecuto un giro que alinea 3 símbolos "COMET" en una payline
+    Entonces se acredita el premio correspondiente en mi saldo
+    Y la línea ganadora se resalta en la rejilla
+
+  Escenario: Activación de la ronda de free spins
+    Dado que juego el slot 5x3 "Espacial"
+    Cuando un giro produce 3 o más símbolos "SCATTER"
+    Entonces se otorga una ronda de giros gratis
+    Y la ronda completa se resuelve y se reproduce giro a giro
+
+  Escenario: Apuesta superior al saldo disponible
+    Dado que mi saldo es de 0,50 €
+    Cuando intento ejecutar un giro con una apuesta de 1,00 €
+    Entonces el giro se rechaza con el mensaje "saldo insuficiente"
+    Y mi saldo permanece en 0,50 €
+
+  Escenario: Doble envío del mismo giro (idempotencia)
+    Dado que envío un giro con una cabecera Idempotency-Key
+    Cuando la misma petición se reenvía por un reintento de red
+    Entonces se devuelve el resultado del primer giro
+    Y no se ejecuta un segundo giro ni se descuenta saldo de nuevo
+```
+
+**Verificación INVEST:**
+
+| Criterio | Cumplimiento |
+|---|---|
+| **I**ndependiente | Se construye y prueba sin depender de HU-2 ni HU-3; solo requiere los juegos semilla. |
+| **N**egociable | El alcance de animaciones y audio es ajustable sin alterar el objetivo de la historia. |
+| **V**aliosa | Es la propuesta de valor central para el jugador; sin ella no hay producto. |
+| **E**stimable | Alcance acotado a un único flujo de petición/respuesta; el equipo puede tallarla. |
+| **S**mall | Es la mayor de las tres; si excede un sprint se divide en "giro base" y "ronda de free spins". |
+| **T**estable | Cada criterio es un escenario Gherkin ejecutable como test de integración y E2E. |
+
+**Fuera de alcance:** auto-spin con *safeguards* (historia independiente), pagos reales.
+
+---
+
+### Historia de Usuario 2 — El matemático valida un juego con el simulador
+
+> **Como** analista matemático,
+> **quiero** lanzar una simulación masiva de una versión de juego y consultar sus métricas,
+> **para** validar que su RTP y volatilidad cumplen el objetivo antes de publicarla.
+
+**Contexto y valor.** Es el diferencial B2B de la plataforma: validar la matemática sobre el **mismo motor de producción**, con la garantía de que lo simulado es lo que se juega.
+
+**Prioridad:** Must Have · **Estimación:** L · **Endpoint:** `POST /math/configs/{configId}/simulations` ★
+
+**Criterios de aceptación (BDD):**
+
+```gherkin
+# language: es
+Característica: Simulación masiva de un juego
+
+  Antecedentes:
+    Dado un analista matemático autenticado
+    Y una versión de configuración del juego "Espacial" con RTP teórico 96,00 %
+
+  Escenario: Lanzar una simulación
+    Cuando lanzo una simulación de 10.000.000 de giros con apuesta fija
+    Entonces la simulación se acepta y queda en estado "RUNNING"
+    Y recibo un identificador para consultar su progreso
+
+  Escenario: La simulación cumple el objetivo de rendimiento
+    Dado que he lanzado una simulación de 10.000.000 de giros
+    Cuando la simulación termina
+    Entonces ha tardado menos de 10 minutos
+    Y su estado es "COMPLETED"
+
+  Escenario: Consultar las métricas del resultado
+    Dado que una simulación ha terminado
+    Cuando consulto su resultado
+    Entonces obtengo el RTP empírico, la volatilidad, la hit frequency,
+      la distribución de premios y el RTP de base game y de free spins
+
+  Escenario: El RTP empírico converge al teórico
+    Dado una configuración con RTP teórico 96,00 %
+    Cuando se simulan 10.000.000 de giros
+    Entonces el RTP empírico se desvía del teórico menos que el umbral configurado
+
+  Escenario: Número de giros fuera de rango
+    Cuando intento lanzar una simulación de más de 10.000.000 de giros
+    Entonces la petición se rechaza con un error de validación
+```
+
+**Verificación INVEST:**
+
+| Criterio | Cumplimiento |
+|---|---|
+| **I**ndependiente | No depende de HU-1 ni HU-3; reutiliza el motor de dominio sin BBDD ni wallet. |
+| **N**egociable | El conjunto exacto de métricas mostradas es negociable; el objetivo (validar RTP/volatilidad) no. |
+| **V**aliosa | Habilita el ciclo de diseño matemático, núcleo del posicionamiento *game studio*. |
+| **E**stimable | El motor ya está definido; el simulador es un envoltorio *map-reduce* acotado. |
+| **S**mall | Cabe en un sprint; el dashboard de métricas avanzado puede separarse si crece. |
+| **T**estable | El objetivo de 10M/<10 min y la convergencia del RTP son verificables automáticamente (job `perf`). |
+
+**Fuera de alcance:** la *AI explainability* (pregunta a Claude) y la publicación a producción son historias independientes.
+
+---
+
+### Historia de Usuario 3 — El operador resuelve una reclamación con el replay
+
+> **Como** operador,
+> **quiero** localizar y reproducir visualmente una partida concreta de un jugador,
+> **para** resolver una reclamación demostrando el resultado exacto del giro.
+
+**Contexto y valor.** Es el diferencial de soporte y *compliance*: convierte una disputa "su palabra contra la nuestra" en una prueba reproducible, apoyada en el registro auditable y el RNG determinista.
+
+**Prioridad:** Must Have · **Estimación:** M · **Endpoint:** `GET /operator/rounds/{roundId}/replay` ★
+
+**Criterios de aceptación (BDD):**
+
+```gherkin
+# language: es
+Característica: Auditoría y replay de una partida
+
+  Antecedentes:
+    Dado un operador autenticado
+    Y un jugador "user42" con partidas registradas
+
+  Escenario: Localizar la partida reclamada
+    Cuando filtro la auditoría por el jugador "user42" y un rango de fechas
+    Entonces obtengo la lista de sus partidas con apuesta, premio y fecha
+
+  Escenario: Reproducir el giro de forma determinista
+    Dado que he localizado la partida reclamada
+    Cuando solicito su replay
+    Entonces se reproduce la animación exacta del giro
+    Y los símbolos, las líneas ganadoras y el premio coinciden con los registrados
+
+  Escenario: El replay es reproducible
+    Dado una misma partida auditada
+    Cuando reproduzco su replay varias veces
+    Entonces el resultado es idéntico en todas las reproducciones
+
+  Escenario: Partida inexistente
+    Cuando solicito el replay de un identificador de partida que no existe
+    Entonces se devuelve un error "no encontrado"
+```
+
+**Verificación INVEST:**
+
+| Criterio | Cumplimiento |
+|---|---|
+| **I**ndependiente | No depende de HU-1 ni HU-2; opera sobre partidas ya registradas (datos semilla o de QA). |
+| **N**egociable | La riqueza visual del *replay* es negociable; la fidelidad determinista no. |
+| **V**aliosa | Reduce el coste y el tiempo de resolución de disputas y respalda la transparencia ante la DGOJ. |
+| **E**stimable | Reutiliza el motor y el RNG (`createWithSeed`) ya definidos; alcance claro. |
+| **S**mall | La auditoría con filtros y el *replay* caben juntos en un sprint. |
+| **T**estable | El determinismo se verifica reproduciendo el mismo `roundId` y comparando resultados. |
+
+**Fuera de alcance:** compartir el *replay* con el jugador mediante un enlace público (mejora posterior).
 
 ---
 
