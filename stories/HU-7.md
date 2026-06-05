@@ -52,9 +52,9 @@ Característica: Edición y versionado de la matemática de un juego
 | **V**aliosa | Habilita la iteración matemática, base del ciclo de diseño del *game studio*. |
 | **E**stimable | Dos lecturas y una escritura con validación de invariantes (3.3.3); alcance claro. |
 | **S**mall | Cabe en un sprint. |
-| **T**estable | Verificable con tests de integración (201 con RTP calculado, 422 con `errors`, inmutabilidad de versiones previas, 403). |
+| **T**estable | Verificable con tests de integración (201 con el `rtpTarget` declarado, 422 con `errors`, inmutabilidad de versiones previas, 403). |
 
-**Fuera de alcance:** la **publicación** (activar una versión, `POST /math/games/{id}/publish`) y el listado del histórico de versiones, ambos **post-MVP**.
+**Fuera de alcance:** la **publicación** (activar una versión, `POST /math/games/{id}/publish`) y el listado del histórico de versiones, ambos **post-MVP**. El versionado habilita **simular cualquier versión** (la simulación opera sobre un `configId` concreto); pero en el MVP el jugador siempre juega la `config` semilla activa: **activar/servir una versión nueva al jugador es post-MVP** (ver nota en [§4.2](../readme.md#42-catálogo-de-endpoints)).
 
 ---
 

@@ -142,18 +142,18 @@ NovaCasino Studio pertenece al dominio del *gambling*; este glosario fija el sig
 | B1 | **Gestión de jugadores** | Listado, búsqueda, alta/baja, recarga manual del saldo virtual. |
 | B2 | **Configuración de juegos** | Para cada juego: monedas habilitadas, apuestas mínima/máxima, escalones de apuesta, estado activo/inactivo. |
 | B3 | **Auditoría de partidas** | Listado paginado y filtrable de todos los giros: jugador, juego, *seed*, apuesta, balance pre/post, resultado, timestamp. |
-| B4 | **Replay visual determinista** | A partir de cualquier giro auditado, el operador reproduce la animación exacta del giro en una pantalla idéntica a la del jugador. *Killer feature* para resolver disputas y demostrar transparencia ante la DGOJ. |
+| B4 | **Replay visual determinista** | A partir de cualquier giro auditado, el operador reproduce la animación exacta del giro —**renderizando el registro inmutable de la partida** (`game_rounds.result`)— en una pantalla idéntica a la del jugador. *Killer feature* para resolver disputas y demostrar transparencia ante la DGOJ. |
 | B5 | **Dashboard de actividad** | Métricas básicas en tiempo real: jugadores activos, GGR (saldo apostado − saldo ganado), juegos más jugados. |
 
 #### C. Backoffice matemático
 
 | # | Funcionalidad | Descripción |
 |---|---|---|
-| C1 | **Editor de matemáticas** | Edición de la configuración JSON de cada juego: símbolos y sus pesos por reel, paytable (combinaciones y multiplicadores), líneas de pago, reglas de bonus (free spins, wilds, scatters). |
+| C1 | **Editor de matemáticas** | Edición de la configuración JSON de cada juego: símbolos y sus pesos por reel, paytable (combinaciones y multiplicadores), líneas de pago, reglas de bonus (free spins, wilds, scatters). El matemático **declara** el RTP y la volatilidad **objetivo** (`rtp_target`, su intención de diseño / *PAR sheet*); la plataforma no los deriva (ver C5). |
 | C2 | **Simulador masivo** | Ejecuta hasta **10M de partidas en <10 min** sobre el mismo motor que producción. Configurable: nº de spins (hasta 10M) y apuesta fija. |
-| C3 | **Dashboard de métricas de simulación** | RTP empírico (global, base game, free spins), *hit frequency*, volatilidad (desv. estándar), distribución de premios (histograma), max win, frecuencia de trigger de free spins, racha más larga sin premio. |
+| C3 | **Dashboard de métricas de simulación** | RTP empírico **con intervalo de confianza / error estándar** (cuánto fiarse de la cifra, clave en alta volatilidad) y **curva de convergencia** (RTP vs nº de giros). **Descomposición del RTP**: base game vs free spins y **contribución por símbolo / feature**. **Estadísticas mecánicas de las reel strips**: frecuencia de cada símbolo, P(disparar scatter) y nº esperado de free spins (incl. retrigger) — cifras que el matemático contrasta con su propio modelo. Además: *hit frequency*, volatilidad, distribución de premios (histograma) y cola (percentiles, max win), racha más larga sin premio. **La plataforma mide y descompone; el matemático decide.** |
 | C4 | **AI-powered explainability** | Caja de texto donde el matemático pregunta en lenguaje natural ("¿por qué la volatilidad de Espacial es 12.4 cuando esperábamos 10?"). El backend envía las métricas a Claude (Anthropic API) y devuelve una explicación interpretable. |
-| C5 | **Validación previa al despliegue** | El sistema compara el RTP empírico de la simulación con el `rtp_theoretical` de la versión y avisa si la desviación supera un umbral configurable (parámetro de aplicación, p. ej. ±0,5 %) o si hay otros indicadores anómalos. |
+| C5 | **Validación frente al objetivo declarado** | El sistema compara el RTP **empírico** de la simulación con el **`rtp_target` declarado por el matemático** y avisa si la desviación supera un umbral configurable (parámetro de aplicación, p. ej. ±0,5 %) **teniendo en cuenta el intervalo de confianza** (no marca como anómala una diferencia dentro del error de muestreo), o si hay otros indicadores fuera de rango. La plataforma **valida** el objetivo, no lo calcula. |
 
 #### D. Plataforma y compliance (transversal)
 
@@ -371,6 +371,7 @@ Este apartado consolida en un único lugar los supuestos sobre los que se constr
 | D9 | Despliegue cloud público | El MVP solo contempla ejecución local con Docker Compose. |
 | D10 | *Prompt caching* en la integración con Claude | Optimización de coste; se aborda si el uso de la feature de IA crece. |
 | D11 | Pasarelas de pago/cobro y jackpots progresivos | Fuera del roadmap inmediato. |
+| D12 | Versionado ejecutable del motor (`engine_version`, *registry* de versiones) y firma del `result` | **No necesario en MVP**: el replay es *guardar-y-renderizar* (2.5.3), así que el motor evoluciona sin mantener N versiones; el *golden-master* (2.6) ya avisa de rupturas de determinismo. Se abordaría solo si se requiriese recomputación retrocompatible certificada o firma de evidencia (enlaza con D3). |
 
 ---
 
@@ -618,6 +619,7 @@ flowchart LR
 | **Repository** | Acceso a datos | Estándar DDD; en hexagonal es el "puerto" del dominio. |
 | **Adapter** | Integraciones externas (Postgres, Anthropic) | Permite cambiar la BBDD o el LLM sin tocar dominio ni casos de uso. |
 | **Map-Reduce con ForkJoinPool** | Simulador | Distribuye los 10M de spins entre cores y agrega métricas con `LongAdder` (lock-free). Necesario para 10M/<10 min. |
+| **Núcleo data-oriented + Visitor (sink)** | `SpinKernel` + `RoundSink` | Un único kernel en primitivos (cero-alloc) resuelve el giro y empuja el resultado a un *sink*: `CountingSink` (simulador, descarta) o `MaterializingSink` (producción, mapea a dominio). Logra rendimiento sin sacrificar la fidelidad "lo simulado = lo jugado". Detalle en 2.1.7. |
 
 #### 2.1.5 Beneficios y sacrificios
 
@@ -669,6 +671,46 @@ sequenceDiagram
     API-->>P: 200 SpinResult
 ```
 
+#### 2.1.7 Motor de juego: núcleo *data-oriented* y doble materialización
+
+El motor debe satisfacer dos exigencias en tensión: **rendimiento** (10M giros en <10 min en el simulador) y **fidelidad** (que lo simulado sea exactamente lo que juega el jugador). Un motor que asigna objetos de dominio ricos por giro no alcanza el objetivo por presión de GC; pero mantener dos motores distintos rompería la fidelidad. La solución es **un único núcleo de cálculo con dos capas de materialización**.
+
+**Componentes (en `nova-domain`, Java puro):**
+
+- **`SpinKernel`** — núcleo *data-oriented*, única fuente de verdad del resultado. Dado `(CompiledGame, RngEngine, RoundSink)` resuelve el giro y la cascada de free spins (incluido *retrigger*) usando **solo primitivos** (`int`/`long`), **aritmética entera** (sin `double`, para determinismo cross-platform) y **cero asignaciones por giro** (buffers reutilizables). No devuelve objetos: empuja cada giro al `RoundSink`.
+- **`GameCompiler` → `CompiledGame`** — compila una vez el `config` JSON (apartado 3.3) a estructuras primitivas: símbolos a IDs `int` densos, reels `int[][]`, paytable `long[]`, paylines `int[][]`, reglas de bonus a primitivos. Es inmutable y se **cachea por `configId`** (los `game_configs` son inmutables, así que la caché es permanente). Lo comparten ambas vías.
+- **`RoundSink`** (puerto, patrón *Visitor*) — `onSpin(window, winningLines, winCents, isFreeSpin, multiplier, …)` recibe buffers primitivos por cada giro y free spin. Dos implementaciones:
+  - **`CountingSink`** (en `nova-simulator`) — agrega en `LongAdder`s y **descarta** (no copia ni retiene nada). Coste de materialización cero → el bucle de 10M no asigna.
+  - **`MaterializingSink`** (en la ruta de producción/dev) — copia el resultado a los agregados de dominio (`Round`, `Money`, `SpinResult`). Asigna, pero **un giro cada vez** → irrelevante para el rendimiento.
+
+```mermaid
+flowchart LR
+    CFG["game_configs.config<br/>(JSON, apartado 3.3)"] -->|GameCompiler una vez| CG["CompiledGame<br/>(primitivos, inmutable,<br/>cache por configId)"]
+    CG --> K["SpinKernel<br/>solo primitivos · enteros<br/>cero-alloc por giro"]
+    RNG["RngEngine<br/>(RngFactory)"] --> K
+    K -->|onSpin · buffers| SINK{{RoundSink}}
+    SINK --> CS["CountingSink<br/>(nova-simulator)<br/>LongAdder · descarta"]
+    SINK --> MS["MaterializingSink<br/>(producción/dev)<br/>→ Round · Money · SpinResult"]
+
+    classDef dom fill:#b58900,stroke:#073642,color:#fff
+    classDef sim fill:#d33682,stroke:#073642,color:#fff
+    classDef app fill:#2aa198,stroke:#073642,color:#fff
+    classDef cfg fill:#268bd2,stroke:#073642,color:#fff
+    class CG,K,SINK dom
+    class CS sim
+    class MS app
+    class CFG,RNG cfg
+```
+
+**Fidelidad garantizada por construcción.** Ambas vías ejecutan **el mismo `SpinKernel`** con el mismo `RngEngine`; solo difieren en *qué materializan*, no en *cómo deciden*. Por eso "lo simulado = lo jugado" no depende de disciplina, sino de que existe un único punto de decisión.
+
+**Reglas de determinismo (invariantes del kernel):**
+1. **Aritmética entera** en todo el cálculo (céntimos y multiplicadores como `long`/`int`); el punto flotante solo aparece al calcular métricas agregadas (RTP, volatilidad) al final.
+2. **Orden de consumo del RNG fijo** y documentado: **una llamada `nextInt(len)` por reel, en orden de columna `0 → cols-1`**, y la ventana son `grid.rows` símbolos consecutivos desde la parada con **wrap circular** (módulo `len`). Las features de bonus (cascada de free spins, retrigger) consumen el RNG **después** del giro base, en orden determinista. Dado un `seed`, la secuencia de `nextInt` es idéntica en cualquier máquina → habilita la **recomputación reproducible** (verificación/forense y tests *golden-master*; el replay en sí renderiza el registro, ver 2.5.3).
+3. **Cero estado mutable compartido** en el bucle del simulador: `CompiledGame` es inmutable y de solo lectura; cada worker del `ForkJoinPool` tiene su `RngEngine`, sus buffers y su `CountingSink`; solo se comparten los `LongAdder` (lock-free).
+
+Conceptualmente es un **"núcleo *data-oriented* + cáscara DDD"**: el dominio conserva sus agregados ricos para la ruta de producción, y el kernel es el corazón crítico expresado en primitivos.
+
 ---
 
 ### **2.2. Descripción de componentes principales:**
@@ -677,10 +719,10 @@ sequenceDiagram
 
 | Módulo | Tecnología | Responsabilidad |
 |---|---|---|
-| **nova-domain** | Java 21 puro (sin Spring) | Núcleo de negocio: `Game`, `Round`, `Reels`, `Paytable`, `Symbol`, `Payline`, `BonusFeature`, `Wallet`, `Money`, `Bet`, `RngEngine` (puerto), `GameRound`. Cero dependencias externas más allá de la JDK. |
+| **nova-domain** | Java 21 puro (sin Spring) | Núcleo de negocio: agregados ricos (`Game`, `Round`, `Reels`, `Paytable`, `Symbol`, `Payline`, `BonusFeature`, `Wallet`, `Money`, `Bet`, `GameRound`) y el **núcleo de cálculo data-oriented** (`SpinKernel`, `GameCompiler`→`CompiledGame`, puertos `RngEngine` y `RoundSink`). Cero dependencias externas más allá de la JDK. Ver 2.1.7. |
 | **nova-application** | Java 21 + `jakarta.transaction` | Casos de uso (`SpinUseCase`, `ReplayRoundUseCase`, `RechargeWalletUseCase`, `RunSimulationUseCase`, `ExplainSimulationUseCase`…). Orquesta dominio + puertos. |
 | **nova-infrastructure** | Spring Data JPA · Flyway · Anthropic SDK · BCrypt | Adaptadores: repositorios JPA, migraciones, cliente Anthropic, implementación `SecureRandom` del RNG. |
-| **nova-simulator** | Java 21 + `ForkJoinPool` + `LongAdder` | Reutiliza el **motor de dominio** (`Game`, `Reels`, `Paytable`, `RngEngine`) para ejecutar giros en memoria — sin wallet, sin auditoría y sin BBDD. Agrega métricas con `LongAdder` (lock-free) y devuelve `SimulationResult`. |
+| **nova-simulator** | Java 21 + `ForkJoinPool` + `LongAdder` | Ejecuta el **mismo `SpinKernel`** sobre un `CompiledGame` (vía un `CountingSink` cero-alloc) — sin wallet, sin auditoría y sin BBDD. Cada worker tiene su `RngEngine` y sus buffers; agrega métricas con `LongAdder` (lock-free) y devuelve `SimulationResult`. Ver 2.1.7. |
 | **nova-web-api** | Spring Boot 3.4 · Spring Security 6 · springdoc-openapi | Punto de entrada HTTP. Controllers por perfil (`/api/v1/player/*`, `/api/v1/operator/*`, `/api/v1/math/*`). Filtro JWT, CORS, manejo de errores i18n. |
 | **nova-common** | — | DTOs compartidos, utilidades, constantes. |
 
@@ -896,9 +938,11 @@ El RNG combina **imprevisibilidad** (requisito de juego justo) y **reproducibili
 - `RngEngine` — la secuencia: `int nextInt(int bound)` y `long getSeed()` (expone el seed para auditoría).
 - `RngFactory` — la creación, con dos operaciones:
   - `RngEngine create()` — siembra un seed fresco vía `SecureRandom`; uso normal de juego.
-  - `RngEngine createWithSeed(long seed)` — siembra con un seed conocido; **es lo que habilita el *replay*** ([B4](#12-características-y-funcionalidades-principales)): el backoffice operador reconstruye el RNG exacto de un giro auditado a partir del `rng_seed` guardado en `game_rounds`.
+  - `RngEngine createWithSeed(long seed)` — siembra con un seed conocido; habilita la **recomputación reproducible** de un giro a partir del `rng_seed` guardado en `game_rounds`. Es una herramienta de **verificación/forense** (y de los tests *golden-master*, ver 2.6), **no** el mecanismo de display del replay.
 
-Cada giro registra su `seed`; con él, el motor es **completamente determinista**. El RNG está aislado en su propio paquete para facilitar la futura sustitución por un RNG certificado externamente (ej. iTechLabs).
+Cada giro registra su `seed`; con él, el motor es **completamente determinista**.
+
+> **Replay = guardar-y-renderizar (no recalcular).** El *replay* del backoffice operador ([B4](#12-características-y-funcionalidades-principales)) **renderiza el `result` inmutable** ya almacenado en `game_rounds`, no recalcula el giro. Esto tiene una consecuencia de diseño deliberada: **el motor puede evolucionar (v2, v3…) sin mantener N versiones antiguas**, porque los replays históricos muestran el registro guardado, no lo que el motor recalcularía hoy. La recomputación desde `seed`+`config` queda como verificación opcional (en CI vía *golden-master*, o forense puntual), nunca como dependencia del replay. El valor probatorio descansa en la **inmutabilidad del registro** (`game_rounds` es append-only por trigger, ver 2.5.2). El RNG está aislado en su propio paquete para facilitar la futura sustitución por un RNG certificado externamente (ej. iTechLabs).
 
 #### 2.5.4 Defensa en profundidad
 
@@ -921,7 +965,7 @@ Cada giro registra su `seed`; con él, el motor es **completamente determinista*
 - **Trazabilidad total**: 100% de los giros quedan en `game_rounds` con `seed`, `bet`, `result`, `balance_pre`, `balance_post`, `timestamp`.
 - **Verificación de edad** y sello DGOJ visible en todas las pantallas del jugador.
 - **Mensajes de juego responsable** en login, lobby y al alcanzar umbrales de pérdida.
-- **Auto-spin con safeguards**: el cliente para automáticamente al cruzar umbrales y muestra un mensaje de pausa.
+- **Auto-spin con safeguards**: el cliente para automáticamente al cruzar umbrales y muestra un mensaje de pausa. En el MVP estas salvaguardas son **solo de cliente**; la imposición *server-side* de límites de pérdida y autoexclusión queda diferida (D7) — a tener presente para certificación.
 - **Separación motor/RNG**: prerequisito para certificación; ya descrito en 2.5.3.
 
 ---
@@ -941,7 +985,7 @@ flowchart TB
     end
     subgraph Bot["Unit (~80% del esfuerzo)"]
         U_DOM["JUnit 5 + AssertJ<br/>game-engine · paytable · bonus · wallet"]
-        U_PROP["jqwik (property-based)<br/>RTP empírico converge al teórico"]
+        U_PROP["jqwik (property-based)<br/>RTP empírico converge al esperado<br/>(fixtures con RTP conocido)"]
         U_SIM["Tests del simulador<br/>throughput mínimo + correctitud"]
     end
 
@@ -957,8 +1001,10 @@ flowchart TB
 **Ejemplos representativos:**
 
 - **Unit del motor (JUnit + AssertJ)**: dado un `Game` con paytable conocido y un `seed` fijo, `SpinUseCase.execute(...)` devuelve el `Round` esperado símbolo a símbolo. Garantiza determinismo y reemplazabilidad de fix.
-- **Property-based (jqwik)**: para 100 configuraciones aleatorias de juego con RTP teórico calculable, ejecutar 1M de spins debe converger al RTP teórico ±0.5%. Detecta regresiones matemáticas sutiles que un unit no atrapa.
-- **Simulador — rendimiento**: `SimulationRunner.run(10_000_000)` debe completar en <10 min. Al ser un requisito funcional del producto, **se ejecuta en CI** en el *job* `perf` dedicado (separado del `mvn verify` de cada commit) para detectar regresiones de rendimiento. Además, los `MetricsAccumulator` agregados deben coincidir con la suma directa para datasets pequeños (test unitario rápido).
+- **Property-based (jqwik)**: para 100 **configuraciones de prueba con RTP conocido por construcción** (fixtures sintéticos simples, no juegos reales), ejecutar 1M de spins debe converger a ese RTP dentro del intervalo de confianza. Detecta regresiones matemáticas sutiles que un unit no atrapa. (Nota: esto verifica el *motor*; el RTP objetivo de los juegos reales lo declara el matemático, no se calcula.)
+- **Golden-master del motor**: un **corpus congelado** de fixtures `(seed, config) → result` que el `SpinKernel` debe reproducir **bit a bit**; si el motor deriva, **falla el build**. Es el *tripwire* que da **conciencia consciente** de cuándo se rompe el determinismo/comportamiento del motor: ante un fallo, el equipo decide explícitamente entre *(a)* revertir (ruptura accidental), o *(b)* asumir el cambio re-baselinando el corpus (cambio intencionado) — preferiblemente modelando los cambios de matemática *deseados* como **nueva versión de `config`** y no alterando cómo el motor interpreta. No genera retrocompatibilidad: la fidelidad de los replays históricos la garantiza el registro inmutable (guardar-y-renderizar, ver 2.5.3), no el recálculo.
+- **Simulador — rendimiento**: `SimulationRunner.run(10_000_000)` debe completar en <10 min. El objetivo descansa en el **`SpinKernel` cero-alloc** (ver 2.1.7): un test de *allocation* (p. ej. con JMH o contadores de la JVM) verifica que el bucle del simulador **no asigna por giro** —una regresión que reintroduzca asignaciones lo haría fallar—. Al ser un requisito funcional del producto, **se ejecuta en CI** en el *job* `perf` dedicado (separado del `mvn verify` de cada commit). Además, los `MetricsAccumulator` agregados deben coincidir con la suma directa para datasets pequeños (test unitario rápido).
+- **Fidelidad simulador↔producción**: para una misma semilla y `CompiledGame`, el resultado que produce el `SpinKernel` es idéntico por ambas vías (`CountingSink` y `MaterializingSink`); un test compara los agregados de una corrida pequeña con la materialización giro a giro.
 - **ArchUnit**: regla "ninguna clase de `nova-domain.*` importa `org.springframework.*` ni `jakarta.persistence.*`". Falla el build si alguien acopla por error.
 - **Integration con Testcontainers** (en `src/it/java`): arranca un Postgres 18 real, aplica migraciones Flyway, ejecuta `POST /api/v1/player/spin` con JWT y verifica que (a) la respuesta es correcta, (b) hay una nueva fila en `game_rounds` con todos sus campos, (c) cualquier intento de UPDATE/DELETE sobre el row falla con la excepción del trigger.
 - **E2E con Playwright** (en `e2e/`): un único *happy path* que arranca el `docker-compose`, abre el navegador, hace login con un usuario semilla, entra a un juego, hace spin y verifica que el balance cambia.
@@ -1080,8 +1126,8 @@ erDiagram
         bigint game_id FK
         int version "UNIQUE con game_id"
         jsonb config "reels paytable symbols paylines bonus"
-        numeric rtp_theoretical
-        numeric volatility_theoretical
+        numeric rtp_target "declarado por el matemático"
+        numeric volatility_target "declarado, opcional"
         bigint created_by_user_id FK "math analyst"
         text notes
         timestamptz created_at
@@ -1152,6 +1198,7 @@ erDiagram
         bigint bet_cents
         varchar status "CHECK RUNNING COMPLETED FAILED"
         numeric rtp_empirical
+        numeric rtp_std_error "error estándar / IC"
         numeric rtp_base_game
         numeric rtp_free_spins
         numeric hit_frequency
@@ -1159,7 +1206,9 @@ erDiagram
         numeric max_win_multiplier
         numeric free_spin_trigger_freq
         int longest_dry_streak
-        jsonb prize_distribution "histograma"
+        jsonb prize_distribution "histograma + percentiles"
+        jsonb convergence_sample "RTP vs nº giros"
+        jsonb rtp_breakdown "contribución por símbolo/feature + reel stats"
         bigint duration_ms
         text error_message
         timestamptz started_at
@@ -1236,7 +1285,7 @@ Cuenta de cualquier rol (jugador, operador, matemático). El rol determina la su
 
 #### 3.2.3 `wallets`
 
-Cartera virtual de cada jugador. Un único registro por usuario con saldo en céntimos. Los usuarios `OPERATOR` y `MATH_ANALYST` no tienen `wallet`.
+Cartera virtual de cada jugador. Un único registro por usuario con saldo en céntimos. Los usuarios `OPERATOR` y `MATH_ANALYST` no tienen `wallet`. El `wallet` se crea **en el registro del jugador** (`POST /auth/register`), en la misma transacción y con `balance_cents = 0`; el operador lo recarga después (HU-6). Así un jugador recién registrado siempre tiene `wallet` (con saldo 0) y el primer giro no depende de una recarga previa.
 
 | Columna | Tipo | Restricciones | Notas |
 |---|---|---|---|
@@ -1302,6 +1351,7 @@ Catálogo de juegos del operador. Define los parámetros **comerciales** (apuest
 **Constraints:**
 - `UNIQUE (operator_id, code)` — cubre además el índice de la FK `operator_id` por prefijo.
 - El ciclo `games ↔ game_configs` **no necesita** FK `DEFERRABLE`: como `active_config_id` es NULL-able, el alta se hace en tres pasos dentro de una transacción ordinaria — `INSERT games` con `active_config_id = NULL`, `INSERT game_configs`, y `UPDATE games SET active_config_id`.
+- Los importes `*_bet_cents` son la apuesta **total** del giro (no por línea). Por la regla de apuesta por línea (3.3.3), `min_bet_cents` y `bet_step_cents` deben ser **múltiplos del nº de paylines** de la `config` activa, de modo que `betCents / paylines.length` sea exacto.
 
 **Índices:** `idx_games_active_config` sobre `(active_config_id)` — índice de la FK.
 
@@ -1317,8 +1367,8 @@ Versión inmutable de la matemática de un juego. Cada vez que un matemático gu
 | `game_id` | `BIGINT` | NOT NULL · FK `games(id)` | |
 | `version` | `INT` | NOT NULL · CHECK `>= 1` | Auto-incrementada por el `EditConfigUseCase`. |
 | `config` | `JSONB` | NOT NULL | Schema validado en aplicación: `{grid, symbols, reels, paylines, paytable, bonus}` (ver apartado 3.3). |
-| `rtp_theoretical` | `NUMERIC(7,4)` | NOT NULL · CHECK `BETWEEN 0 AND 1` | Calculado por el motor matemático al guardar. |
-| `volatility_theoretical` | `NUMERIC(8,2)` | NULL | Opcional; se rellena tras simular. |
+| `rtp_target` | `NUMERIC(7,4)` | NOT NULL · CHECK `BETWEEN 0 AND 1` | **RTP objetivo declarado por el matemático** (su intención de diseño / *PAR sheet*). La plataforma **no** lo calcula; lo valida contra el RTP empírico de la simulación (ver C5). |
+| `volatility_target` | `NUMERIC(8,2)` | NULL | Volatilidad objetivo declarada (opcional). |
 | `created_by_user_id` | `BIGINT` | NOT NULL · FK `users(id)` | Matemático que la creó. |
 | `notes` | `TEXT` | NULL | Comentario del matemático. |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL · DEFAULT `NOW()` | |
@@ -1389,6 +1439,10 @@ Tabla auditable que registra **cada giro**, incluyendo los free spins. Es la pie
 
 **Free spins y atomicidad.** Un spin que dispara free spins genera **varias filas en esa misma transacción**: la fila del spin disparador (`is_free_spin = FALSE`) y una fila por cada free spin otorgado (`is_free_spin = TRUE`, `bet_cents = 0`, `triggering_round_id` apuntando al disparador). Toda la ronda se computa y persiste atómicamente — **no existe un estado de "sesión de free spins a medias"** que mantener entre peticiones. El cliente recibe la secuencia completa en la respuesta del spin y la reproduce visualmente giro a giro; si el jugador refresca el navegador, la ronda ya está resuelta y en su historial.
 
+**`win_cents` por fila vs total de la ronda.** El `win_cents` de cada fila es el premio **de ese giro** (el de la fila disparadora es su premio de base game; cada free spin tiene el suyo). El premio **total de la ronda** que devuelve la API (`SpinResult.winCents`, [§4.4.3](#443-giro--post-playergamesgameidspin-)) es la **suma** de la fila disparadora y sus free spins, y el `balance_post_cents` de la **última** fila de la ronda es el saldo final. Conviene tenerlo presente al calcular el **GGR** (no sumar dos veces).
+
+**`result` (JSONB) vs columnas.** `result` guarda solo la parte **visual/mecánica** del giro (`view`, `winningPaylines`, `scatterCount`, `multiplier`); los importes (`bet/win/balance`) viven en **columnas** dedicadas. Tanto el `SpinResult` de la API como el *replay* **fusionan** columnas + `result`; por eso `result` no incluye el importe.
+
 #### 3.2.9 `simulation_runs`
 
 Histórico de simulaciones lanzadas por el equipo matemático. **No** se registra cada uno de los 10M de spins simulados (eso queda en memoria del `MetricsAccumulator` y se descarta al terminar): solo el resultado agregado.
@@ -1402,15 +1456,18 @@ Histórico de simulaciones lanzadas por el equipo matemático. **No** se registr
 | `num_spins` | `BIGINT` | NOT NULL · CHECK `> 0` | Configurable hasta 10M. |
 | `bet_cents` | `BIGINT` | NOT NULL · CHECK `> 0` | Apuesta fija de la simulación. |
 | `status` | `VARCHAR(20)` | NOT NULL · DEFAULT `'RUNNING'` · CHECK `IN ('RUNNING','COMPLETED','FAILED')` | |
-| `rtp_empirical` | `NUMERIC(7,4)` | NULL | Hasta finalizar. |
-| `rtp_base_game` | `NUMERIC(7,4)` | NULL | |
-| `rtp_free_spins` | `NUMERIC(7,4)` | NULL | |
+| `rtp_empirical` | `NUMERIC(7,4)` | NULL | RTP medido en la simulación. Hasta finalizar, NULL. |
+| `rtp_std_error` | `NUMERIC(7,6)` | NULL | Error estándar del RTP empírico (≈ `stdev(win/bet)/√N`). Permite mostrar el **intervalo de confianza** y decidir si la muestra basta — esencial en alta volatilidad. |
+| `rtp_base_game` | `NUMERIC(7,4)` | NULL | Contribución del base game al RTP. |
+| `rtp_free_spins` | `NUMERIC(7,4)` | NULL | Contribución de los free spins al RTP. |
 | `hit_frequency` | `NUMERIC(7,4)` | NULL | Proporción de spins con premio. |
 | `volatility` | `NUMERIC(8,2)` | NULL | Desviación estándar normalizada. |
 | `max_win_multiplier` | `NUMERIC(10,2)` | NULL | |
-| `free_spin_trigger_freq` | `NUMERIC(7,4)` | NULL | |
+| `free_spin_trigger_freq` | `NUMERIC(7,4)` | NULL | Frecuencia empírica de disparo de free spins. |
 | `longest_dry_streak` | `INT` | NULL | Mayor racha sin premio observada. |
-| `prize_distribution` | `JSONB` | NULL | Histograma `{bucket_multiplier: count}`. |
+| `prize_distribution` | `JSONB` | NULL | Histograma `{bucket_multiplier: count}` + percentiles de cola. |
+| `convergence_sample` | `JSONB` | NULL | Muestreo de la **curva de convergencia**: `[{spins, rtp}]` a intervalos crecientes, para ver si el RTP se estabiliza. |
+| `rtp_breakdown` | `JSONB` | NULL | **Descomposición del RTP** (contribución por símbolo y por feature) y **estadísticas mecánicas de las reel strips**: frecuencia de cada símbolo, P(disparar scatter), nº esperado de free spins (incl. retrigger). Cifras que el matemático contrasta con su propio modelo. |
 | `duration_ms` | `BIGINT` | NULL | |
 | `error_message` | `TEXT` | NULL | Solo si `status = 'FAILED'`. |
 | `started_at` | `TIMESTAMPTZ` | NOT NULL · DEFAULT `NOW()` | |
@@ -1420,6 +1477,8 @@ Histórico de simulaciones lanzadas por el equipo matemático. **No** se registr
 **Índices:**
 - `idx_simrun_config_started` sobre `(game_config_id, started_at DESC)` — comparar simulaciones de la misma versión; cubre la FK `game_config_id`.
 - `idx_simrun_operator` sobre `(operator_id)`, `idx_simrun_launched_by` sobre `(launched_by_user_id)` — índices de las FK restantes.
+
+**Runs huérfanas.** La simulación corre como tarea en memoria del proceso `api` (`ForkJoinPool`), sin reanudación. Si la API se reinicia con una run en `RUNNING`, al arrancar se marcan como `FAILED` (con `error_message` explicativo) las que lleven más de un *timeout* configurable sin completar, para que no queden colgadas indefinidamente; el matemático la relanza.
 
 #### 3.2.10 `simulation_explanations`
 
@@ -1455,7 +1514,7 @@ Soporte de la **idempotencia** de las operaciones con efecto económico (`spin` 
 | `created_at` | `TIMESTAMPTZ` | NOT NULL · DEFAULT `NOW()` | |
 
 **Constraints:**
-- `UNIQUE (user_id, idem_key)` — una clave es única por usuario; cubre además el índice de la FK `user_id` por prefijo.
+- `UNIQUE (user_id, endpoint, idem_key)` — una clave es única por usuario **y operación**, de modo que un mismo UUID en `spin` y `recharge` no colisiona; cubre además el índice de la FK `user_id` por prefijo.
 
 **Retención:** las filas son efímeras. Un *job* programado purga las anteriores a una ventana de retención (p. ej. 48 h), suficiente para cubrir reintentos razonables. **No** es una tabla histórico-regulatoria, por lo que no lleva trigger de inmutabilidad.
 
@@ -1484,10 +1543,11 @@ La columna `game_configs.config` (`JSONB`) contiene **toda la matemática y la e
 |---|---|---|
 | `grid` | objeto | Dimensiones de la rejilla: `{ "cols": int, "rows": int }`. MVP: `5x3` o `3x3`. |
 | `symbols` | array de objetos | Catálogo de símbolos del juego. Cada uno: `{ "id": string, "kind": "REGULAR"\|"WILD"\|"SCATTER" }`. El `id` es único dentro del juego. |
-| `reels` | array de arrays | Una *reel strip* por columna (`grid.cols` arrays). Cada *strip* es la lista ordenada de `id` de símbolos de ese rodillo. El motor elige una posición aleatoria por reel y muestra `grid.rows` símbolos consecutivos. **La composición de las strips determina las probabilidades y, por tanto, el RTP.** |
+| `reels` | array de arrays | Una *reel strip* por columna (`grid.cols` arrays). Cada *strip* es la lista ordenada de `id` de símbolos de ese rodillo. El motor elige una **posición de parada** aleatoria por reel (`nextInt(len)`) y muestra `grid.rows` símbolos consecutivos **de forma circular** (la ventana da la vuelta al inicio de la tira si la parada cae al final; ver orden de consumo del RNG en 2.1.7). **La composición de las strips determina las probabilidades y, por tanto, el RTP.** |
 | `paylines` | array de arrays | Cada payline es un array de `grid.cols` enteros; el entero en la posición *i* es el índice de fila (`0..grid.rows-1`) que la línea ocupa en la columna *i*. |
-| `paytable` | array de objetos | Pago por símbolo regular: `{ "symbol": id, "payouts": { "<n>": multiplicador } }`, donde `<n>` es el nº de símbolos consecutivos (desde la primera columna) y el multiplicador se aplica sobre la apuesta por línea. |
-| `bonus` | objeto | Reglas de bonus. `bonus.wild` (opcional): `{ "substitutes": ["REGULAR"] }` — qué *kinds* sustituye el wild. `bonus.freeSpins` (opcional, ausente en el 3x3 clásico): `{ "triggerSymbol": id, "minTriggerCount": int, "award": { "<scatterCount>": nºFreeSpins }, "multiplier": number, "retrigger": boolean }`. |
+| `paytable` | array de objetos | Pago por símbolo regular: `{ "symbol": id, "payouts": { "<n>": multiplicador } }`, donde `<n>` es el nº de símbolos consecutivos (desde la primera columna) y el multiplicador se aplica sobre la **apuesta por línea** (`lineBet`; ver regla en 3.3.3). |
+| `scatterPays` | objeto **(opcional)** | Premio de los símbolos `SCATTER`: `{ "<scatterId>": { "<n>": multiplicador } }`, donde `<n>` es el nº **total** de ese símbolo en la rejilla (cualquier posición, *anywhere*) y el multiplicador se aplica sobre la **apuesta total** (`betCents`). Es **independiente** de `bonus.freeSpins`: un recuento de scatter puede pagar premio sin disparar free spins, y a la inversa. Si se omite, los scatter no otorgan premio en monedas. |
+| `bonus` | objeto | Reglas de bonus. `bonus.wild` (opcional): `{ "substitutes": ["REGULAR"] }` — qué *kinds* sustituye el wild. `bonus.freeSpins` (opcional, ausente en el 3x3 clásico): `{ "triggerSymbol": id, "minTriggerCount": int, "award": { "<scatterCount>": nºFreeSpins }, "multiplier": number, "retrigger": boolean }`. El `multiplier` se aplica a **todos** los premios obtenidos durante los free spins (línea y `scatterPays`). `retrigger: true` vuelve a otorgar `award` si caen ≥`minTriggerCount` scatters durante la ronda, **sin tope** (ilimitado); el motor y el simulador deben tolerar cascadas arbitrariamente largas. |
 
 #### 3.3.2 Ejemplo (juego 5x3 "Egipcio", abreviado)
 
@@ -1520,6 +1580,9 @@ La columna `game_configs.config` (`JSONB`) contiene **toda la matemática y la e
     { "symbol": "SCARAB", "payouts": { "3": 5,  "4": 20, "5": 100 } },
     { "symbol": "A",      "payouts": { "3": 2,  "4": 10, "5": 40  } }
   ],
+  "scatterPays": {
+    "SCATTER": { "2": 1, "3": 5, "4": 20, "5": 100 }
+  },
   "bonus": {
     "wild": { "substitutes": ["REGULAR"] },
     "freeSpins": {
@@ -1533,7 +1596,9 @@ La columna `game_configs.config` (`JSONB`) contiene **toda la matemática y la e
 }
 ```
 
-El juego 3x3 clásico ("Frutas") usa el mismo esquema con `grid` `3x3`, sin `bonus.freeSpins` y, típicamente, sin `bonus.wild`.
+En el ejemplo, `scatterPays` paga ya con **2** scatters (`"2": 1`) mientras que los free spins requieren **3** (`minTriggerCount: 3`): así 2 scatters otorgan premio pero **no** disparan free spins, ilustrando que ambos mecanismos son independientes. El juego 3x3 clásico ("Frutas") usa el mismo esquema con `grid` `3x3`, sin `scatterPays`, sin `bonus.freeSpins` y, típicamente, sin `bonus.wild`.
+
+> **Del `config` al motor.** Este JSON es la *fuente* declarativa. En runtime, el `GameCompiler` lo traduce una vez a un `CompiledGame` de estructuras primitivas (símbolos a IDs `int`, reels `int[][]`, paytable `long[]`…), cacheado por `configId` por ser inmutable. La matemática del giro se evalúa siempre sobre esos primitivos en el `SpinKernel` (ver 2.1.7), nunca interpretando el JSON por giro.
 
 #### 3.3.3 Validación
 
@@ -1541,8 +1606,11 @@ El `EditConfigUseCase` valida el `config` contra un **JSON Schema** y, además, 
 
 - Todo `id` referenciado en `reels`, `paylines` (vía filas) y `paytable` existe en `symbols`.
 - Hay exactamente `grid.cols` *reel strips* y cada payline tiene exactamente `grid.cols` índices, todos en el rango `0..grid.rows-1`.
-- `paytable` solo contiene símbolos `REGULAR`; `triggerSymbol` es de *kind* `SCATTER`.
-- A partir de un `config` válido, el motor matemático calcula `rtp_theoretical` (y, tras simular, `volatility_theoretical`), que se almacenan en las columnas homónimas de `game_configs`.
+- **Apuesta por línea.** En el MVP **todas las paylines están activas**; la apuesta por línea es `lineBet = betCents / paylines.length` (la `betCents` del giro es la apuesta **total**, no por línea). El motor exige `betCents % paylines.length == 0`, y por coherencia `games.min_bet_cents` y `games.bet_step_cents` deben ser **múltiplos del nº de paylines** de la `config` activa, para que `lineBet` sea exacto. El premio de línea de un símbolo REGULAR es `multiplicador × lineBet`.
+- `paytable` solo contiene símbolos `REGULAR` (premio por línea, sobre `lineBet`). Los premios de `SCATTER`, si existen, van en `scatterPays` (premio *anywhere* por recuento total, sobre `betCents`) y solo referencian símbolos de *kind* `SCATTER`; son **independientes** de `bonus.freeSpins` (cuyo `triggerSymbol` también es de *kind* `SCATTER`). Los `WILD` no tienen entrada en `paytable` ni en `scatterPays`: solo sustituyen.
+- **Evaluación de línea (`WILD`).** Cada payline se evalúa de **izquierda a derecha desde la columna 0**; el `WILD` sustituye a cualquier `REGULAR` para **maximizar** el premio. Cada línea paga **una sola vez** el combo de **mayor multiplicador** posible (no se suman varios símbolos en una misma línea). Una línea compuesta **solo de `WILD`** paga como el `REGULAR` de mayor valor de la `paytable`.
+- **Cobertura de pagos sin huecos.** A partir de las `reels`, la validación calcula el **nº máximo de apariciones** posible de cada símbolo en la ventana visible y exige que `paytable` (recuento consecutivo, hasta `grid.cols`), `scatterPays` y `bonus.freeSpins.award` (recuento total) declaren un valor para **todos los recuentos alcanzables desde su mínimo, sin huecos**. Así ningún recuento que el motor pueda producir queda sin pago/decisión definida.
+- El RTP/volatilidad **objetivo** no se derivan del `config`: los **declara el matemático** (`rtp_target`, `volatility_target`) como intención de diseño. La plataforma los valida contra el RTP empírico de la simulación (ver C5), pero **no** los calcula — el cálculo teórico exacto de juegos con free spins y retrigger es responsabilidad y criterio del matemático.
 
 ---
 
@@ -1578,7 +1646,7 @@ El backend `nova-web-api` expone una **API REST** consumida por la SPA. Este apa
 | `401 Unauthorized` | Falta token o es inválido/expirado. |
 | `403 Forbidden` | Token válido pero rol sin permiso. |
 | `404 Not Found` | Recurso inexistente. |
-| `409 Conflict` | `Idempotency-Key` reutilizada con distinto payload; o conflicto de estado (p. ej. publicar una versión ya publicada). |
+| `409 Conflict` | `Idempotency-Key` reutilizada con distinto payload; modificación concurrente del saldo (*optimistic lock* tras reintentos); o conflicto de estado (p. ej. publicar una versión ya publicada). |
 | `422 Unprocessable Entity` | Regla de negocio incumplida: apuesta fuera de rango, saldo insuficiente, `config` matemáticamente inválida. |
 | `429 Too Many Requests` | Límite de *rate limiting* superado. |
 | `500 Internal Server Error` | Error no controlado. |
@@ -1638,6 +1706,8 @@ El MVP implementa **16 endpoints**: los 5 prioritarios (★) más el soporte mí
 | MVP | `POST` | `/math/simulations/{simulationId}/explain` | Preguntar a Claude sobre los resultados (IA explainability). |
 | post-MVP | `GET` | `/math/simulations/{simulationId}/explanations` | Historial de preguntas y respuestas IA. |
 
+> **Activación de matemática en el MVP.** La **publicación** (`POST /math/games/{gameId}/publish`, que mueve `games.active_config_id`) es **post-MVP**. En el MVP el matemático **crea y simula** versiones nuevas — la simulación opera sobre un `configId` concreto, no sobre la activa —, pero **el jugador siempre juega la `config` semilla** activada en el *seed*. Servir una versión nueva al jugador (activarla) llega en una fase posterior; no hay que buscar un flujo de activación en el MVP.
+
 ### **4.3. Ficha de cada endpoint**
 
 Cada endpoint con su petición (parámetros de ruta, *query*, cabeceras y cuerpo) y las respuestas relevantes. ★ = endpoint prioritario (especificación OpenAPI y ejemplos en 4.4). La fase **MVP / post-MVP** de cada endpoint figura en el catálogo [4.2](#42-catálogo-de-endpoints).
@@ -1682,8 +1752,8 @@ En las columnas *Petición* y *Respuestas*, cada elemento ocupa su propia línea
 |---|---|---|---|
 | `GET /math/games` | Juegos disponibles para el matemático. | — | `200` — Juegos con su `config` activa |
 | `GET /math/games/{gameId}/configs` | Versiones de matemática de un juego (paginado). | Path — `gameId`<br>Query — `page`, `size` | `200` — Página de versiones |
-| `GET /math/configs/{configId}` | Detalle de una versión de `config`. | Path — `configId` | `200` — Config + métricas teóricas<br>`404` — Inexistente |
-| `POST /math/games/{gameId}/configs` | Crea una versión nueva de matemática. | Path — `gameId`<br>Body — `config` (apartado 3.3)<br>Body — `notes` | `201` — Versión creada (con `rtpTheoretical`)<br>`422` — `config` inválida (detalle en `errors`) |
+| `GET /math/configs/{configId}` | Detalle de una versión de `config`. | Path — `configId` | `200` — Config + RTP/volatilidad **objetivo declarados**<br>`404` — Inexistente |
+| `POST /math/games/{gameId}/configs` | Crea una versión nueva de matemática. | Path — `gameId`<br>Body — `config` (apartado 3.3)<br>Body — `rtpTarget`, `volatilityTarget` (objetivo declarado)<br>Body — `notes` | `201` — Versión creada (con el `rtpTarget`/`volatilityTarget` declarados)<br>`422` — `config` inválida (detalle en `errors`) |
 | `POST /math/games/{gameId}/publish` | Publica (activa) una versión de `config`. | Path — `gameId`<br>Body — `configId` | `200` — Versión activada<br>`409` — Versión ya activa<br>`422` — `configId` ajeno al juego |
 | `POST /math/configs/{configId}/simulations` ★ | Lanza una simulación masiva (asíncrona). | Path — `configId`<br>Body — `numSpins` (≤ 10M)<br>Body — `betCents` | `202` — Simulación `RUNNING`<br>`422` — `numSpins` fuera de rango |
 | `GET /math/simulations/{simulationId}` | Estado y resultado de una simulación (*polling*). | Path — `simulationId` | `200` — Estado + métricas si `COMPLETED`<br>`404` — Inexistente |
@@ -1742,10 +1812,11 @@ components:
       type: object
       properties:
         roundId:          { type: integer, format: int64 }
-        betCents:         { type: integer, format: int64 }
-        winCents:         { type: integer, format: int64 }
-        balancePreCents:  { type: integer, format: int64 }
-        balancePostCents: { type: integer, format: int64 }
+        betCents:         { type: integer, format: int64, description: "Apuesta total del giro." }
+        lineBetCents:     { type: integer, format: int64, description: "Apuesta por línea = betCents / nº de líneas activas (ver 3.3.3)." }
+        winCents:         { type: integer, format: int64, description: "Premio TOTAL de la ronda: incluye los free spins disparados. Cada free spin se desglosa en freeSpins.rounds[]." }
+        balancePreCents:  { type: integer, format: int64, description: "Saldo antes de la apuesta." }
+        balancePostCents: { type: integer, format: int64, description: "Saldo tras aplicar la apuesta y TODOS los premios de la ronda (incl. free spins). Reconcilia: balancePostCents = balancePreCents - betCents + winCents." }
         view:
           type: array
           description: "Símbolos visibles tras el giro, una sublista por columna."
@@ -1772,6 +1843,8 @@ components:
 ```
 
 #### 4.4.1 Registro de jugador — `POST /auth/register` ★
+
+> El registro valida la mayoría de edad (≥18) y, en la **misma transacción**, crea el `wallet` del jugador con `balance_cents = 0` (ver 3.2.3). El jugador queda con sesión iniciada (*auto-login*) y wallet listo para que el operador lo recargue (HU-6).
 
 **Contrato**
 
@@ -1863,6 +1936,10 @@ paths:
 
 #### 4.4.3 Giro — `POST /player/games/{gameId}/spin` ★
 
+> `betCents` es la apuesta **total** del giro, repartida a partes iguales entre todas las líneas activas: `lineBet = betCents / nºlíneas` (ver 3.3.3). Debe ser múltiplo del nº de líneas de la `config` activa.
+>
+> **Concurrencia.** Dos giros simultáneos del mismo jugador (dos pestañas, auto-spin + manual) compiten por el `version` del `wallet` (*optimistic lock*, [§3.2 dec. 6](#3-modelo-de-datos)). El caso de uso **reintenta** la transacción unas pocas veces ante `OptimisticLockException`; si el conflicto persiste, responde **`409`** (modificación concurrente del saldo) con su `detail` propio (distinto del `409` de `Idempotency-Key`).
+
 **Contrato**
 
 ```yaml
@@ -1896,7 +1973,7 @@ paths:
                  content: { application/json: { schema: { $ref: "#/components/schemas/SpinResult" } } } }
         "409": { description: "Idempotency-Key repetida con distinto payload",
                  content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
-        "422": { description: "Apuesta fuera de rango o saldo insuficiente",
+        "422": { description: "Apuesta fuera de rango, no múltiplo del nº de líneas, o saldo insuficiente",
                  content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
 ```
 
@@ -1910,6 +1987,7 @@ paths:
 {
   "roundId": 90412,
   "betCents": 100,
+  "lineBetCents": 25,
   "winCents": 750,
   "balancePreCents": 98500,
   "balancePostCents": 99150,
@@ -1929,6 +2007,8 @@ paths:
 ```
 
 #### 4.4.4 Lanzar simulación — `POST /math/configs/{configId}/simulations` ★
+
+> `betCents` es la apuesta **total** por giro simulado y, como en el juego real, debe ser **múltiplo del nº de paylines** de la `config` (ver 3.3.3); en caso contrario → `422`.
 
 **Contrato**
 
@@ -1987,6 +2067,8 @@ paths:
 
 #### 4.4.5 Replay de partida — `GET /operator/rounds/{roundId}/replay` ★
 
+> **Rondas con free spins.** Si `roundId` es un **giro disparador**, el endpoint **reconstruye** `result.freeSpins.rounds[]` a partir de las filas hijas de `game_rounds` (las que tienen `triggering_round_id = roundId`, [§3.2.8](#328-game_rounds)), de modo que el operador reproduce la ronda completa. Si `roundId` es una **fila hija** (`is_free_spin = TRUE`), se renderiza ese free spin **aislado** (`freeSpins.triggered = false`).
+
 **Contrato**
 
 ```yaml
@@ -1994,7 +2076,7 @@ paths:
   /operator/rounds/{roundId}/replay:
     get:
       operationId: getRoundReplay
-      summary: "Datos para el replay determinista"
+      summary: "Datos del registro inmutable para renderizar el replay"
       security: [{ bearerAuth: [] }]
       parameters:
         - name: roundId
@@ -2003,7 +2085,7 @@ paths:
           schema: { type: integer, format: int64 }
       responses:
         "200":
-          description: "Datos completos del giro para reproducirlo"
+          description: "Registro inmutable del giro. El cliente renderiza `result` tal cual."
           content:
             application/json:
               schema:
@@ -2012,14 +2094,14 @@ paths:
                   roundId:      { type: integer, format: int64 }
                   gameId:       { type: integer, format: int64 }
                   gameConfigId: { type: integer, format: int64 }
-                  rngSeed:      { type: integer, format: int64 }
-                  result:       { $ref: "#/components/schemas/SpinResult" }
-                  config:       { type: object, description: "config del apartado 3.3, versión exacta usada" }
+                  rngSeed:      { type: integer, format: int64, description: "metadato forense; no se usa para el render" }
+                  result:       { $ref: "#/components/schemas/SpinResult", description: "autoritativo: lo que se renderiza" }
+                  config:       { type: object, description: "config del apartado 3.3, versión exacta usada (contexto/verificación)" }
         "404": { description: "Partida inexistente",
                  content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
 ```
 
-**Ejemplo** — con `rngSeed` + `config` el cliente reproduce la animación exacta del giro.
+**Ejemplo** — el `result` almacenado es **autoritativo** y es lo que el cliente renderiza (mismo `<SlotGame>` en modo replay). `rngSeed` y `config` se devuelven como **metadato de verificación/forense**, no para recalcular el giro.
 
 ```json
 // Response 200 — GET /api/v1/operator/rounds/90412/replay
@@ -2031,6 +2113,7 @@ paths:
   "result": {
     "roundId": 90412,
     "betCents": 100,
+    "lineBetCents": 25,
     "winCents": 750,
     "balancePreCents": 98500,
     "balancePostCents": 99150,
@@ -2057,9 +2140,19 @@ paths:
 
 ## 5. Historias de usuario
 
-Se documentan las **tres historias de usuario principales** del MVP, una por perfil, cada una asociada a uno de los tres endpoints prioritarios (★): el jugador **gira** (`spin`), el matemático **valida con el simulador** (`simulations`) y el operador **reproduce una partida** (`replay`). Cada historia se redacta con narrativa estándar, criterios de aceptación en formato **BDD (Gherkin)** y una verificación explícita de los criterios **INVEST**.
+Se documentan las **tres historias de usuario principales** del MVP (`HU-1`, `HU-2`, `HU-3`), una por perfil, cada una asociada a uno de los tres endpoints prioritarios (★): el jugador **gira** (`spin`), el matemático **valida con el simulador** (`simulations`) y el operador **reproduce una partida** (`replay`). Cada historia se redacta con narrativa estándar, criterios de aceptación en formato **BDD (Gherkin)** y una verificación explícita de los criterios **INVEST**.
 
-### Historia de Usuario 1 — El jugador realiza un giro
+> El **backlog completo de historias del MVP** (`HU-1` a `HU-12`, que cubre la totalidad de los endpoints y features del MVP) reside en la carpeta [`stories/`](stories/), un fichero por historia nombrado con su código (`HU-N.md`). Los códigos `HU-N` son la nomenclatura común a las historias, a los tickets de trabajo de la carpeta [`tickets/`](tickets/) y a este documento.
+
+**Unidades de estimación.** Las **historias** se estiman con **tallas** (esfuerzo relativo de la historia completa), y los **tickets** en que se descomponen usan **Story Points** en escala Fibonacci (1, 2, 3, 5, 8, 13). Equivalencia orientativa de las tallas:
+
+| Talla | Significado | Orden de SP de los tickets que la componen |
+|---|---|---|
+| **S** (Small) | Alcance reducido, poca incertidumbre | ~1-5 SP en total |
+| **M** (Medium) | Alcance medio | ~5-10 SP en total |
+| **L** (Large) | Historia grande; candidata a dividirse si no cabe en un sprint | ~10+ SP en total |
+
+### Historia de Usuario HU-1 — El jugador realiza un giro
 
 > **Como** jugador registrado,
 > **quiero** girar un slot apostando saldo virtual,
@@ -2119,14 +2212,14 @@ Característica: Giro en un juego de slot
 | **N**egociable | El alcance de animaciones y audio es ajustable sin alterar el objetivo de la historia. |
 | **V**aliosa | Es la propuesta de valor central para el jugador; sin ella no hay producto. |
 | **E**stimable | Alcance acotado a un único flujo de petición/respuesta; el equipo puede tallarla. |
-| **S**mall | Es la mayor de las tres; si excede un sprint se divide en "giro base" y "ronda de free spins". |
+| **S**mall | Es de las mayores del backlog; si excede un sprint se divide en "giro base" y "ronda de free spins". |
 | **T**estable | Cada criterio es un escenario Gherkin ejecutable como test de integración y E2E. |
 
 **Fuera de alcance:** auto-spin con *safeguards* (historia independiente), pagos reales.
 
 ---
 
-### Historia de Usuario 2 — El matemático valida un juego con el simulador
+### Historia de Usuario HU-2 — El matemático valida un juego con el simulador
 
 > **Como** analista matemático,
 > **quiero** lanzar una simulación masiva de una versión de juego y consultar sus métricas,
@@ -2144,7 +2237,7 @@ Característica: Simulación masiva de un juego
 
   Antecedentes:
     Dado un analista matemático autenticado
-    Y una versión de configuración del juego "Espacial" con RTP teórico 96,00 %
+    Y una versión de configuración del juego "Espacial" con un RTP objetivo declarado de 96,00 %
 
   Escenario: Lanzar una simulación
     Cuando lanzo una simulación de 10.000.000 de giros con apuesta fija
@@ -2160,13 +2253,15 @@ Característica: Simulación masiva de un juego
   Escenario: Consultar las métricas del resultado
     Dado que una simulación ha terminado
     Cuando consulto su resultado
-    Entonces obtengo el RTP empírico, la volatilidad, la hit frequency,
-      la distribución de premios y el RTP de base game y de free spins
+    Entonces obtengo el RTP empírico con su intervalo de confianza, la curva de convergencia,
+      la volatilidad, la hit frequency, la distribución de premios,
+      el RTP de base game y de free spins y la descomposición por símbolo/feature
 
-  Escenario: El RTP empírico converge al teórico
-    Dado una configuración con RTP teórico 96,00 %
+  Escenario: Validación frente al objetivo declarado
+    Dado una configuración con RTP objetivo declarado de 96,00 %
     Cuando se simulan 10.000.000 de giros
-    Entonces el RTP empírico se desvía del teórico menos que el umbral configurado
+    Y la diferencia entre el RTP empírico y el objetivo supera el umbral, fuera del intervalo de confianza
+    Entonces el sistema marca la versión como desviada del objetivo
 
   Escenario: Número de giros fuera de rango
     Cuando intento lanzar una simulación de más de 10.000.000 de giros
@@ -2188,7 +2283,7 @@ Característica: Simulación masiva de un juego
 
 ---
 
-### Historia de Usuario 3 — El operador resuelve una reclamación con el replay
+### Historia de Usuario HU-3 — El operador resuelve una reclamación con el replay
 
 > **Como** operador,
 > **quiero** localizar y reproducir visualmente una partida concreta de un jugador,
@@ -2235,7 +2330,7 @@ Característica: Auditoría y replay de una partida
 | **I**ndependiente | No depende de HU-1 ni HU-2; opera sobre partidas ya registradas (datos semilla o de QA). |
 | **N**egociable | La riqueza visual del *replay* es negociable; la fidelidad determinista no. |
 | **V**aliosa | Reduce el coste y el tiempo de resolución de disputas y respalda la transparencia ante la DGOJ. |
-| **E**stimable | Reutiliza el motor y el RNG (`createWithSeed`) ya definidos; alcance claro. |
+| **E**stimable | El replay **renderiza el `result` inmutable** ya guardado (no recalcula); alcance claro. |
 | **S**mall | La auditoría con filtros y el *replay* caben juntos en un sprint. |
 | **T**estable | El determinismo se verifica reproduciendo el mismo `roundId` y comparando resultados. |
 
@@ -2245,13 +2340,66 @@ Característica: Auditoría y replay de una partida
 
 ## 6. Tickets de trabajo
 
-> Documenta 3 de los tickets de trabajo principales del desarrollo, uno de backend, uno de frontend, y uno de bases de datos. Da todo el detalle requerido para desarrollar la tarea de inicio a fin teniendo en cuenta las buenas prácticas al respecto. 
+Se documentan **3 tickets principales** —uno de backend, uno de frontend y uno de base de datos—, los tres pertenecientes a **HU-1** (el flujo del giro), que es la historia que concentra el núcleo del producto. El **backlog completo** (40 tickets en 12 historias) vive en [`tickets/`](tickets/) con su índice y árboles de dependencias en [`tickets/tickets.md`](tickets/tickets.md); aquí se reproduce el detalle íntegro de los tres seleccionados.
 
-**Ticket 1**
+**Criterio de selección:** (1) cubrir las tres capas que pide el entregable (backend / frontend / BBDD); (2) **centralidad** — sostienen los pilares del producto: motor *data-driven*, cliente *data-driven* y modelo de datos auditable; (3) **riqueza como muestra** — criterios de aceptación sustanciales y decisiones técnicas no triviales (determinismo, cero-alloc, idempotencia/transaccionalidad, inmutabilidad); (4) **riesgo/esfuerzo representativo** (los de mayor SP de la historia central).
 
-**Ticket 2**
+> Convenciones: código `HU-N-EQUIPO-NN` · estimación en **Story Points** Fibonacci · *Dependencias directas* con reducción transitiva (las indirectas se alcanzan a través de ellas).
 
-**Ticket 3**
+### Ticket 1 — Backend · `HU-1-BE-01` · Motor de juego data-driven
+
+Fichero canónico: [`tickets/HU-1/HU-1-BE-01-...`](tickets/HU-1/HU-1-BE-01-motor-de-juego-data-driven.md).
+
+- **Descripción.** Implementar el **motor de juego** en `nova-domain` (Java 21 puro, sin Spring/JPA) con el diseño de **núcleo data-oriented + doble materialización** (readme [§2.1.7](#217-motor-de-juego-núcleo-data-oriented-y-doble-materialización)). Es el corazón compartido por la ruta de producción (`HU-1-BE-02`) y por el simulador (`HU-2-BE-01`); su rendimiento y determinismo son críticos. Piezas: **`GameCompiler` → `CompiledGame`** (compila el `config` JSON del [§3.3](#33-esquema-del-json-de-configuración-de-juego-game_configsconfig) a estructuras primitivas, cacheado por `configId`); **`SpinKernel`** (resuelve giro + cascada de free spins con *retrigger* usando solo primitivos, aritmética entera y **cero asignaciones por giro**, empujando cada giro a un `RoundSink`); puerto **`RoundSink`** (patrón *Visitor*).
+- **Criterios de aceptación.**
+  - AC1: con un `config` válido, `GameCompiler` produce un `CompiledGame` con símbolos como IDs `int` y reels/paylines/paytable en arrays primitivos.
+  - AC2: `SpinKernel` emite al `RoundSink` la ventana de símbolos, las paylines ganadoras, el premio (`long` céntimos = `Σ_líneas mult×lineBet + Σ_scatter mult×betCents`, con `lineBet = betCents/paylines.length`; ver [§3.3.3](#333-validación)), el nº de scatters y el multiplicador.
+  - AC3 (**determinismo**): mismo `seed` + `CompiledGame` ⇒ misma secuencia de giros, bit a bit.
+  - AC4 (**cero-alloc**): un test de *allocation* confirma que `SpinKernel.spin(...)` no asigna en *steady state*.
+  - AC5 (**aritmética entera**): el cálculo de premios usa `long`/`int`; sin `double` en el camino de decisión.
+  - AC6: `WILD` sustituye a los `REGULAR` declarados (nunca a `SCATTER`); con ≥ `minTriggerCount` scatters se emite la ronda completa de free spins (`bet=0`, multiplicador, *retrigger*). El premio de scatter opcional (`scatterPays`) es **independiente** del disparo de free spins.
+  - AC6b (evaluación, [§3.3.3](#333-validación)): cada payline paga el **mejor combo** (el `WILD` maximiza; línea de solo `WILD` paga el `REGULAR` top); rodillos **circulares** (*wrap*) con una `nextInt(len)` por reel en orden de columna; `retrigger` **ilimitado** y `multiplier` a todos los premios de la ronda.
+  - AC7: `CompiledGame` cacheado por `configId` y reutilizado por producción y simulador.
+  - AC8 (**golden-master**): corpus congelado `(seed, config) → result` que falla el build ante *drift* del motor.
+  - AC9: cero dependencias de Spring/JPA en `nova-domain` (ArchUnit).
+- **Prioridad:** Must Have · **Estimación:** 8 SP · **Equipo:** Backend.
+- **Etiquetas:** `backend`, `nova-domain`, `motor`, `data-oriented`, `performance`, `determinismo`, `gambling`.
+- **Dependencias directas:** `HU-1-DEV-01` (externa, esqueleto Maven/infra).
+- **Notas.** Ticket de **mayor riesgo técnico** del proyecto (habilita 10M/<10 min y el replay). El motor **no** calcula el RTP teórico de los juegos reales: ese objetivo (`rtp_target`) lo declara el matemático (ver C5 y HU-7).
+
+### Ticket 2 — Frontend · `HU-1-FE-01` · Componente `<SlotGame>` y spin
+
+Fichero canónico: [`tickets/HU-1/HU-1-FE-01-...`](tickets/HU-1/HU-1-FE-01-componente-slotgame-y-spin.md).
+
+- **Descripción.** Implementar el componente React **`<SlotGame config={...} />`** que renderiza **cualquier juego** interpretando su `config` ([§3.3](#33-esquema-del-json-de-configuración-de-juego-game_configsconfig)): rejilla `grid.cols × grid.rows`, símbolos desde `frontend/public/assets/<theme>/`, animación de giro, resaltado de paylines y cinemática de free spins. Incluye botón **Spin** y selector de apuesta; la invocación lleva cabecera `Idempotency-Key` (UUID en cliente) y el saldo se actualiza tras cada giro. El `config` lo obtiene del endpoint de detalle (`HU-5-BE-01`); el componente se reutiliza en la pantalla de Replay (`HU-3-FE-02`) mediante un *prop* `mode`.
+- **Criterios de aceptación.**
+  - AC1: dado un `config` 5x3, renderiza la rejilla con los símbolos de `view` en sus posiciones.
+  - AC2: al pulsar **Spin**, invoca `POST /player/games/{id}/spin` con `betCents`, `currency` e `Idempotency-Key`; anima el giro, resalta `winningPaylines` y actualiza el saldo.
+  - AC3: si `freeSpins.triggered`, reproduce la cinemática y anima cada `rounds[i]` secuencialmente.
+  - AC4: ante `422` "saldo insuficiente", muestra un mensaje sin alterar la rejilla.
+  - AC5: el componente es agnóstico al juego (solo cambian `config` y assets).
+  - AC6: expone un *prop* `mode="replay"` (sin botón de spin) para reutilización por HU-3.
+- **Prioridad:** Must Have · **Estimación:** 8 SP · **Equipo:** Frontend.
+- **Etiquetas:** `frontend`, `react`, `motor-ui`, `data-driven`, `reuso-componente`.
+- **Dependencias directas:** `HU-1-BE-02` (intra, endpoint del spin) · `HU-5-BE-01` (externa, endpoint de detalle/`config`) · `HU-4-FE-01` (externa, sesión autenticada). *No* depende del lobby (`HU-5-FE-01`): el enlace lobby→juego es enrutado.
+- **Notas.** El audio lo añade `HU-10-FE-01` y el auto-spin `HU-9-FE-01`; este ticket entrega el giro manual.
+
+### Ticket 3 — Base de datos · `HU-1-DB-01` · Esquema y migraciones Flyway
+
+Fichero canónico: [`tickets/HU-1/HU-1-DB-01-...`](tickets/HU-1/HU-1-DB-01-esquema-y-migraciones.md).
+
+- **Descripción.** Crear el **esquema completo** de PostgreSQL 18 y sus migraciones Flyway (modelo en el [§3](#3-modelo-de-datos)). Es la **fundación de datos** que presupone todo ticket de persistencia. Migraciones en `nova-web-api/src/main/resources/db/migration/`: **`V1__schema.sql`** (las 11 tablas con tipos, `CHECK`, PK `BIGSERIAL`, FK **con índice**, `UNIQUE` y el **GIN** sobre `game_configs.config`); **`V2__immutability_triggers.sql`** (función `fn_forbid_update_delete` + 4 triggers sobre las tablas histórico-regulatorias); **`V3__seed.sql`** (operador semilla, 3 juegos con su `config` y `rtp_target`, usuarios y saldos).
+- **Criterios de aceptación.**
+  - AC1: con volumen vacío, `docker compose up` aplica `V1`/`V2`/`V3` sin error y crea el esquema `novacasino` con las 11 tablas.
+  - AC2: se cumplen las *constraints* (dinero `BIGINT`, estados `CHECK IN`, `balance_cents >= 0`, `UNIQUE` declarados).
+  - AC3: toda columna FK tiene índice (o queda cubierta por prefijo de índice/constraint); existe el GIN sobre `game_configs.config`.
+  - AC4: cualquier `UPDATE`/`DELETE` sobre `game_rounds`, `wallet_transactions`, `game_configs` o `game_config_publications` **falla** por `fn_forbid_update_delete`.
+  - AC5: el seed crea los 3 juegos y los usuarios con sus saldos; los logins semilla funcionan.
+  - AC6 (**idempotencia Flyway**): re-arrancar no re-aplica ni duplica; una `V4` nueva aplica solo lo nuevo.
+- **Prioridad:** Must Have · **Estimación:** 5 SP · **Equipo:** DB.
+- **Etiquetas:** `bbdd`, `postgresql`, `flyway`, `ddl`, `triggers`, `inmutabilidad`, `seed`.
+- **Dependencias directas:** `HU-1-DEV-01` (externa, contenedor Postgres y arranque que dispara Flyway).
+- **Notas.** Extraído de `HU-1-DEV-01` para tener un ticket de BBDD explícito. El particionado de `game_rounds` queda fuera de v1 (PK simple).
 
 ---
 

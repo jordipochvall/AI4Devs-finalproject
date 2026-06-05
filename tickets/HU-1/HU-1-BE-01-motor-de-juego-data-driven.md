@@ -17,11 +17,12 @@ Piezas a entregar:
 
 ## Criterios de aceptación
 - **AC1**: Dado un `config` válido (apartado 3.3), `GameCompiler` produce un `CompiledGame` con símbolos como IDs `int`, reels/paylines/paytable en arrays primitivos.
-- **AC2**: `SpinKernel` resuelve un giro y emite al `RoundSink` la ventana de símbolos, las paylines ganadoras, el premio (`long` céntimos), el contador de scatters y el multiplicador.
+- **AC2**: `SpinKernel` resuelve un giro y emite al `RoundSink` la ventana de símbolos, las paylines ganadoras, el premio (`long` céntimos), el contador de scatters y el multiplicador. El **premio total** = `Σ_líneas (multiplicador × lineBet)` + `Σ_scatter (multiplicador × betCents)`, con `lineBet = betCents / paylines.length` (ver readme 3.3.3): el premio de línea se calcula sobre la **apuesta por línea** y el de scatter sobre la **apuesta total**.
 - **AC3**: **Determinismo** — con el mismo `seed` y `CompiledGame`, dos ejecuciones emiten exactamente la misma secuencia de giros (verificable bit a bit).
 - **AC4**: **Cero asignación por giro** — un test de *allocation* confirma que `SpinKernel.spin(...)` no asigna en el *steady state* (buffers reutilizados).
 - **AC5**: **Aritmética entera** — el cálculo de premios usa `long`/`int`; no hay `double` en el camino de decisión del resultado.
-- **AC6**: Los `WILD` sustituyen a los `REGULAR` declarados en `bonus.wild.substitutes` (nunca a `SCATTER`); con ≥ `minTriggerCount` scatters se emite la ronda completa de free spins (`bet=0`, multiplicador, *retrigger*).
+- **AC6**: Los `WILD` sustituyen a los `REGULAR` declarados en `bonus.wild.substitutes` (nunca a `SCATTER`); con ≥ `minTriggerCount` scatters se emite la ronda completa de free spins (`bet=0`, multiplicador, *retrigger*). El premio de scatter (campo opcional `scatterPays`, 3.3.1) es **independiente** del disparo de free spins: un recuento de scatter puede pagar premio sin disparar free spins, y viceversa.
+- **AC6b** (semántica de evaluación, ver 3.3.3): cada payline se evalúa izq→der desde la columna 0 y paga **el mejor combo** posible (el `WILD` maximiza; una línea de solo `WILD` paga el `REGULAR` de mayor valor, una vez por línea). Los rodillos son **circulares** (la ventana hace *wrap* módulo `len`), con una `nextInt(len)` por reel en orden de columna. El `retrigger` de free spins es **ilimitado** y el `multiplier` aplica a **todos** los premios de la ronda.
 - **AC7**: El `CompiledGame` se cachea por `configId` y se reutiliza entre giros y entre vías (producción/simulador).
 - **AC8**: Cero dependencias de Spring/JPA en `nova-domain` (verificable con ArchUnit, ver `HU-1-QA-01`).
 

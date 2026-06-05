@@ -14,27 +14,28 @@ Crear la infraestructura local de desarrollo y el pipeline base de CI, base sobr
 - **Multi-stage `Dockerfile`** en `backend/` y `frontend/`.
 - **GitHub Actions** `.github/workflows/ci.yml` con el *job* `build-test`: setup JDK 21 + Node 20, cache de Maven y pnpm, `mvn -B verify` y `pnpm install && pnpm test && pnpm build`, publicación de cobertura Jacoco como artefacto. Los *jobs* `perf` y `e2e` se añaden en `HU-2-DEV-01` y `HU-1-QA-01` respectivamente.
 
+> El **esquema y las migraciones Flyway** (su autoría y contenido) son de **`HU-1-DB-01`**; este ticket solo provee el contenedor Postgres y el arranque que las dispara.
+
 Ticket **transversal**: HU-2 y HU-3 lo consumen.
 
 ## Criterios de aceptación
 - **AC1**: `docker compose up --build` levanta los tres servicios desde un repo limpio; el healthcheck de `postgres` pasa antes de que arranque `api`.
 - **AC2**: La SPA es accesible en `http://localhost:5173/` y las peticiones `/api/v1/*` llegan correctamente al backend.
-- **AC3**: Las migraciones Flyway (`V1__schema.sql`, `V2__immutability_triggers.sql`, `V3__seed.sql`) se ejecutan al primer arranque sin error.
-- **AC4**: Los datos de semilla se crean: 3 juegos preconfigurados, 1 OPERATOR, 1 MATH_ANALYST y 3 PLAYER con 1.000 € de saldo virtual.
-- **AC5**: `docker compose down -v` elimina el volumen y permite repetir el arranque limpio.
-- **AC6**: El *job* `build-test` de GitHub Actions pasa en *pull request* y publica el reporte Jacoco como artefacto.
+- **AC3**: Al arrancar `api`, las migraciones Flyway de `HU-1-DB-01` se ejecutan automáticamente (este ticket garantiza el contenedor y el orden de arranque; el contenido de las migraciones es de `HU-1-DB-01`).
+- **AC4**: `docker compose down -v` elimina el volumen y permite repetir el arranque limpio.
+- **AC5**: El *job* `build-test` de GitHub Actions pasa en *pull request* y publica el reporte Jacoco como artefacto.
 
 ## Prioridad
 Must Have
 
 ## Estimación
-3 SP
+2 SP
 
 ## Equipo responsable
 DevOps
 
 ## Etiquetas
-`devops`, `docker`, `docker-compose`, `flyway`, `github-actions`, `ci`, `transversal`
+`devops`, `docker`, `docker-compose`, `github-actions`, `ci`, `transversal`
 
 ## Comentarios
 - **Dependencias directas:** ninguna — es el **ticket fundacional** (infra/CI). Casi todos los demás tickets dependen de él directa o transitivamente; a nivel de *historia* se trata como fundación (ver nota en [stories.md](../../stories/stories.md)).

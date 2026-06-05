@@ -4,15 +4,16 @@ Backlog de implementación del MVP: **39 tickets** repartidos en las 12 historia
 
 **Convenciones:** código `HU-N-EQUIPO-NN` · equipos **BE** (Backend), **FE** (Frontend), **QA**, **DEV** (DevOps/Plataforma) · estimación en **Story Points** Fibonacci (1, 2, 3, 5, 8, 13).
 
-## HU-1 — El jugador realiza un giro (29 SP)
+## HU-1 — El jugador realiza un giro (33 SP)
 
 | Código | Título | Equipo | SP |
 |---|---|---|---|
 | [HU-1-BE-01](HU-1/HU-1-BE-01-motor-de-juego-data-driven.md) | Motor de juego data-driven | Backend | 8 |
 | [HU-1-BE-02](HU-1/HU-1-BE-02-spinusecase-idempotencia-endpoint.md) | SpinUseCase, idempotencia y endpoint `/spin` | Backend | 5 |
+| [HU-1-DB-01](HU-1/HU-1-DB-01-esquema-y-migraciones.md) | Esquema y migraciones Flyway | DB | 5 |
 | [HU-1-FE-01](HU-1/HU-1-FE-01-componente-slotgame-y-spin.md) | Componente `<SlotGame>` y spin | Frontend | 8 |
 | [HU-1-QA-01](HU-1/HU-1-QA-01-tests-flujo-de-juego.md) | Suite de tests del flujo de juego | QA | 5 |
-| [HU-1-DEV-01](HU-1/HU-1-DEV-01-docker-compose-y-pipeline-ci.md) | Docker Compose y pipeline CI | DevOps | 3 |
+| [HU-1-DEV-01](HU-1/HU-1-DEV-01-docker-compose-y-pipeline-ci.md) | Docker Compose y pipeline CI | DevOps | 2 |
 
 ## HU-2 — El matemático valida un juego con el simulador (18 SP)
 
@@ -105,16 +106,16 @@ Backlog de implementación del MVP: **39 tickets** repartidos en las 12 historia
 
 ## Resumen
 
-**Total: 39 tickets · 125 SP.**
+**Total: 40 tickets · 129 SP.**
 
 | Por historia | SP | | Por equipo | Tickets | SP |
 |---|---|---|---|---|---|
-| HU-1 | 29 | | Backend (BE) | 12 | 49 |
+| HU-1 | 33 | | Backend (BE) | 12 | 49 |
 | HU-2 | 18 | | Frontend (FE) | 13 | 44 |
 | HU-3 | 15 | | QA | 12 | 27 |
-| HU-4 | 10 | | DevOps (DEV) | 2 | 5 |
-| HU-5 | 6 | | **Total** | **39** | **125** |
-| HU-6 | 8 | | | | |
+| HU-4 | 10 | | DB | 1 | 5 |
+| HU-5 | 6 | | DevOps (DEV) | 2 | 4 |
+| HU-6 | 8 | | **Total** | **40** | **129** |
 | HU-7 | 10 | | | | |
 | HU-8 | 9 | | | | |
 | HU-9 | 5 | | | | |
@@ -122,7 +123,7 @@ Backlog de implementación del MVP: **39 tickets** repartidos en las 12 historia
 | HU-11 | 7 | | | | |
 | HU-12 | 4 | | | | |
 
-> **Nota sobre el trabajo de base de datos:** no existe un equipo/ticket "DB" dedicado; el trabajo de BBDD (esquema y migraciones Flyway `V1`/`V2`/`V3`, triggers de inmutabilidad, índices) reside hoy en **`HU-1-DEV-01`**, con persistencia transaccional en **`HU-1-BE-02`** y versionado/índices en **`HU-7-BE-01`** y **`HU-3-BE-01`**. Si se quisiera un ticket de BBDD explícito, el candidato natural es extraer de `HU-1-DEV-01` un `HU-1-DB-01 — Esquema y migraciones Flyway`.
+> **Nota sobre el trabajo de base de datos:** el ticket de BBDD es **`HU-1-DB-01` — Esquema y migraciones Flyway** (`V1` esquema/índices, `V2` triggers de inmutabilidad, `V3` seed), **fundación de datos** que presupone todo ticket de persistencia. La infra que lo ejecuta (contenedor Postgres + arranque) es de `HU-1-DEV-01`; la persistencia transaccional se construye en `HU-1-BE-02`, y el versionado/índices específicos del editor en `HU-7-BE-01`. Los demás tickets de persistencia (`HU-5-BE-01`, `HU-6-BE-01`, `HU-2-BE-02`, `HU-3-BE-01/02`, `HU-8-BE-01`) **asumen** el esquema como fundación, igual que la infra.
 
 ---
 
@@ -136,6 +137,7 @@ Un sub-diagrama por historia. Aristas `A → B` = "**A depende de B**" (directas
 ```mermaid
 flowchart TD
     DEV01["HU-1-DEV-01 · infra/CI (raíz)"]
+    DB01["HU-1-DB-01 · esquema + migraciones"]
     BE01["HU-1-BE-01 · motor (SpinKernel)"]
     BE02["HU-1-BE-02 · spin + idempotencia"]
     FE01["HU-1-FE-01 · &lt;SlotGame&gt;"]
@@ -143,8 +145,10 @@ flowchart TD
     x4BE["HU-4-BE-01 · auth (ext)"]
     x5BE["HU-5-BE-01 · catálogo/config (ext)"]
     x4FE["HU-4-FE-01 · sesión (ext)"]
+    DB01 --> DEV01
     BE01 --> DEV01
     BE02 --> BE01
+    BE02 --> DB01
     BE02 --> x4BE
     FE01 --> BE02
     FE01 --> x5BE
