@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.novacasino</groupId>
+        <artifactId>novacasino-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>nova-application</artifactId>
+    <name>nova-application</name>
+    <description>Casos de uso: orquestación de dominio y puertos</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.novacasino</groupId>
+            <artifactId>nova-domain</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.novacasino</groupId>
+            <artifactId>nova-common</artifactId>
+        </dependency>
+        <!-- Anotaciones transaccionales sin implementación (la provee Spring en infra) -->
+        <dependency>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/player/auth/LoginPage.tsx","./src/player/auth/RegisterPage.tsx","./src/shared/api/axiosClient.ts","./src/shared/auth/ProtectedRoute.tsx","./src/shared/auth/authApi.ts","./src/shared/auth/authStore.ts","./src/shared/i18n/LanguageSwitcher.tsx","./src/shared/i18n/i18n.ts"],"version":"5.9.3"}

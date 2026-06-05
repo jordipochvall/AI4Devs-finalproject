@@ -1,0 +1,11 @@
+{
+  "lobby": {
+    "title": "Sala de juegos",
+    "balance": "Saldo",
+    "underConstruction": "En construcción — próximas HU."
+  },
+  "game": {
+    "title": "Juego",
+    "underConstruction": "En construcción — próximas HU."
+  }
+}

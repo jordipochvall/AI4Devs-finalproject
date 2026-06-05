@@ -1,0 +1,42 @@
+{
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "email": "Email address",
+      "password": "Password",
+      "submit": "Sign in",
+      "noAccount": "Don't have an account? Register",
+      "ageWarning": "+18 · This service is intended exclusively for adults aged 18 and over.",
+      "responsibleGaming": "Play responsibly. If gambling stops being fun, seek help."
+    },
+    "register": {
+      "title": "Create account",
+      "email": "Email address",
+      "password": "Password (minimum 8 characters)",
+      "birthDate": "Date of birth",
+      "locale": "Language",
+      "submit": "Register",
+      "hasAccount": "Already have an account? Sign in"
+    },
+    "errors": {
+      "emailRequired": "Email address is required.",
+      "emailInvalid": "Please enter a valid email address.",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "birthDateRequired": "Date of birth is required.",
+      "invalidCredentials": "Incorrect email or password.",
+      "emailAlreadyRegistered": "This email address is already registered.",
+      "underAge": "You must be at least 18 years old to register.",
+      "unknownError": "An unexpected error occurred. Please try again."
+    }
+  },
+  "common": {
+    "loading": "Loading…",
+    "logout": "Sign out",
+    "dgoj": "Operator authorised by DGOJ"
+  },
+  "language": {
+    "label": "Language",
+    "es": "Español",
+    "en": "English"
+  }
+}

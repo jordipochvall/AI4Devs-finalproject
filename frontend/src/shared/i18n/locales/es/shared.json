@@ -1,0 +1,42 @@
+{
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Entrar",
+      "noAccount": "¿No tienes cuenta? Regístrate",
+      "ageWarning": "+18 · Este servicio está destinado exclusivamente a mayores de 18 años.",
+      "responsibleGaming": "Juega con responsabilidad. Si el juego deja de ser entretenimiento, pide ayuda."
+    },
+    "register": {
+      "title": "Crear cuenta",
+      "email": "Correo electrónico",
+      "password": "Contraseña (mínimo 8 caracteres)",
+      "birthDate": "Fecha de nacimiento",
+      "locale": "Idioma",
+      "submit": "Registrarse",
+      "hasAccount": "¿Ya tienes cuenta? Inicia sesión"
+    },
+    "errors": {
+      "emailRequired": "El correo electrónico es obligatorio.",
+      "emailInvalid": "El formato del correo no es válido.",
+      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+      "birthDateRequired": "La fecha de nacimiento es obligatoria.",
+      "invalidCredentials": "Correo o contraseña incorrectos.",
+      "emailAlreadyRegistered": "Este correo ya está registrado.",
+      "underAge": "Debes tener al menos 18 años para registrarte.",
+      "unknownError": "Ha ocurrido un error inesperado. Inténtalo de nuevo."
+    }
+  },
+  "common": {
+    "loading": "Cargando…",
+    "logout": "Cerrar sesión",
+    "dgoj": "Operador autorizado por la DGOJ"
+  },
+  "language": {
+    "label": "Idioma",
+    "es": "Español",
+    "en": "English"
+  }
+}

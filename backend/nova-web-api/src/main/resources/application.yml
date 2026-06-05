@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: novacasino-api
+
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    use-code-as-default-message: false  # falla ruidosamente si falta una clave
+
+  mvc:
+    problem-details:
+      enabled: true  # RFC 9457 ProblemDetail para excepciones Spring MVC estándar
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/novacasino}
+    username: ${SPRING_DATASOURCE_USERNAME:novacasino}
+    password: ${SPRING_DATASOURCE_PASSWORD:novacasino}
+    hikari:
+      maximum-pool-size: 10
+
+  jpa:
+    hibernate:
+      ddl-auto: none   # Flyway gestiona el schema; no hay entidades JPA que validar todavía
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+  security:
+    filter:
+      order: 10
+
+server:
+  port: 8080
+  error:
+    include-message: always
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    ttl-seconds: ${JWT_TTL_SECONDS:3600}
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${ANTHROPIC_MODEL:claude-haiku-4-5}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  structured:
+    format:
+      console: logstash

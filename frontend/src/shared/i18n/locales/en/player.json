@@ -1,0 +1,11 @@
+{
+  "lobby": {
+    "title": "Game lobby",
+    "balance": "Balance",
+    "underConstruction": "Under construction — upcoming user stories."
+  },
+  "game": {
+    "title": "Game",
+    "underConstruction": "Under construction — upcoming user stories."
+  }
+}
