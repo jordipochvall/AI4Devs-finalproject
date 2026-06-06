@@ -2,5 +2,23 @@
   "backoffice": {
     "title": "Math backoffice",
     "underConstruction": "Under construction — upcoming user stories."
+  },
+  "editor": {
+    "title": "Math editor",
+    "selectGame": "Game",
+    "selectGamePlaceholder": "Select a game…",
+    "activeVersion": "Active version",
+    "configLabel": "Configuration (JSON, section 3.3)",
+    "rtpTarget": "Target RTP (0–1)",
+    "volatilityTarget": "Target volatility (optional)",
+    "notes": "Notes (optional)",
+    "save": "Save new version",
+    "saving": "Saving…",
+    "loading": "Loading…",
+    "invalidJson": "The configuration JSON is not valid.",
+    "rtpRange": "Target RTP must be between 0 and 1.",
+    "saved": "Version {{version}} created with target RTP {{rtp}}.",
+    "errorsTitle": "The backend rejected the configuration:",
+    "genericError": "Could not save the configuration."
   }
 }

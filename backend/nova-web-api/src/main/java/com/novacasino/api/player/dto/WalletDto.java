@@ -1,6 +1,6 @@
 package com.novacasino.api.player.dto;
 
-/** Saldo virtual del jugador. */
+/** Player's virtual balance. */
 public record WalletDto(
         long   balanceCents,
         String currency

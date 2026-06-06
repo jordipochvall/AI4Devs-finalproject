@@ -2,5 +2,23 @@
   "backoffice": {
     "title": "Backoffice matemático",
     "underConstruction": "En construcción — próximas HU."
+  },
+  "editor": {
+    "title": "Editor de matemática",
+    "selectGame": "Juego",
+    "selectGamePlaceholder": "Selecciona un juego…",
+    "activeVersion": "Versión activa",
+    "configLabel": "Configuración (JSON, apartado 3.3)",
+    "rtpTarget": "RTP objetivo (0–1)",
+    "volatilityTarget": "Volatilidad objetivo (opcional)",
+    "notes": "Notas (opcional)",
+    "save": "Guardar nueva versión",
+    "saving": "Guardando…",
+    "loading": "Cargando…",
+    "invalidJson": "El JSON de configuración no es válido.",
+    "rtpRange": "El RTP objetivo debe estar entre 0 y 1.",
+    "saved": "Versión {{version}} creada con RTP objetivo {{rtp}}.",
+    "errorsTitle": "El backend rechazó la configuración:",
+    "genericError": "No se pudo guardar la configuración."
   }
 }

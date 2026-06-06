@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+/** Authenticated user data kept in the session store. */
 export interface AuthUser {
   id: number
   email: string
@@ -16,6 +17,7 @@ interface AuthState {
   isAuthenticated: () => boolean
 }
 
+/** Session store (token + user) persisted to localStorage under the "nova-auth" key. */
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -29,12 +31,12 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: () => !!get().token,
     }),
     {
-      name: 'nova-auth',  // clave en localStorage
-    }
-  )
+      name: 'nova-auth',
+    },
+  ),
 )
 
-/** Devuelve la ruta de inicio según el rol del usuario autenticado. */
+/** Returns the home route for an authenticated user's role. */
 export const roleHomeRoute = (role: string): string => {
   switch (role) {
     case 'OPERATOR':     return '/operator'

@@ -1,6 +1,6 @@
 package com.novacasino.domain.user;
 
-/** Roles soportados por la plataforma. Mapeados como VARCHAR en BBDD (no ENUM nativo PG). */
+/** Platform roles. Persisted as VARCHAR + CHECK in the database (not a native PG enum). */
 public enum UserRole {
     PLAYER,
     OPERATOR,

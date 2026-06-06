@@ -1,8 +1,8 @@
 package com.novacasino.api.player.exception;
 
-/** Juego inexistente o inactivo — 404. */
+/** Game not found or inactive — 404. */
 public class GameNotFoundException extends RuntimeException {
-    public GameNotFoundException(Long gameId) {
-        super("Juego no encontrado o inactivo: " + gameId);
+    public GameNotFoundException(final Long gameId) {
+        super("Game not found or inactive: " + gameId);
     }
 }

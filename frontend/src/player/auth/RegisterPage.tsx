@@ -7,6 +7,7 @@ import { useAuthStore, roleHomeRoute } from '../../shared/auth/authStore'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
 import './auth.css'
 
+/** Registration screen: client-side validation, server error mapping and auto-login on success. */
 export default function RegisterPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -22,6 +23,7 @@ export default function RegisterPage() {
   const [passwordError, setPasswordError]   = useState<string | null>(null)
   const [birthDateError, setBirthDateError] = useState<string | null>(null)
 
+  /** Validates email, password length and birth date on the client. */
   const validate = () => {
     let ok = true
     if (!email) {
@@ -48,6 +50,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
+      // Register with the active UI language as the user's locale.
       const locale = i18n.language?.slice(0, 2) ?? 'es'
       const resp = await authApi.register({ email, password, birthDate, locale })
       setAuth(resp.token, resp.user)

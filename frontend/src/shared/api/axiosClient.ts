@@ -2,23 +2,24 @@ import axios from 'axios'
 import { useAuthStore } from '../auth/authStore'
 import i18n from '../i18n/i18n'
 
+/** Axios instance for the API, pre-configured with auth and language interceptors. */
 const api = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Añade el JWT a todas las peticiones si hay sesión activa
+// Attach the JWT to every request when there is an active session.
 api.interceptors.request.use(config => {
   const token = useAuthStore.getState().token
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
-  // AC5: propaga el idioma activo de i18n (refleja la conmutación en caliente)
+  // Propagate the active i18n language (reflects hot switching).
   config.headers['Accept-Language'] = i18n.language?.slice(0, 2) ?? 'es'
   return config
 })
 
-// 401 con token activo → la sesión expiró; limpia y redirige a /login
+// On 401 with an active token the session expired: clear it and redirect to /login.
 api.interceptors.response.use(
   response => response,
   error => {
@@ -30,7 +31,7 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error)
-  }
+  },
 )
 
 export default api

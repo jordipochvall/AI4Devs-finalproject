@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 /**
  * Suite E2E de NovaCasino Studio.
  * Arranca el stack completo con docker-compose antes de ejecutar.
- * Se añade como job 'e2e' en CI en el ticket HU-1-QA-01.
+ * Wired as the 'e2e' CI job in ticket HU-1-QA-01.
  */
 export default defineConfig({
   testDir: './tests',

@@ -22,8 +22,8 @@ import java.time.LocalDate;
 import java.time.Period;
 
 /**
- * Casos de uso de autenticación: registro (+ wallet) y login.
- * En MVP single-tenant resuelve siempre al operador 'novacasino-default'.
+ * Authentication use cases: registration (with wallet) and login.
+ * In the single-tenant MVP it always resolves to the 'novacasino-default' operator.
  */
 @Service
 public class AuthService {
@@ -36,11 +36,11 @@ public class AuthService {
     private final PasswordEncoder       passwordEncoder;
     private final JwtService            jwtService;
 
-    public AuthService(UserJpaRepository userRepo,
-                       WalletJpaRepository walletRepo,
-                       OperatorJpaRepository operatorRepo,
-                       PasswordEncoder passwordEncoder,
-                       JwtService jwtService) {
+    public AuthService(final UserJpaRepository userRepo,
+                       final WalletJpaRepository walletRepo,
+                       final OperatorJpaRepository operatorRepo,
+                       final PasswordEncoder passwordEncoder,
+                       final JwtService jwtService) {
         this.userRepo        = userRepo;
         this.walletRepo      = walletRepo;
         this.operatorRepo    = operatorRepo;
@@ -48,22 +48,22 @@ public class AuthService {
         this.jwtService      = jwtService;
     }
 
-    /** Registra un jugador y crea su wallet (saldo 0) en la misma transacción. */
+    /** Registers a player and creates their wallet (zero balance) in the same transaction. */
     @Transactional
-    public AuthResponse register(RegisterRequest req) {
-        // AC1: verificar mayoría de edad (DGOJ)
+    public AuthResponse register(final RegisterRequest req) {
+        // AC1: enforce minimum age (DGOJ)
         if (Period.between(req.birthDate(), LocalDate.now()).getYears() < 18) {
             throw new AgeVerificationException();
         }
 
-        Long operatorId = defaultOperatorId();
+        final Long operatorId = defaultOperatorId();
 
-        // 409 si el email ya existe en este operador
+        // 409 if the email already exists within this operator
         if (userRepo.existsByOperatorIdAndEmail(operatorId, req.email())) {
             throw new EmailAlreadyRegisteredException(req.email());
         }
 
-        // Crear usuario — password hasheado con BCrypt cost 12 (AC6)
+        // Create the user — password hashed with BCrypt cost 12 (AC6)
         UserEntity user = new UserEntity();
         user.setOperatorId(operatorId);
         user.setEmail(req.email());
@@ -73,30 +73,30 @@ public class AuthService {
         user.setLocale(req.locale() != null && !req.locale().isBlank() ? req.locale() : "es");
         user = userRepo.save(user);
 
-        // Crear wallet con saldo 0 (AC2 implícito; §3.2.3)
-        WalletEntity wallet = new WalletEntity();
+        // Create the wallet with zero balance (§3.2.3)
+        final WalletEntity wallet = new WalletEntity();
         wallet.setOperatorId(operatorId);
         wallet.setUserId(user.getId());
         wallet.setBalanceCents(0L);
         walletRepo.save(wallet);
 
-        String token = jwtService.generateToken(user);
+        final String token = jwtService.generateToken(user);
         return toAuthResponse(token, user);
     }
 
-    /** Autentica cualquier rol (jugador, operador, matemático). */
+    /** Authenticates any role (player, operator, math analyst). */
     @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest req) {
-        Long operatorId = defaultOperatorId();
+    public AuthResponse login(final LoginRequest req) {
+        final Long operatorId = defaultOperatorId();
 
-        UserEntity user = userRepo.findByOperatorIdAndEmail(operatorId, req.email())
+        final UserEntity user = userRepo.findByOperatorIdAndEmail(operatorId, req.email())
                 .orElseThrow(InvalidCredentialsException::new);
 
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
 
-        String token = jwtService.generateToken(user);
+        final String token = jwtService.generateToken(user);
         return toAuthResponse(token, user);
     }
 
@@ -104,12 +104,12 @@ public class AuthService {
 
     private Long defaultOperatorId() {
         return operatorRepo.findByCode(DEFAULT_OPERATOR_CODE)
-                .orElseThrow(() -> new IllegalStateException("Operador por defecto no encontrado"))
+                .orElseThrow(() -> new IllegalStateException("Default operator not found"))
                 .getId();
     }
 
-    private AuthResponse toAuthResponse(String token, UserEntity user) {
-        UserDto userDto = new UserDto(user.getId(), user.getEmail(),
+    private AuthResponse toAuthResponse(final String token, final UserEntity user) {
+        final UserDto userDto = new UserDto(user.getId(), user.getEmail(),
                 user.getRole().name(), user.getLocale());
         return new AuthResponse(token, jwtService.getTtlSeconds(), userDto);
     }

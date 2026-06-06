@@ -2,7 +2,7 @@ package com.novacasino.api.player.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-/** Detalle del juego + su `config` activa (apartado 3.3) para renderizar el {@code <SlotGame>}. */
+/** Game detail plus its active config (§3.3) used to render the {@code <SlotGame>}. */
 public record GameDetailDto(
         Long     id,
         String   name,

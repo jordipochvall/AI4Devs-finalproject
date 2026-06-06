@@ -2,13 +2,12 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from './authStore'
 
 interface Props {
-  /** Si se especifica, el usuario debe tener exactamente este rol. */
+  /** If set, the user must have exactly this role. */
   role?: string
 }
 
 /**
- * Protege rutas autenticadas. Sin token → /login.
- * Con rol incorrecto → ruta de inicio del rol del usuario.
+ * Guards authenticated routes. No token → /login. Wrong role → the user's role home route.
  */
 export default function ProtectedRoute({ role }: Props) {
   const { token, user } = useAuthStore()

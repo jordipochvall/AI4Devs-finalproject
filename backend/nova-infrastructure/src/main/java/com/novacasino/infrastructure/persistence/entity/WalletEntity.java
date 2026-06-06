@@ -3,8 +3,11 @@ package com.novacasino.infrastructure.persistence.entity;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
-// updated_at se gestiona vía @PrePersist/@PreUpdate; no depende de DEFAULT NOW() de la DB.
-
+/**
+ * Wallet JPA entity. One row per player; balance in cents. Uses optimistic locking
+ * ({@code @Version}) to prevent lost updates between spin and operator recharge.
+ * {@code updated_at} is managed via {@code @PrePersist}/{@code @PreUpdate}.
+ */
 @Entity
 @Table(name = "wallets")
 public class WalletEntity {
@@ -32,6 +35,7 @@ public class WalletEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
+    /** Keeps {@code updated_at} current on insert and update. */
     @PrePersist
     @PreUpdate
     void touch() { updatedAt = OffsetDateTime.now(); }
@@ -45,8 +49,8 @@ public class WalletEntity {
     public long getVersion()        { return version; }
 
     // --- Setters ---
-    public void setOperatorId(Long operatorId)  { this.operatorId = operatorId; }
-    public void setUserId(Long userId)          { this.userId = userId; }
-    public void setBalanceCents(long cents)     { this.balanceCents = cents; }
-    public void setCurrency(String currency)    { this.currency = currency; }
+    public void setOperatorId(final Long operatorId) { this.operatorId = operatorId; }
+    public void setUserId(final Long userId)         { this.userId = userId; }
+    public void setBalanceCents(final long cents)    { this.balanceCents = cents; }
+    public void setCurrency(final String currency)   { this.currency = currency; }
 }

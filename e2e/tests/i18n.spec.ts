@@ -1,36 +1,36 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * HU-11-QA-01 · AC1 — conmutación de idioma en caliente y persistencia.
- * Requiere el stack levantado (docker compose up); baseURL = http://localhost:5173.
+ * HU-11-QA-01 · AC1 — hot language switching and persistence.
+ * Requires the stack running (docker compose up); baseURL = http://localhost:5173.
  */
-test.describe('i18n — conmutación y persistencia', () => {
+test.describe('i18n — switching and persistence', () => {
 
-  test('cambia el idioma sin recargar y persiste tras recargar', async ({ page }) => {
+  test('switches language without reload and persists after reload', async ({ page }) => {
     await page.goto('/login')
 
-    // Forzamos ES de forma explícita (no dependemos del idioma del navegador)
+    // Force ES explicitly (do not depend on the browser language).
     await page.getByRole('button', { name: 'ES' }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Iniciar sesión')
 
-    // Conmutación a EN: el texto cambia al instante, sin recarga (AC2 de HU-11-FE)
+    // Switch to EN: the text changes instantly, without reload (AC2 of HU-11-FE).
     await page.getByRole('button', { name: 'EN' }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in')
 
-    // Persistencia: tras recargar sigue en EN (AC3 de HU-11-FE)
+    // Persistence: after a reload it is still EN (AC3 of HU-11-FE).
     await page.reload()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in')
   })
 
-  test('no quedan claves i18n sin resolver en la pantalla de login', async ({ page }) => {
+  test('no unresolved i18n keys remain on the login screen', async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('button', { name: 'EN' }).click()
 
     const bodyText = await page.locator('body').innerText()
-    // Una clave sin resolver aparecería como "auth.login.title" o "shared:..." en pantalla
+    // An unresolved key would show as "auth.login.title" or "shared:..." on screen.
     expect(bodyText).not.toMatch(/auth\.login\./)
     expect(bodyText).not.toMatch(/[a-z]+:[a-z]+\./)
-    // Y el texto traducido debe estar presente
+    // And the translated text must be present.
     expect(bodyText).toContain('Sign in')
   })
 })

@@ -2,7 +2,7 @@ package com.novacasino.api.player.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-/** Resumen de un juego para el lobby (sin exponer la matemática completa). */
+/** Lobby summary of a game (without exposing the full math). */
 public record GameSummaryDto(
         Long     id,
         String   name,

@@ -17,9 +17,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 
 /**
- * Crea y valida JWT Bearer tokens (HS256).
- * El JWT_SECRET se normaliza a 256 bits via SHA-256 para tolerar valores cortos en dev.
- * En producción usar un secreto de mínimo 32 bytes de entropía.
+ * Creates and validates JWT Bearer tokens (HS256). The JWT secret is normalised to 256 bits
+ * via SHA-256 so short values still work in development. In production use a secret with at
+ * least 32 bytes of entropy.
  */
 @Service
 public class JwtService {
@@ -32,9 +32,10 @@ public class JwtService {
     @Value("${app.jwt.ttl-seconds}")
     private long ttlSeconds;
 
-    public String generateToken(UserEntity user) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + ttlSeconds * 1000L);
+    /** Issues a signed JWT carrying the user's id (subject), email and role. */
+    public String generateToken(final UserEntity user) {
+        final Date now = new Date();
+        final Date expiry = new Date(now.getTime() + ttlSeconds * 1000L);
 
         return Jwts.builder()
                 .subject(user.getId().toString())
@@ -46,22 +47,26 @@ public class JwtService {
                 .compact();
     }
 
-    public String extractEmail(String token) {
+    /** Extracts the email claim from a token (no validity check). */
+    public String extractEmail(final String token) {
         return parseClaims(token).get("email", String.class);
     }
 
-    public boolean isValid(String token) {
+    /** Returns whether the token's signature is valid and it has not expired. */
+    public boolean isValid(final String token) {
         try {
-            Claims claims = parseClaims(token);
+            final Claims claims = parseClaims(token);
             return claims.getExpiration().after(new Date());
-        } catch (JwtException | IllegalArgumentException e) {
+        } catch (final JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
-    public long getTtlSeconds() { return ttlSeconds; }
+    public long getTtlSeconds() {
+        return ttlSeconds;
+    }
 
-    private Claims parseClaims(String token) {
+    private Claims parseClaims(final String token) {
         return Jwts.parser()
                 .verifyWith(signingKey())
                 .build()
@@ -69,19 +74,18 @@ public class JwtService {
                 .getPayload();
     }
 
+    /** Derives a 256-bit HMAC key from the configured secret via SHA-256. */
     private SecretKey signingKey() {
         try {
-            // SHA-256 del secreto → siempre 256 bits independientemente de su longitud.
-            // Suficiente para dev; en producción usar un secreto de ≥32 bytes de entropía.
-            byte[] raw = secret.getBytes(StandardCharsets.UTF_8);
+            final byte[] raw = secret.getBytes(StandardCharsets.UTF_8);
             if (raw.length < 32) {
-                log.warn("JWT_SECRET es más corto de 32 bytes; se recomienda una longitud mayor en producción.");
+                log.warn("JWT_SECRET is shorter than 32 bytes; use a longer secret in production.");
             }
-            MessageDigest sha = MessageDigest.getInstance("SHA-256");
-            byte[] keyBytes = sha.digest(raw);
+            final MessageDigest sha = MessageDigest.getInstance("SHA-256");
+            final byte[] keyBytes = sha.digest(raw);
             return new SecretKeySpec(keyBytes, "HmacSHA256");
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 no disponible", e);
+        } catch (final NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
         }
     }
 }

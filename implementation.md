@@ -43,35 +43,35 @@
 
 ---
 
-## ⬜ HU-5 — Lobby y saldo del jugador *(6 SP · siguiente)*
+## ✅ HU-5 — Lobby y saldo del jugador *(6 SP · completado)*
 
 > Depende de HU-4. Es prerequisito de HU-1.
 
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-5-BE-01](tickets/HU-5/HU-5-BE-01-endpoints-catalogo-y-wallet.md) — Endpoints de catálogo y wallet | BE | 2 |
-| [HU-5-FE-01](tickets/HU-5/HU-5-FE-01-lobby-y-saldo.md) — Lobby y saldo | FE | 2 |
-| [HU-5-QA-01](tickets/HU-5/HU-5-QA-01-tests-lobby-y-saldo.md) — Tests de lobby y saldo | QA | 2 |
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-5-BE-01](tickets/HU-5/HU-5-BE-01-endpoints-catalogo-y-wallet.md) — Endpoints de catálogo y wallet | BE | 2 | ✅ |
+| [HU-5-FE-01](tickets/HU-5/HU-5-FE-01-lobby-y-saldo.md) — Lobby y saldo | FE | 2 | ✅ |
+| [HU-5-QA-01](tickets/HU-5/HU-5-QA-01-tests-lobby-y-saldo.md) — Tests de lobby y saldo | QA | 2 | ✅ |
 
-## ⬜ HU-6 — Gestión y recarga de jugadores *(8 SP)*
+## ✅ HU-6 — Gestión y recarga de jugadores *(8 SP · completado)*
 
 > Depende de HU-4.
 
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-6-BE-01](tickets/HU-6/HU-6-BE-01-endpoints-jugadores-y-recarga.md) — Endpoints de jugadores y recarga idempotente | BE | 3 |
-| [HU-6-FE-01](tickets/HU-6/HU-6-FE-01-backoffice-operador-recarga.md) — Backoffice operador: búsqueda y recarga | FE | 3 |
-| [HU-6-QA-01](tickets/HU-6/HU-6-QA-01-tests-recarga.md) — Tests de gestión y recarga | QA | 2 |
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-6-BE-01](tickets/HU-6/HU-6-BE-01-endpoints-jugadores-y-recarga.md) — Endpoints de jugadores y recarga idempotente | BE | 3 | ✅ |
+| [HU-6-FE-01](tickets/HU-6/HU-6-FE-01-backoffice-operador-recarga.md) — Backoffice operador: búsqueda y recarga | FE | 3 | ✅ |
+| [HU-6-QA-01](tickets/HU-6/HU-6-QA-01-tests-recarga.md) — Tests de gestión y recarga | QA | 2 | ✅ |
 
-## ⬜ HU-7 — Edición y versionado de matemática *(10 SP)*
+## ✅ HU-7 — Edición y versionado de matemática *(10 SP · completado)*
 
 > Depende de HU-4. Es prerequisito de HU-2 (el simulador necesita `game_configs`).
 
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-7-BE-01](tickets/HU-7/HU-7-BE-01-endpoints-edicion-y-versionado-config.md) — Endpoints edición/versionado de `config` | BE | 5 |
-| [HU-7-FE-01](tickets/HU-7/HU-7-FE-01-editor-de-matematica.md) — Editor de matemática | FE | 3 |
-| [HU-7-QA-01](tickets/HU-7/HU-7-QA-01-tests-versionado-e-invariantes.md) — Tests de versionado e invariantes | QA | 2 |
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-7-BE-01](tickets/HU-7/HU-7-BE-01-endpoints-edicion-y-versionado-config.md) — Endpoints edición/versionado de `config` | BE | 5 | ✅ |
+| [HU-7-FE-01](tickets/HU-7/HU-7-FE-01-editor-de-matematica.md) — Editor de matemática | FE | 3 | ✅ |
+| [HU-7-QA-01](tickets/HU-7/HU-7-QA-01-tests-versionado-e-invariantes.md) — Tests de versionado e invariantes | QA | 2 | ✅ |
 
 ## ⬜ HU-12 — Juego responsable y sello DGOJ *(4 SP)*
 
@@ -155,10 +155,10 @@
 | Fundaciones | 7 | 7 | ✅ |
 | HU-11 | 7 | 14 | ✅ |
 | HU-4 | 10 | 24 | ✅ |
-| HU-5 | 6 | 30 | ⬜ siguiente |
-| HU-6 | 8 | 38 | ⬜ |
-| HU-7 | 10 | 48 | ⬜ |
-| HU-12 | 4 | 52 | ⬜ |
+| HU-5 | 6 | 30 | ✅ |
+| HU-6 | 8 | 38 | ✅ |
+| HU-7 | 10 | 48 | ✅ |
+| HU-12 | 4 | 52 | ⬜ siguiente |
 | HU-1 (resto) | 26 | 78 | ⬜ |
 | HU-2 | 18 | 96 | ⬜ |
 | HU-3 | 15 | 111 | ⬜ |

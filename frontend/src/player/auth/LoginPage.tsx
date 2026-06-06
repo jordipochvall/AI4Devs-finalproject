@@ -7,6 +7,7 @@ import { useAuthStore, roleHomeRoute } from '../../shared/auth/authStore'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
 import './auth.css'
 
+/** Login screen: client-side validation, server error handling and role-based redirect. */
 export default function LoginPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -17,10 +18,10 @@ export default function LoginPage() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [loading, setLoading]     = useState(false)
 
-  // AC1: validación cliente
   const [emailError, setEmailError]       = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
 
+  /** Validates email format and password presence on the client. */
   const validate = () => {
     let ok = true
     if (!email) {
@@ -53,12 +54,8 @@ export default function LoginPage() {
       i18n.changeLanguage(resp.user.locale)
       navigate(roleHomeRoute(resp.user.role), { replace: true })
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        if (err.response?.status === 401) {
-          setServerError(t('auth.errors.invalidCredentials'))
-        } else {
-          setServerError(t('auth.errors.unknownError'))
-        }
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setServerError(t('auth.errors.invalidCredentials'))
       } else {
         setServerError(t('auth.errors.unknownError'))
       }
@@ -112,7 +109,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* AC5: aviso mayoría de edad y juego responsable */}
+      {/* Age warning and responsible-gaming notice (supports HU-12) */}
       <p className="responsible-gaming">
         <strong>{t('auth.login.ageWarning')}</strong>
         <br />

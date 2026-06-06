@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
+/** Unit tests for {@link PlayerCatalogService} with mocked repositories. */
 class PlayerCatalogServiceTest {
 
     private GameJpaRepository gameRepo;
@@ -41,13 +42,13 @@ class PlayerCatalogServiceTest {
 
     @Test
     void getWallet_returnsBalanceOfUser() {
-        WalletEntity w = new WalletEntity();
+        final WalletEntity w = new WalletEntity();
         w.setUserId(7L);
         w.setBalanceCents(100_000L);
         w.setCurrency("EUR");
         when(walletRepo.findByUserId(7L)).thenReturn(Optional.of(w));
 
-        WalletDto dto = service.getWallet(7L);
+        final WalletDto dto = service.getWallet(7L);
 
         assertThat(dto.balanceCents()).isEqualTo(100_000L);
         assertThat(dto.currency()).isEqualTo("EUR");

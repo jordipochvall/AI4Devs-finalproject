@@ -6,5 +6,34 @@
   "audit": {
     "title": "Audit",
     "underConstruction": "Under construction — upcoming user stories."
+  },
+  "players": {
+    "title": "Players",
+    "searchPlaceholder": "Search by email…",
+    "loading": "Loading players…",
+    "error": "Could not load the players.",
+    "empty": "No players found.",
+    "colEmail": "Email",
+    "colLanguage": "Language",
+    "colStatus": "Status",
+    "colBalance": "Balance",
+    "colActions": "Actions",
+    "active": "Active",
+    "inactive": "Inactive",
+    "recharge": "Recharge",
+    "prev": "Previous",
+    "next": "Next",
+    "pageInfo": "Page {{page}} of {{total}}"
+  },
+  "recharge": {
+    "title": "Recharge balance",
+    "player": "Player",
+    "amount": "Amount (€)",
+    "confirm": "Confirm recharge",
+    "cancel": "Cancel",
+    "processing": "Processing…",
+    "amountPositive": "The amount must be greater than 0.",
+    "failed": "The recharge could not be completed.",
+    "success": "Balance recharged successfully."
   }
 }

@@ -3,6 +3,10 @@ package com.novacasino.infrastructure.persistence.entity;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
+/**
+ * Operator (tenant) JPA entity. Root of the multi-tenancy model.
+ * Fields are non-final because JPA populates them by reflection.
+ */
 @Entity
 @Table(name = "operators")
 public class OperatorEntity {
@@ -26,6 +30,7 @@ public class OperatorEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
+    /** Keeps {@code updated_at} current on insert and update. */
     @PrePersist
     @PreUpdate
     void touch() { updatedAt = OffsetDateTime.now(); }

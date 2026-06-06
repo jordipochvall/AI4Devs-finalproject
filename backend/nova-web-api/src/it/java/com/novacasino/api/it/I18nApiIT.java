@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * AC2: los mensajes de error de la API se devuelven en el idioma de {@code Accept-Language}.
- * Se usa un login con credenciales inválidas (401) como error reproducible.
+ * AC2: API error messages are returned in the language of {@code Accept-Language}.
+ * A login with invalid credentials (401) is used as a reproducible error.
  */
 class I18nApiIT extends AbstractIntegrationTest {
 

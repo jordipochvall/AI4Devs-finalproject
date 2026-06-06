@@ -27,6 +27,12 @@ import org.springframework.web.servlet.LocaleResolver;
 import java.net.URI;
 import java.util.Locale;
 
+/**
+ * Stateless JWT security configuration. Routes are authorised by role; authentication (401)
+ * and authorization (403) failures are returned as RFC 9457 Problem Details, localised via the
+ * {@link LocaleResolver} (these handlers run before the DispatcherServlet, so they cannot rely
+ * on {@code LocaleContextHolder}).
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -38,11 +44,11 @@ public class SecurityConfig {
     private final ObjectMapper objectMapper;
     private final LocaleResolver localeResolver;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
-                          UserDetailsService userDetailsService,
-                          MessageSource messageSource,
-                          ObjectMapper objectMapper,
-                          LocaleResolver localeResolver) {
+    public SecurityConfig(final JwtAuthFilter jwtAuthFilter,
+                          final UserDetailsService userDetailsService,
+                          final MessageSource messageSource,
+                          final ObjectMapper objectMapper,
+                          final LocaleResolver localeResolver) {
         this.jwtAuthFilter      = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
         this.messageSource      = messageSource;
@@ -50,8 +56,9 @@ public class SecurityConfig {
         this.localeResolver     = localeResolver;
     }
 
+    /** Defines the stateless filter chain, per-role authorization and the 401/403 responses. */
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain filterChain(final HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -66,10 +73,10 @@ public class SecurityConfig {
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .exceptionHandling(ex -> ex
-                // 401 — sin token o token inválido
+                // 401 — missing or invalid token
                 .authenticationEntryPoint((request, response, e) -> {
-                    Locale locale = localeResolver.resolveLocale(request);
-                    ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+                    final Locale locale = localeResolver.resolveLocale(request);
+                    final ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
                     problem.setType(URI.create("about:blank"));
                     problem.setTitle(messageSource.getMessage("error.unauthorized.title", null, locale));
                     problem.setDetail(messageSource.getMessage("error.unauthorized.detail", null, locale));
@@ -77,10 +84,10 @@ public class SecurityConfig {
                     response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
                     objectMapper.writeValue(response.getWriter(), problem);
                 })
-                // 403 — token válido pero rol insuficiente
+                // 403 — valid token but insufficient role
                 .accessDeniedHandler((request, response, e) -> {
-                    Locale locale = localeResolver.resolveLocale(request);
-                    ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+                    final Locale locale = localeResolver.resolveLocale(request);
+                    final ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
                     problem.setType(URI.create("about:blank"));
                     problem.setTitle(messageSource.getMessage("error.forbidden.title", null, locale));
                     problem.setDetail(messageSource.getMessage("error.forbidden.detail", null, locale));
@@ -93,21 +100,23 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /** BCrypt password encoder (cost 12). */
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
     }
 
+    /** DAO authentication provider backed by the user-details service and BCrypt. */
     @Bean
     AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        final DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
 
     @Bean
-    AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    AuthenticationManager authenticationManager(final AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 }

@@ -12,15 +12,15 @@ import java.util.TreeSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * AC3: el test de cobertura de claves falla si falta alguna traducción en cualquiera
- * de los dos idiomas. Compara los conjuntos de claves de los dos bundles de la API.
+ * AC3: the key-coverage test fails if any translation is missing in either language.
+ * Compares the key sets of the two API bundles.
  */
 class MessagesI18nParityTest {
 
     private Properties load(String path) throws IOException {
         Properties props = new Properties();
         try (InputStream in = getClass().getClassLoader().getResourceAsStream(path)) {
-            assertThat(in).as("bundle no encontrado: %s", path).isNotNull();
+            assertThat(in).as("bundle not found: %s", path).isNotNull();
             props.load(new java.io.InputStreamReader(in, StandardCharsets.UTF_8));
         }
         return props;
@@ -32,7 +32,7 @@ class MessagesI18nParityTest {
         Set<String> en = new TreeSet<>(load("i18n/messages_en.properties").stringPropertyNames());
 
         assertThat(en)
-                .as("claves presentes en ES pero ausentes en EN: %s", diff(es, en))
+                .as("keys present in ES but missing in EN: %s", diff(es, en))
                 .containsExactlyInAnyOrderElementsOf(es);
     }
 
@@ -42,7 +42,7 @@ class MessagesI18nParityTest {
             Properties p = load(bundle);
             for (String key : p.stringPropertyNames()) {
                 assertThat(p.getProperty(key))
-                        .as("valor en blanco para %s en %s", key, bundle)
+                        .as("blank value for %s in %s", key, bundle)
                         .isNotBlank();
             }
         }

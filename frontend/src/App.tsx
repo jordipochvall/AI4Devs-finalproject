@@ -3,6 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import LoginPage    from './player/auth/LoginPage'
 import RegisterPage from './player/auth/RegisterPage'
+import LobbyPage    from './player/lobby/LobbyPage'
+import OperatorPlayersPage from './operator/players/OperatorPlayersPage'
+import MathEditorPage from './math/editor/MathEditorPage'
 import ProtectedRoute from './shared/auth/ProtectedRoute'
 import LanguageSwitcher from './shared/i18n/LanguageSwitcher'
 import { useAuthStore } from './shared/auth/authStore'
@@ -11,7 +14,7 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 })
 
-/** Placeholder traducido para rutas que implementarán las próximas HU. */
+/** Translated placeholder for routes implemented by upcoming user stories. */
 function Placeholder({ titleKey, bodyKey }: { titleKey: string; bodyKey: string }) {
   const { t } = useTranslation()
   const clearAuth = useAuthStore(s => s.clearAuth)
@@ -35,33 +38,34 @@ function Placeholder({ titleKey, bodyKey }: { titleKey: string; bodyKey: string 
   )
 }
 
+/** App root: query client, router and role-protected routes per surface. */
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* Rutas públicas */}
+          {/* Public routes */}
           <Route path="/login"    element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Jugador (PLAYER) */}
+          {/* Player (PLAYER) */}
           <Route element={<ProtectedRoute role="PLAYER" />}>
-            <Route path="/"         element={<Placeholder titleKey="player:lobby.title" bodyKey="player:lobby.underConstruction" />} />
-            <Route path="/game/:id" element={<Placeholder titleKey="player:game.title"  bodyKey="player:game.underConstruction" />} />
+            <Route path="/"             element={<LobbyPage />} />
+            <Route path="/play/:gameId" element={<Placeholder titleKey="player:game.title" bodyKey="player:game.underConstruction" />} />
           </Route>
 
-          {/* Operador (OPERATOR) */}
+          {/* Operator (OPERATOR) */}
           <Route element={<ProtectedRoute role="OPERATOR" />}>
-            <Route path="/operator"       element={<Placeholder titleKey="operator:backoffice.title" bodyKey="operator:backoffice.underConstruction" />} />
-            <Route path="/operator/audit" element={<Placeholder titleKey="operator:audit.title"      bodyKey="operator:audit.underConstruction" />} />
+            <Route path="/operator"       element={<OperatorPlayersPage />} />
+            <Route path="/operator/audit" element={<Placeholder titleKey="operator:audit.title" bodyKey="operator:audit.underConstruction" />} />
           </Route>
 
-          {/* Matemático (MATH_ANALYST) */}
+          {/* Mathematician (MATH_ANALYST) */}
           <Route element={<ProtectedRoute role="MATH_ANALYST" />}>
-            <Route path="/math" element={<Placeholder titleKey="math:backoffice.title" bodyKey="math:backoffice.underConstruction" />} />
+            <Route path="/math" element={<MathEditorPage />} />
           </Route>
 
-          {/* Cualquier ruta desconocida → login */}
+          {/* Any unknown route → login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import i18n, { SUPPORTED_LANGS } from './i18n'
 
-// Recolecta recursivamente las rutas de claves "hoja" de un objeto anidado.
+// Recursively collects the "leaf" key paths of a nested object.
 function leafKeys(obj: Record<string, unknown>, prefix = ''): string[] {
   return Object.entries(obj).flatMap(([k, v]) => {
     const path = prefix ? `${prefix}.${k}` : k
@@ -48,14 +48,14 @@ describe('i18n setup', () => {
     expect(localStorage.getItem('nova-lang')).toBe('en')
   })
 
-  // AC4: ninguna clave sin traducir — paridad de claves entre es y en por namespace
+  // AC4: no untranslated key — key parity between es and en per namespace
   it('has identical key sets across es and en for every namespace', () => {
     for (const ns of NAMESPACES) {
       const es = i18n.getResourceBundle('es', ns) as Record<string, unknown>
       const en = i18n.getResourceBundle('en', ns) as Record<string, unknown>
       const esKeys = leafKeys(es).sort()
       const enKeys = leafKeys(en).sort()
-      expect(enKeys, `namespace ${ns} difiere entre es/en`).toEqual(esKeys)
+      expect(enKeys, `namespace ${ns} differs between es/en`).toEqual(esKeys)
     }
   })
 })

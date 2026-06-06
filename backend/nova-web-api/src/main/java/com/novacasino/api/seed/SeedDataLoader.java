@@ -23,14 +23,14 @@ public class SeedDataLoader implements ApplicationRunner {
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
 
-    public SeedDataLoader(JdbcTemplate jdbc) {
+    public SeedDataLoader(final JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
     @Override
     @Transactional
-    public void run(ApplicationArguments args) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
+    public void run(final ApplicationArguments args) {
+        final Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
         if (count != null && count > 0) {
             log.info("Seed users already present, skipping SeedDataLoader.");
             return;
@@ -38,31 +38,30 @@ public class SeedDataLoader implements ApplicationRunner {
 
         log.info("Inserting seed users, wallets and game configs...");
 
-        Long operatorId = jdbc.queryForObject(
+        final Long operatorId = jdbc.queryForObject(
                 "SELECT id FROM operators WHERE code = 'novacasino-default'", Long.class);
 
         // --- Users ---
-        Long operatorUserId = insertUser(operatorId,
-                "operator@nova.test", "operator123", "OPERATOR",  "1980-01-01", "es");
-        Long mathUserId = insertUser(operatorId,
-                "math@nova.test",    "math123",     "MATH_ANALYST","1985-06-15", "es");
-        Long p1 = insertUser(operatorId, "player1@nova.test", "player123", "PLAYER", "1990-03-20", "es");
-        Long p2 = insertUser(operatorId, "player2@nova.test", "player123", "PLAYER", "1988-07-12", "es");
-        Long p3 = insertUser(operatorId, "player3@nova.test", "player123", "PLAYER", "1995-11-30", "en");
+        insertUser(operatorId, "operator@nova.test", "operator123", "OPERATOR",     "1980-01-01", "es");
+        final Long mathUserId = insertUser(operatorId,
+                "math@nova.test",    "math123",     "MATH_ANALYST", "1985-06-15", "es");
+        final Long p1 = insertUser(operatorId, "player1@nova.test", "player123", "PLAYER", "1990-03-20", "es");
+        final Long p2 = insertUser(operatorId, "player2@nova.test", "player123", "PLAYER", "1988-07-12", "es");
+        final Long p3 = insertUser(operatorId, "player3@nova.test", "player123", "PLAYER", "1995-11-30", "en");
 
-        // --- Wallets for players (1 000 EUR = 100 000 cents) ---
+        // --- Wallets for players (1,000 EUR = 100,000 cents) ---
         insertWallet(operatorId, p1, 100_000L);
         insertWallet(operatorId, p2, 100_000L);
         insertWallet(operatorId, p3, 100_000L);
 
         // --- Game configs ---
-        Long egyptId  = gameId("egyptian-5x3");
-        Long fruitsId = gameId("fruits-3x3");
-        Long spaceId  = gameId("space-5x3");
+        final Long egyptId  = gameId("egyptian-5x3");
+        final Long fruitsId = gameId("fruits-3x3");
+        final Long spaceId  = gameId("space-5x3");
 
-        Long egyptCfg  = insertConfig(egyptId,  mathUserId, 1, EGYPTIAN_CONFIG,  0.9500, 8.50,  "Config inicial Egipcio 5x3");
-        Long fruitsCfg = insertConfig(fruitsId, mathUserId, 1, FRUITS_CONFIG,    0.9200, 3.00,  "Config inicial Frutas 3x3");
-        Long spaceCfg  = insertConfig(spaceId,  mathUserId, 1, SPACE_CONFIG,     0.9650, 12.00, "Config inicial Espacial 5x3");
+        final Long egyptCfg  = insertConfig(egyptId,  mathUserId, 1, EGYPTIAN_CONFIG, 0.9500, 8.50,  "Initial Egyptian 5x3 config");
+        final Long fruitsCfg = insertConfig(fruitsId, mathUserId, 1, FRUITS_CONFIG,   0.9200, 3.00,  "Initial Fruits 3x3 config");
+        final Long spaceCfg  = insertConfig(spaceId,  mathUserId, 1, SPACE_CONFIG,    0.9650, 12.00, "Initial Space 5x3 config");
 
         // --- Activate configs ---
         activateConfig(egyptId,  egyptCfg);
@@ -76,8 +75,8 @@ public class SeedDataLoader implements ApplicationRunner {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private Long insertUser(Long operatorId, String email, String plainPassword,
-                            String role, String birthDate, String locale) {
+    private Long insertUser(final Long operatorId, final String email, final String plainPassword,
+                            final String role, final String birthDate, final String locale) {
         return jdbc.queryForObject(
                 """
                 INSERT INTO users (operator_id, email, password_hash, role, birth_date, locale)
@@ -88,7 +87,7 @@ public class SeedDataLoader implements ApplicationRunner {
                 operatorId, email, passwordEncoder.encode(plainPassword), role, birthDate, locale);
     }
 
-    private void insertWallet(Long operatorId, Long userId, long balanceCents) {
+    private void insertWallet(final Long operatorId, final Long userId, final long balanceCents) {
         jdbc.update(
                 """
                 INSERT INTO wallets (operator_id, user_id, balance_cents, currency)
@@ -97,12 +96,13 @@ public class SeedDataLoader implements ApplicationRunner {
                 operatorId, userId, balanceCents);
     }
 
-    private Long gameId(String code) {
+    private Long gameId(final String code) {
         return jdbc.queryForObject("SELECT id FROM games WHERE code = ?", Long.class, code);
     }
 
-    private Long insertConfig(Long gameId, Long createdBy, int version,
-                              String configJson, double rtpTarget, double volatilityTarget, String notes) {
+    private Long insertConfig(final Long gameId, final Long createdBy, final int version,
+                              final String configJson, final double rtpTarget,
+                              final double volatilityTarget, final String notes) {
         return jdbc.queryForObject(
                 """
                 INSERT INTO game_configs (game_id, version, config, rtp_target, volatility_target,
@@ -114,12 +114,12 @@ public class SeedDataLoader implements ApplicationRunner {
                 gameId, version, configJson, rtpTarget, volatilityTarget, createdBy, notes);
     }
 
-    private void activateConfig(Long gameId, Long configId) {
+    private void activateConfig(final Long gameId, final Long configId) {
         jdbc.update("UPDATE games SET active_config_id = ? WHERE id = ?", configId, gameId);
     }
 
     // =========================================================================
-    // JSON configs de los 3 juegos semilla
+    // JSON configs of the three seed games
     // =========================================================================
 
     private static final String EGYPTIAN_CONFIG = """

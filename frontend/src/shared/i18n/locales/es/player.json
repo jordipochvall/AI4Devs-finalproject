@@ -2,7 +2,16 @@
   "lobby": {
     "title": "Sala de juegos",
     "balance": "Saldo",
+    "play": "Jugar",
+    "loading": "Cargando juegos…",
+    "error": "No se han podido cargar los juegos.",
+    "empty": "No hay juegos disponibles en este momento.",
     "underConstruction": "En construcción — próximas HU."
+  },
+  "theme": {
+    "EGYPTIAN": "Egipcio",
+    "FRUITS": "Frutas",
+    "SPACE": "Espacial"
   },
   "game": {
     "title": "Juego",

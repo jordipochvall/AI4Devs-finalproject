@@ -16,7 +16,7 @@ export type Lang = (typeof SUPPORTED_LANGS)[number]
 
 const STORAGE_KEY = 'nova-lang'
 
-/** Idioma inicial: preferencia persistida → idioma del navegador → 'es'. */
+/** Initial language: persisted preference → browser language → 'es'. */
 function detectInitialLang(): Lang {
   const stored = localStorage.getItem(STORAGE_KEY)
   if (stored === 'es' || stored === 'en') return stored
@@ -38,12 +38,12 @@ i18n
     interpolation: { escapeValue: false },
   })
 
-// AC3: persistir la preferencia entre sesiones
+// Persist the chosen language across sessions.
 i18n.on('languageChanged', lng => {
   localStorage.setItem(STORAGE_KEY, lng)
 })
 
-/** Cambia el idioma activo (conmutación en caliente). */
+/** Changes the active language (hot switch). */
 export function changeLanguage(lang: Lang) {
   return i18n.changeLanguage(lang)
 }

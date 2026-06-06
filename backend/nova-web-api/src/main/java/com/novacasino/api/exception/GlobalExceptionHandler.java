@@ -20,6 +20,11 @@ import com.novacasino.api.auth.exception.AgeVerificationException;
 import com.novacasino.api.auth.exception.EmailAlreadyRegisteredException;
 import com.novacasino.api.auth.exception.InvalidCredentialsException;
 import com.novacasino.api.player.exception.GameNotFoundException;
+import com.novacasino.api.operator.exception.InvalidAmountException;
+import com.novacasino.api.operator.exception.PlayerNotFoundException;
+import com.novacasino.api.idempotency.IdempotencyConflictException;
+import com.novacasino.api.math.exception.ConfigNotFoundException;
+import com.novacasino.api.math.validation.ConfigValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
@@ -27,12 +32,11 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Manejador global de excepciones. Devuelve {@code application/problem+json} (RFC 9457)
- * con mensajes internacionalizados según la cabecera {@code Accept-Language} del cliente.
+ * Global exception handler. Returns {@code application/problem+json} (RFC 9457) with messages
+ * localised according to the client's {@code Accept-Language} header (resolved via Spring's
+ * {@code LocaleContextHolder}, which honours the configured default of "es").
  *
- * <p>AC1: Accept-Language: en → mensajes en inglés.
- * <p>AC2: Accept-Language: es (o sin cabecera) → mensajes en español.
- * <p>AC4: El idioma no altera códigos HTTP ni la estructura del Problem Details.
+ * <p>The language never changes the HTTP status nor the Problem Details structure.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -42,31 +46,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private final MessageSource messages;
 
-    public GlobalExceptionHandler(MessageSource messages) {
+    public GlobalExceptionHandler(final MessageSource messages) {
         this.messages = messages;
     }
 
     // -------------------------------------------------------------------------
-    // Errores de validación de bean — 422
+    // Bean validation errors — 422
     // -------------------------------------------------------------------------
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex,
-            HttpHeaders headers,
-            HttpStatusCode status,
-            WebRequest request) {
+            final MethodArgumentNotValidException ex,
+            final HttpHeaders headers,
+            final HttpStatusCode status,
+            final WebRequest request) {
 
-        Locale locale = LocaleContextHolder.getLocale();
+        final Locale locale = LocaleContextHolder.getLocale();
 
-        List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream()
+        final List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> Map.of(
                         "field",   fe.getField(),
                         "message", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "invalid"
                 ))
                 .toList();
 
-        ProblemDetail body = ProblemDetail.forStatus(status);
+        final ProblemDetail body = ProblemDetail.forStatus(status);
         body.setType(ABOUT_BLANK);
         body.setTitle(msg("error.validation.title", locale));
         body.setDetail(msg("error.validation.detail", locale));
@@ -76,19 +80,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     // -------------------------------------------------------------------------
-    // JSON mal formado — 400
+    // Malformed JSON — 400
     // -------------------------------------------------------------------------
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
-            HttpMessageNotReadableException ex,
-            HttpHeaders headers,
-            HttpStatusCode status,
-            WebRequest request) {
+            final HttpMessageNotReadableException ex,
+            final HttpHeaders headers,
+            final HttpStatusCode status,
+            final WebRequest request) {
 
-        Locale locale = LocaleContextHolder.getLocale();
+        final Locale locale = LocaleContextHolder.getLocale();
 
-        ProblemDetail body = ProblemDetail.forStatus(status);
+        final ProblemDetail body = ProblemDetail.forStatus(status);
         body.setType(ABOUT_BLANK);
         body.setTitle(msg("error.badRequest.title", locale));
         body.setDetail(msg("error.badRequest.detail", locale));
@@ -97,14 +101,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     // -------------------------------------------------------------------------
-    // Auth — 422 edad, 409 email duplicado, 401 credenciales
+    // Auth — 422 age, 409 duplicate email, 401 credentials
     // -------------------------------------------------------------------------
 
     @ExceptionHandler(AgeVerificationException.class)
-    ResponseEntity<ProblemDetail> handleAgeVerification(AgeVerificationException ex,
-                                                         HttpServletRequest request) {
-        Locale locale = LocaleContextHolder.getLocale();
-        ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+    ResponseEntity<ProblemDetail> handleAgeVerification(final AgeVerificationException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
         body.setType(ABOUT_BLANK);
         body.setTitle(msg("error.validation.title", locale));
         body.setDetail(msg("error.auth.ageVerificationFailed.detail", locale));
@@ -112,10 +115,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(EmailAlreadyRegisteredException.class)
-    ResponseEntity<ProblemDetail> handleEmailAlreadyRegistered(EmailAlreadyRegisteredException ex,
-                                                                HttpServletRequest request) {
-        Locale locale = LocaleContextHolder.getLocale();
-        ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+    ResponseEntity<ProblemDetail> handleEmailAlreadyRegistered(final EmailAlreadyRegisteredException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         body.setType(ABOUT_BLANK);
         body.setTitle(msg("error.conflict.title", locale));
         body.setDetail(msg("error.auth.emailAlreadyRegistered.detail", locale));
@@ -123,10 +125,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
-    ResponseEntity<ProblemDetail> handleInvalidCredentials(InvalidCredentialsException ex,
-                                                            HttpServletRequest request) {
-        Locale locale = LocaleContextHolder.getLocale();
-        ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+    ResponseEntity<ProblemDetail> handleInvalidCredentials(final InvalidCredentialsException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
         body.setType(ABOUT_BLANK);
         body.setTitle(msg("error.unauthorized.title", locale));
         body.setDetail(msg("error.auth.invalidCredentials.detail", locale));
@@ -134,13 +135,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     // -------------------------------------------------------------------------
-    // Recurso no encontrado — 404
+    // Resource not found — 404
     // -------------------------------------------------------------------------
 
-    @ExceptionHandler(GameNotFoundException.class)
-    ResponseEntity<ProblemDetail> handleGameNotFound(GameNotFoundException ex) {
-        Locale locale = LocaleContextHolder.getLocale();
-        ProblemDetail body = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+    @ExceptionHandler({GameNotFoundException.class, PlayerNotFoundException.class, ConfigNotFoundException.class})
+    ResponseEntity<ProblemDetail> handleNotFound(final RuntimeException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
         body.setType(ABOUT_BLANK);
         body.setTitle(msg("error.notFound.title", locale));
         body.setDetail(msg("error.notFound.detail", locale));
@@ -148,15 +149,61 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     // -------------------------------------------------------------------------
-    // Error interno no controlado — 500
+    // Invalid math config — 422 with per-field errors[]
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(ConfigValidationException.class)
+    ResponseEntity<ProblemDetail> handleConfigValidation(final ConfigValidationException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final List<Map<String, String>> errors = ex.getErrors().stream()
+                .map(e -> Map.of("field", e.field(), "message", e.message()))
+                .toList();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.validation.title", locale));
+        body.setDetail(msg("error.config.invalid.detail", locale));
+        body.setProperty("errors", errors);
+        return ResponseEntity.status(422).body(body);
+    }
+
+    // -------------------------------------------------------------------------
+    // Invalid amount — 422
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(InvalidAmountException.class)
+    ResponseEntity<ProblemDetail> handleInvalidAmount(final InvalidAmountException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.validation.title", locale));
+        body.setDetail(msg("error.recharge.invalidAmount.detail", locale));
+        return ResponseEntity.status(422).body(body);
+    }
+
+    // -------------------------------------------------------------------------
+    // Idempotency-Key reused with a different payload — 409
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(IdempotencyConflictException.class)
+    ResponseEntity<ProblemDetail> handleIdempotencyConflict(final IdempotencyConflictException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.conflict.title", locale));
+        body.setDetail(msg("error.idempotency.conflict.detail", locale));
+        return ResponseEntity.status(409).body(body);
+    }
+
+    // -------------------------------------------------------------------------
+    // Uncaught internal error — 500
     // -------------------------------------------------------------------------
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ProblemDetail> handleAll(Exception ex, HttpServletRequest request) {
-        Locale locale = LocaleContextHolder.getLocale();
+    ResponseEntity<ProblemDetail> handleAll(final Exception ex, final HttpServletRequest request) {
+        final Locale locale = LocaleContextHolder.getLocale();
         log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
 
-        ProblemDetail body = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         body.setType(ABOUT_BLANK);
         body.setTitle(msg("error.internalError.title", locale));
         body.setDetail(msg("error.internalError.detail", locale));
@@ -168,7 +215,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private String msg(String code, Locale locale) {
+    private String msg(final String code, final Locale locale) {
         return messages.getMessage(code, null, code, locale);
     }
 }

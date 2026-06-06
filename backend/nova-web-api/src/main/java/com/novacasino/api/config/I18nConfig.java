@@ -9,16 +9,17 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Configura la resolución de idioma a partir de la cabecera {@code Accept-Language}.
- * Idiomas soportados: es (defecto) y en.
- * La API es stateless: no usa sesión ni cookie para persistir el idioma.
+ * Resolves the request locale from the {@code Accept-Language} header.
+ * Supported languages: es (default) and en. The API is stateless: no session or cookie
+ * is used to persist the language.
  */
 @Configuration
 public class I18nConfig {
 
+    /** Locale resolver based on Accept-Language, defaulting to Spanish. */
     @Bean
-    public LocaleResolver localeResolver() {
-        AcceptHeaderLocaleResolver resolver = new AcceptHeaderLocaleResolver();
+    LocaleResolver localeResolver() {
+        final AcceptHeaderLocaleResolver resolver = new AcceptHeaderLocaleResolver();
         resolver.setDefaultLocale(Locale.forLanguageTag("es"));
         resolver.setSupportedLocales(List.of(
                 Locale.forLanguageTag("es"),

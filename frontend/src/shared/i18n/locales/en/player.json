@@ -2,7 +2,16 @@
   "lobby": {
     "title": "Game lobby",
     "balance": "Balance",
+    "play": "Play",
+    "loading": "Loading games…",
+    "error": "Could not load the games.",
+    "empty": "No games available right now.",
     "underConstruction": "Under construction — upcoming user stories."
+  },
+  "theme": {
+    "EGYPTIAN": "Egyptian",
+    "FRUITS": "Fruits",
+    "SPACE": "Space"
   },
   "game": {
     "title": "Game",

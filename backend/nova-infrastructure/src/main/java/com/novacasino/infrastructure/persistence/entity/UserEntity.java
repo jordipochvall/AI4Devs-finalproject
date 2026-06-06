@@ -5,6 +5,10 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
+/**
+ * User JPA entity (any role: player, operator, math analyst).
+ * Fields are non-final because JPA populates them by reflection.
+ */
 @Entity
 @Table(name = "users")
 public class UserEntity {
@@ -41,6 +45,7 @@ public class UserEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
+    /** Keeps {@code updated_at} current on insert and update. */
     @PrePersist
     @PreUpdate
     void touch() { updatedAt = OffsetDateTime.now(); }
@@ -56,11 +61,11 @@ public class UserEntity {
     public boolean isActive()       { return active; }
 
     // --- Setters ---
-    public void setOperatorId(Long operatorId)         { this.operatorId = operatorId; }
-    public void setEmail(String email)                 { this.email = email; }
-    public void setPasswordHash(String passwordHash)   { this.passwordHash = passwordHash; }
-    public void setRole(UserRole role)                 { this.role = role; }
-    public void setBirthDate(LocalDate birthDate)      { this.birthDate = birthDate; }
-    public void setLocale(String locale)               { this.locale = locale; }
-    public void setActive(boolean active)              { this.active = active; }
+    public void setOperatorId(final Long operatorId)       { this.operatorId = operatorId; }
+    public void setEmail(final String email)               { this.email = email; }
+    public void setPasswordHash(final String passwordHash) { this.passwordHash = passwordHash; }
+    public void setRole(final UserRole role)               { this.role = role; }
+    public void setBirthDate(final LocalDate birthDate)    { this.birthDate = birthDate; }
+    public void setLocale(final String locale)             { this.locale = locale; }
+    public void setActive(final boolean active)            { this.active = active; }
 }

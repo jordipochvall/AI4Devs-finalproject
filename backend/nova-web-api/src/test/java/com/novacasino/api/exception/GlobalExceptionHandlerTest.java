@@ -15,8 +15,8 @@ import java.util.Locale;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests unitarios del GlobalExceptionHandler.
- * Verifica AC1 (en), AC2 (es/defecto) y AC4 (estructura invariante).
+ * Unit tests for the GlobalExceptionHandler.
+ * Verifies AC1 (en), AC2 (es/default) and AC4 (invariant structure).
  */
 class GlobalExceptionHandlerTest {
 
@@ -36,7 +36,7 @@ class GlobalExceptionHandlerTest {
         LocaleContextHolder.resetLocaleContext();
     }
 
-    // --- AC2: español por defecto ---
+    // --- AC2: Spanish by default ---
 
     @Test
     void internalError_defaultLocale_returnsSpanish() {
@@ -53,7 +53,7 @@ class GlobalExceptionHandlerTest {
         assertThat(body.getDetail()).isEqualTo("Se ha producido un error inesperado. Por favor, inténtalo de nuevo más tarde.");
     }
 
-    // --- AC1: Accept-Language: en → inglés ---
+    // --- AC1: Accept-Language: en → English ---
 
     @Test
     void internalError_englishLocale_returnsEnglish() {
@@ -70,7 +70,7 @@ class GlobalExceptionHandlerTest {
         assertThat(body.getDetail()).isEqualTo("An unexpected error occurred. Please try again later.");
     }
 
-    // --- AC4: el idioma no altera el código HTTP ni la estructura ---
+    // --- AC4: language does not change the HTTP status nor the structure ---
 
     @Test
     void structureIsIdenticalRegardlessOfLocale() {
@@ -81,16 +81,16 @@ class GlobalExceptionHandlerTest {
         LocaleContextHolder.setLocale(Locale.ENGLISH);
         ResponseEntity<ProblemDetail> en = handler.handleAll(new RuntimeException(), req);
 
-        // mismo código HTTP
+        // same HTTP status
         assertThat(es.getStatusCode()).isEqualTo(en.getStatusCode());
-        // ambos tienen type, title y detail
+        // both have type, title and detail
         assertThat(es.getBody()).isNotNull();
         assertThat(en.getBody()).isNotNull();
         assertThat(es.getBody().getType()).isEqualTo(en.getBody().getType());
         assertThat(es.getBody().getStatus()).isEqualTo(en.getBody().getStatus());
     }
 
-    // --- AC3: todas las claves existen en ambos bundles ---
+    // --- AC3: all keys exist in both bundles ---
 
     @Test
     void allRequiredKeysExistInBothLocales() {
@@ -119,8 +119,8 @@ class GlobalExceptionHandlerTest {
         for (String key : keys) {
             String es = src.getMessage(key, new Object[]{0, 0}, Locale.forLanguageTag("es"));
             String en = src.getMessage(key, new Object[]{0, 0}, Locale.ENGLISH);
-            assertThat(es).as("Clave ES ausente: %s", key).isNotEqualTo(key);
-            assertThat(en).as("Clave EN ausente: %s", key).isNotEqualTo(key);
+            assertThat(es).as("Missing ES key: %s", key).isNotEqualTo(key);
+            assertThat(en).as("Missing EN key: %s", key).isNotEqualTo(key);
         }
     }
 }

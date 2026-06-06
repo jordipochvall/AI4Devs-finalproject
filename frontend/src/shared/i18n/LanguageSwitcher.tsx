@@ -3,8 +3,8 @@ import { SUPPORTED_LANGS, type Lang } from './i18n'
 import './languageSwitcher.css'
 
 /**
- * Selector de idioma con conmutación en caliente (AC2).
- * El cambio se persiste vía el listener 'languageChanged' de i18n (AC3).
+ * Language selector with hot switching. The change is persisted via i18n's
+ * 'languageChanged' listener.
  */
 export default function LanguageSwitcher() {
   const { i18n, t } = useTranslation()

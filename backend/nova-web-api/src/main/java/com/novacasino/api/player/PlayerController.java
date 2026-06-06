@@ -12,31 +12,32 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Endpoints de lectura del jugador (rol PLAYER, exigido por SecurityConfig en /player/**).
- */
+/** Player read endpoints (PLAYER role enforced by SecurityConfig on /player/**). */
 @RestController
 @RequestMapping("/api/v1/player")
 public class PlayerController {
 
     private final PlayerCatalogService catalog;
 
-    public PlayerController(PlayerCatalogService catalog) {
+    public PlayerController(final PlayerCatalogService catalog) {
         this.catalog = catalog;
     }
 
+    /** GET /player/games — active games for the lobby. */
     @GetMapping("/games")
     public List<GameSummaryDto> listGames() {
         return catalog.listActiveGames();
     }
 
+    /** GET /player/games/{id} — game detail plus its active config. */
     @GetMapping("/games/{gameId}")
-    public GameDetailDto getGame(@PathVariable Long gameId) {
+    public GameDetailDto getGame(@PathVariable final Long gameId) {
         return catalog.getActiveGame(gameId);
     }
 
+    /** GET /player/wallet — balance of the authenticated player. */
     @GetMapping("/wallet")
-    public WalletDto getWallet(@AuthenticationPrincipal NovaUserDetails principal) {
+    public WalletDto getWallet(@AuthenticationPrincipal final NovaUserDetails principal) {
         return catalog.getWallet(principal.getUser().getId());
     }
 }

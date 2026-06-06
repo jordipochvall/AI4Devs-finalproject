@@ -8,12 +8,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
-/** Adapter entre {@link UserEntity} y el contrato de Spring Security {@link UserDetails}. */
+/** Adapter between {@link UserEntity} and Spring Security's {@link UserDetails} contract. */
 public class NovaUserDetails implements UserDetails {
 
     private final UserEntity user;
 
-    public NovaUserDetails(UserEntity user) {
+    public NovaUserDetails(final UserEntity user) {
         this.user = user;
     }
 
@@ -29,5 +29,8 @@ public class NovaUserDetails implements UserDetails {
     @Override public boolean isAccountNonLocked()     { return true; }
     @Override public boolean isCredentialsNonExpired(){ return true; }
 
-    public UserEntity getUser() { return user; }
+    /** The wrapped domain user (exposed so controllers can read id/operatorId). */
+    public UserEntity getUser() {
+        return user;
+    }
 }

@@ -6,5 +6,34 @@
   "audit": {
     "title": "Auditoría",
     "underConstruction": "En construcción — próximas HU."
+  },
+  "players": {
+    "title": "Jugadores",
+    "searchPlaceholder": "Buscar por email…",
+    "loading": "Cargando jugadores…",
+    "error": "No se han podido cargar los jugadores.",
+    "empty": "No se han encontrado jugadores.",
+    "colEmail": "Email",
+    "colLanguage": "Idioma",
+    "colStatus": "Estado",
+    "colBalance": "Saldo",
+    "colActions": "Acciones",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "recharge": "Recargar",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "pageInfo": "Página {{page}} de {{total}}"
+  },
+  "recharge": {
+    "title": "Recargar saldo",
+    "player": "Jugador",
+    "amount": "Importe (€)",
+    "confirm": "Confirmar recarga",
+    "cancel": "Cancelar",
+    "processing": "Procesando…",
+    "amountPositive": "El importe debe ser mayor que 0.",
+    "failed": "No se pudo completar la recarga.",
+    "success": "Saldo recargado correctamente."
   }
 }

@@ -5,8 +5,8 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * Smoke test del esqueleto. El test de contexto Spring completo (con Testcontainers)
- * se añade en HU-1-QA-01 una vez que el esquema DB y los beans estén implementados.
+ * Skeleton smoke test. The full Spring context test (with Testcontainers) is added in
+ * HU-1-QA-01 once the DB schema and beans are implemented.
  */
 class NovaCasinoApplicationTest {
 

@@ -3,8 +3,8 @@ package com.novacasino.infrastructure.persistence.entity;
 import jakarta.persistence.*;
 
 /**
- * Vista de lectura del catálogo de juegos. Solo mapea las columnas que necesitan
- * los endpoints del jugador (no la configuración comercial completa ni timestamps).
+ * Read-oriented view of the game catalogue. Only maps the columns the player endpoints
+ * need (not the full commercial configuration nor audit timestamps).
  */
 @Entity
 @Table(name = "games")

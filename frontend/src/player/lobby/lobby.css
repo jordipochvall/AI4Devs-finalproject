@@ -1,0 +1,129 @@
+.lobby {
+  min-height: 100vh;
+  background: #0f0f1a;
+  color: #e0e0e0;
+  font-family: system-ui, sans-serif;
+}
+
+.lobby-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #2a2a4a;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.lobby-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #c9a227;
+}
+
+.lobby-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.lobby-balance {
+  font-size: 0.95rem;
+  color: #aaa;
+}
+
+.lobby-balance strong {
+  color: #e0e0e0;
+}
+
+.lobby-logout {
+  background: none;
+  border: 1px solid #3a3a5a;
+  color: #aaa;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+
+.lobby-main {
+  padding: 1.5rem;
+}
+
+.lobby-msg {
+  color: #888;
+  text-align: center;
+  margin-top: 3rem;
+}
+
+.lobby-error {
+  color: #ff6b6b;
+}
+
+.game-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.game-card {
+  background: #1a1a2e;
+  border: 1px solid #2a2a4a;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.12s, border-color 0.12s;
+}
+
+.game-card:hover {
+  transform: translateY(-3px);
+  border-color: #c9a227;
+}
+
+.game-card-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.game-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #0b0b14;
+  display: block;
+}
+
+.game-info {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.game-name {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.game-theme {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 0.15rem;
+}
+
+.game-play {
+  display: inline-block;
+  margin: 0.5rem 1rem 1rem;
+  padding: 0.35rem 0.9rem;
+  background: #c9a227;
+  color: #0f0f1a;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}

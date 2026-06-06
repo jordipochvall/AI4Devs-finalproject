@@ -15,14 +15,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Base de los tests de integración: Postgres 18 real, migraciones Flyway y seed
- * (SeedDataLoader) aplicados al arrancar el contexto. El contexto se cachea entre
- * clases IT que comparten esta config.
+ * Base class for integration tests: a real Postgres 18, with Flyway migrations and seed
+ * (SeedDataLoader) applied on context startup. The context is cached across IT classes that
+ * share this configuration.
  *
- * <p>Por defecto levanta un contenedor con <b>Testcontainers</b> (modo CI estándar).
- * Si se proporciona la propiedad de sistema {@code it.jdbcUrl}, los tests se ejecutan
- * contra una <b>BBDD externa</b> ya en marcha (útil para depurar en entornos donde la
- * JVM no puede abrir el socket de Docker, p. ej. Docker Desktop por named pipe).
+ * <p>By default it starts a container via <b>Testcontainers</b> (standard CI mode). If the
+ * {@code it.jdbcUrl} system property is provided, the tests run against an already-running
+ * <b>external database</b> (useful for debugging in environments where the JVM cannot open the
+ * Docker socket, e.g. Docker Desktop over a named pipe).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -36,7 +36,7 @@ public abstract class AbstractIntegrationTest {
             POSTGRES = new PostgreSQLContainer<>("postgres:18-alpine");
             POSTGRES.start();
         } else {
-            POSTGRES = null; // se usa la BBDD externa indicada por it.jdbcUrl
+            POSTGRES = null; // use the external database given by it.jdbcUrl
         }
     }
 
@@ -51,7 +51,7 @@ public abstract class AbstractIntegrationTest {
             registry.add("spring.datasource.username", () -> System.getProperty("it.dbUser", "novacasino"));
             registry.add("spring.datasource.password", () -> System.getProperty("it.dbPass", "novacasino"));
         }
-        // Secreto JWT necesario para arrancar el contexto en tests
+        // JWT secret required to start the context in tests
         registry.add("app.jwt.secret", () -> "integration-test-secret-at-least-32-bytes-long");
         registry.add("app.jwt.ttl-seconds", () -> "3600");
     }
@@ -59,7 +59,7 @@ public abstract class AbstractIntegrationTest {
     @Autowired protected MockMvc mockMvc;
     @Autowired protected ObjectMapper objectMapper;
 
-    /** Credenciales semilla (ver SeedDataLoader / readme §1.4). */
+    /** Seed credentials (see SeedDataLoader / readme §1.4). */
     protected static final String OPERATOR_EMAIL = "operator@nova.test";
     protected static final String OPERATOR_PASS  = "operator123";
     protected static final String MATH_EMAIL     = "math@nova.test";
@@ -67,8 +67,8 @@ public abstract class AbstractIntegrationTest {
     protected static final String PLAYER_EMAIL   = "player1@nova.test";
     protected static final String PLAYER_PASS    = "player123";
 
-    /** Inicia sesión con un usuario semilla y devuelve su JWT. */
-    protected String loginAndGetToken(String email, String password) throws Exception {
+    /** Logs in with a seed user and returns their JWT. */
+    protected String loginAndGetToken(final String email, final String password) throws Exception {
         String body = """
                 {"email":"%s","password":"%s"}""".formatted(email, password);
         String json = mockMvc.perform(post("/api/v1/auth/login")

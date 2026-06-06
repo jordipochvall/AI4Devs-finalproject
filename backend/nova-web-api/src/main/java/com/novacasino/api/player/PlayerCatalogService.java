@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Lecturas del jugador: catálogo del lobby, detalle de juego (+ config activa) y saldo.
+ * Player read operations: lobby catalogue, game detail (+ active config) and balance.
  */
 @Service
 @Transactional(readOnly = true)
@@ -29,17 +29,17 @@ public class PlayerCatalogService {
     private final WalletJpaRepository walletRepo;
     private final ObjectMapper objectMapper;
 
-    public PlayerCatalogService(GameJpaRepository gameRepo,
-                                GameConfigJpaRepository configRepo,
-                                WalletJpaRepository walletRepo,
-                                ObjectMapper objectMapper) {
+    public PlayerCatalogService(final GameJpaRepository gameRepo,
+                                final GameConfigJpaRepository configRepo,
+                                final WalletJpaRepository walletRepo,
+                                final ObjectMapper objectMapper) {
         this.gameRepo     = gameRepo;
         this.configRepo   = configRepo;
         this.walletRepo   = walletRepo;
         this.objectMapper = objectMapper;
     }
 
-    /** Catálogo del lobby: juegos activos, sin exponer la matemática (solo `grid`). */
+    /** Lobby catalogue: active games, exposing only `grid` (not the full math). */
     public List<GameSummaryDto> listActiveGames() {
         return gameRepo.findByActiveTrueOrderByIdAsc().stream()
                 .map(game -> new GameSummaryDto(
@@ -51,11 +51,11 @@ public class PlayerCatalogService {
                 .toList();
     }
 
-    /** Detalle de un juego activo + su `config` activa. 404 si no existe/está inactivo. */
-    public GameDetailDto getActiveGame(Long gameId) {
-        GameEntity game = gameRepo.findByIdAndActiveTrue(gameId)
+    /** Active game detail plus its active config. 404 if it does not exist or is inactive. */
+    public GameDetailDto getActiveGame(final Long gameId) {
+        final GameEntity game = gameRepo.findByIdAndActiveTrue(gameId)
                 .orElseThrow(() -> new GameNotFoundException(gameId));
-        JsonNode config = activeConfigNode(game);
+        final JsonNode config = activeConfigNode(game);
         return new GameDetailDto(
                 game.getId(),
                 game.getName(),
@@ -67,39 +67,41 @@ public class PlayerCatalogService {
                 config);
     }
 
-    /** Saldo del jugador autenticado. */
-    public WalletDto getWallet(Long userId) {
+    /** Balance of the authenticated player. */
+    public WalletDto getWallet(final Long userId) {
         return walletRepo.findByUserId(userId)
                 .map(w -> new WalletDto(w.getBalanceCents(), w.getCurrency()))
-                .orElseThrow(() -> new IllegalStateException("Wallet no encontrado para el usuario " + userId));
+                .orElseThrow(() -> new IllegalStateException("Wallet not found for user " + userId));
     }
 
     // -------------------------------------------------------------------------
 
-    /** `config` completo de la versión activa como árbol JSON. */
-    private JsonNode activeConfigNode(GameEntity game) {
+    /** Full active config as a JSON tree. */
+    private JsonNode activeConfigNode(final GameEntity game) {
         if (game.getActiveConfigId() == null) {
-            // Sin matemática activa el juego no es jugable → se trata como no disponible.
+            // Without an active config the game is not playable → treat as unavailable.
             throw new GameNotFoundException(game.getId());
         }
-        GameConfigEntity cfg = configRepo.findById(game.getActiveConfigId())
+        final GameConfigEntity cfg = configRepo.findById(game.getActiveConfigId())
                 .orElseThrow(() -> new GameNotFoundException(game.getId()));
         return parse(cfg.getConfig());
     }
 
-    /** Solo el nodo `grid` del config activo (para el lobby); null si no hay config. */
-    private JsonNode gridOf(GameEntity game) {
-        if (game.getActiveConfigId() == null) return null;
+    /** Only the `grid` node of the active config (for the lobby); null if there is none. */
+    private JsonNode gridOf(final GameEntity game) {
+        if (game.getActiveConfigId() == null) {
+            return null;
+        }
         return configRepo.findById(game.getActiveConfigId())
                 .map(cfg -> parse(cfg.getConfig()).get("grid"))
                 .orElse(null);
     }
 
-    private JsonNode parse(String json) {
+    private JsonNode parse(final String json) {
         try {
             return objectMapper.readTree(json);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("config JSON inválido en BBDD", e);
+        } catch (final JsonProcessingException e) {
+            throw new IllegalStateException("Invalid config JSON in database", e);
         }
     }
 }

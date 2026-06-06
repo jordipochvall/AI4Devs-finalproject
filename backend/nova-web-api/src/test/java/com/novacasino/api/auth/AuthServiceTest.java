@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+/** Unit tests for {@link AuthService} (registration and login) with mocked repositories. */
 class AuthServiceTest {
 
     private UserJpaRepository     userRepo;
@@ -44,7 +45,7 @@ class AuthServiceTest {
         walletRepo      = mock(WalletJpaRepository.class);
         operatorRepo    = mock(OperatorJpaRepository.class);
         jwtService      = mock(JwtService.class);
-        passwordEncoder = new BCryptPasswordEncoder(4); // cost bajo para tests rápidos
+        passwordEncoder = new BCryptPasswordEncoder(4); // low cost for fast tests
         authService     = new AuthService(userRepo, walletRepo, operatorRepo, passwordEncoder, jwtService);
 
         when(operatorRepo.findByCode("novacasino-default")).thenReturn(Optional.of(stubOperator(1L)));
@@ -52,11 +53,11 @@ class AuthServiceTest {
         when(jwtService.getTtlSeconds()).thenReturn(3600L);
     }
 
-    // --- AC1: menor de 18 → AgeVerificationException ---
+    // --- AC1: under 18 → AgeVerificationException ---
 
     @Test
     void register_underAge_throws422() {
-        RegisterRequest req = new RegisterRequest(
+        final RegisterRequest req = new RegisterRequest(
                 "young@test.com", "Password1!", LocalDate.now().minusYears(17), "es");
 
         assertThatThrownBy(() -> authService.register(req))
@@ -64,30 +65,30 @@ class AuthServiceTest {
         verifyNoInteractions(userRepo);
     }
 
-    // --- AC3: límite exacto de edad (justo 18 pasa; un día menos falla) ---
+    // --- AC3: exact age boundary (exactly 18 passes; one day short fails) ---
 
     @Test
     void register_exactly18Today_succeeds() {
-        // Nace hoy hace exactamente 18 años → cumple 18 hoy → permitido
-        RegisterRequest req = new RegisterRequest(
+        // Born exactly 18 years ago today → turns 18 today → allowed
+        final RegisterRequest req = new RegisterRequest(
                 "edge18@test.com", "Password1!", LocalDate.now().minusYears(18), "es");
 
         when(userRepo.existsByOperatorIdAndEmail(anyLong(), anyString())).thenReturn(false);
         when(userRepo.save(any())).thenAnswer(inv -> {
-            UserEntity u = inv.getArgument(0);
+            final UserEntity u = inv.getArgument(0);
             setId(u, 1L);
             return u;
         });
         when(walletRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        AuthResponse resp = authService.register(req);
+        final AuthResponse resp = authService.register(req);
         assertThat(resp.user().email()).isEqualTo("edge18@test.com");
     }
 
     @Test
     void register_oneDayBefore18_throws422() {
-        // Cumple 18 mañana (le falta un día) → rechazado
-        RegisterRequest req = new RegisterRequest(
+        // Turns 18 tomorrow (one day short) → rejected
+        final RegisterRequest req = new RegisterRequest(
                 "edge17@test.com", "Password1!", LocalDate.now().minusYears(18).plusDays(1), "es");
 
         assertThatThrownBy(() -> authService.register(req))
@@ -95,22 +96,22 @@ class AuthServiceTest {
         verifyNoInteractions(userRepo);
     }
 
-    // --- AC2: registro válido crea usuario + wallet ---
+    // --- AC2: valid registration creates user + wallet ---
 
     @Test
     void register_valid_createsUserAndWallet() {
-        RegisterRequest req = new RegisterRequest(
+        final RegisterRequest req = new RegisterRequest(
                 "adult@test.com", "Password1!", LocalDate.now().minusYears(25), "en");
 
         when(userRepo.existsByOperatorIdAndEmail(anyLong(), anyString())).thenReturn(false);
         when(userRepo.save(any())).thenAnswer(inv -> {
-            UserEntity u = inv.getArgument(0);
+            final UserEntity u = inv.getArgument(0);
             setId(u, 42L);
             return u;
         });
         when(walletRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        AuthResponse resp = authService.register(req);
+        final AuthResponse resp = authService.register(req);
 
         assertThat(resp.token()).isEqualTo("test-token");
         assertThat(resp.tokenType()).isEqualTo("Bearer");
@@ -119,7 +120,7 @@ class AuthServiceTest {
         verify(walletRepo).save(any(WalletEntity.class));
     }
 
-    // --- AC2: email duplicado → EmailAlreadyRegisteredException ---
+    // --- AC2: duplicate email → EmailAlreadyRegisteredException ---
 
     @Test
     void register_duplicateEmail_throws409() {
@@ -130,24 +131,24 @@ class AuthServiceTest {
                 .isInstanceOf(EmailAlreadyRegisteredException.class);
     }
 
-    // --- AC3: login correcto → JWT ---
+    // --- AC3: correct login → JWT ---
 
     @Test
     void login_validCredentials_returnsJwt() {
-        UserEntity user = stubUser(1L, "user@test.com", passwordEncoder.encode("pass123"));
+        final UserEntity user = stubUser(1L, "user@test.com", passwordEncoder.encode("pass123"));
         when(userRepo.findByOperatorIdAndEmail(anyLong(), eq("user@test.com")))
                 .thenReturn(Optional.of(user));
 
-        AuthResponse resp = authService.login(new LoginRequest("user@test.com", "pass123"));
+        final AuthResponse resp = authService.login(new LoginRequest("user@test.com", "pass123"));
 
         assertThat(resp.token()).isEqualTo("test-token");
     }
 
-    // --- AC3: credenciales incorrectas → InvalidCredentialsException ---
+    // --- AC3: wrong credentials → InvalidCredentialsException ---
 
     @Test
     void login_wrongPassword_throws401() {
-        UserEntity user = stubUser(1L, "user@test.com", passwordEncoder.encode("correct"));
+        final UserEntity user = stubUser(1L, "user@test.com", passwordEncoder.encode("correct"));
         when(userRepo.findByOperatorIdAndEmail(anyLong(), eq("user@test.com")))
                 .thenReturn(Optional.of(user));
 
@@ -155,15 +156,15 @@ class AuthServiceTest {
                 .isInstanceOf(InvalidCredentialsException.class);
     }
 
-    // --- AC6: el hash almacenado NO es la contraseña en claro ---
+    // --- AC6: the stored hash is NOT the plaintext password ---
 
     @Test
     void register_passwordIsHashed() {
-        RegisterRequest req = new RegisterRequest(
+        final RegisterRequest req = new RegisterRequest(
                 "hash@test.com", "PlainPass1!", LocalDate.now().minusYears(30), "es");
         when(userRepo.existsByOperatorIdAndEmail(anyLong(), anyString())).thenReturn(false);
 
-        UserEntity[] saved = new UserEntity[1];
+        final UserEntity[] saved = new UserEntity[1];
         when(userRepo.save(any())).thenAnswer(inv -> {
             saved[0] = inv.getArgument(0);
             setId(saved[0], 99L);
@@ -181,14 +182,14 @@ class AuthServiceTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static OperatorEntity stubOperator(Long id) {
-        OperatorEntity op = new OperatorEntity();
+    private static OperatorEntity stubOperator(final Long id) {
+        final OperatorEntity op = new OperatorEntity();
         setId(op, id);
         return op;
     }
 
-    private static UserEntity stubUser(Long id, String email, String hash) {
-        UserEntity u = new UserEntity();
+    private static UserEntity stubUser(final Long id, final String email, final String hash) {
+        final UserEntity u = new UserEntity();
         setId(u, id);
         u.setEmail(email);
         u.setPasswordHash(hash);
@@ -198,12 +199,13 @@ class AuthServiceTest {
         return u;
     }
 
-    private static <T> void setId(T entity, Long id) {
+    /** Sets the private {@code id} field by reflection (entities expose no id setter). */
+    private static <T> void setId(final T entity, final Long id) {
         try {
-            var field = entity.getClass().getDeclaredField("id");
+            final var field = entity.getClass().getDeclaredField("id");
             field.setAccessible(true);
             field.set(entity, id);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new RuntimeException(e);
         }
     }

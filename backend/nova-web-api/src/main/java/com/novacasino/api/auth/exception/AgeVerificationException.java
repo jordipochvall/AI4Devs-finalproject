@@ -1,8 +1,8 @@
 package com.novacasino.api.auth.exception;
 
-/** El jugador es menor de 18 años — 422 (requisito DGOJ). */
+/** The player is under 18 — 422 (DGOJ requirement). */
 public class AgeVerificationException extends RuntimeException {
     public AgeVerificationException() {
-        super("Edad insuficiente para registrarse (se requieren ≥18 años)");
+        super("Insufficient age to register (18+ required)");
     }
 }
