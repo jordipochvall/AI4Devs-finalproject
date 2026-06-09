@@ -15,6 +15,26 @@
   },
   "game": {
     "title": "Juego",
-    "underConstruction": "En construcción — próximas HU."
+    "underConstruction": "En construcción — próximas HU.",
+    "back": "Volver",
+    "loading": "Cargando juego…",
+    "loadError": "No se ha podido cargar el juego.",
+    "grid": "Rejilla del juego",
+    "spin": "Girar",
+    "spinning": "Girando…",
+    "bet": "Apuesta",
+    "betUp": "Subir apuesta",
+    "betDown": "Bajar apuesta",
+    "win": "¡Has ganado {{amount}}!",
+    "freeSpin": "Tirada gratis {{current}}/{{total}}",
+    "insufficientOrInvalid": "Saldo insuficiente o apuesta no válida.",
+    "spinError": "No se ha podido completar el giro. Inténtalo de nuevo.",
+    "auto": "Auto",
+    "autoCount": "Nº de giros automáticos",
+    "autoStopBelow": "Parar si saldo < (€)",
+    "autoStop": "Detener ({{remaining}})",
+    "autoPaused": "Auto-spin detenido (juego responsable). Tómate un descanso.",
+    "mute": "Silenciar el audio",
+    "unmute": "Activar el audio"
   }
 }

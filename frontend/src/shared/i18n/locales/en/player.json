@@ -15,6 +15,26 @@
   },
   "game": {
     "title": "Game",
-    "underConstruction": "Under construction — upcoming user stories."
+    "underConstruction": "Under construction — upcoming user stories.",
+    "back": "Back",
+    "loading": "Loading game…",
+    "loadError": "Could not load the game.",
+    "grid": "Game grid",
+    "spin": "Spin",
+    "spinning": "Spinning…",
+    "bet": "Bet",
+    "betUp": "Increase bet",
+    "betDown": "Decrease bet",
+    "win": "You won {{amount}}!",
+    "freeSpin": "Free spin {{current}}/{{total}}",
+    "insufficientOrInvalid": "Insufficient balance or invalid bet.",
+    "spinError": "Could not complete the spin. Please try again.",
+    "auto": "Auto",
+    "autoCount": "Number of auto spins",
+    "autoStopBelow": "Stop if balance < (€)",
+    "autoStop": "Stop ({{remaining}})",
+    "autoPaused": "Auto-spin stopped (responsible gaming). Take a break.",
+    "mute": "Mute audio",
+    "unmute": "Unmute audio"
   }
 }

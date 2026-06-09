@@ -20,5 +20,47 @@
     "saved": "Versión {{version}} creada con RTP objetivo {{rtp}}.",
     "errorsTitle": "El backend rechazó la configuración:",
     "genericError": "No se pudo guardar la configuración."
+  },
+  "sim": {
+    "title": "Simulación masiva",
+    "numSpins": "Nº de giros (1–10.000.000)",
+    "betCents": "Apuesta (céntimos)",
+    "run": "Simular",
+    "running": "Simulando…",
+    "runningHint": "Ejecutando {{spins}} giros… consultando estado.",
+    "launchError": "No se pudo lanzar la simulación.",
+    "invalidParams": "Parámetros no válidos: revisa el nº de giros y la apuesta.",
+    "failed": "La simulación falló",
+    "rtp": "RTP empírico",
+    "ci95": "IC 95%",
+    "target": "Objetivo",
+    "verdict": {
+      "green": "dentro del intervalo de confianza",
+      "amber": "desviación moderada",
+      "red": "desviación significativa",
+      "na": "sin objetivo declarado"
+    },
+    "rtpBase": "RTP juego base",
+    "rtpFree": "RTP tiradas gratis",
+    "hitFreq": "Frecuencia de premio",
+    "volatility": "Volatilidad",
+    "maxWin": "Premio máximo",
+    "triggerFreq": "Frec. disparo free spins",
+    "dryStreak": "Racha seca más larga",
+    "duration": "Duración",
+    "convergence": "Curva de convergencia del RTP",
+    "breakdown": "Contribución por símbolo",
+    "histogram": "Distribución de premios",
+    "reelStats": "Estadísticas de rodillos",
+    "explain": {
+      "title": "Pregunta a la IA",
+      "placeholder": "Pregunta sobre estos resultados…",
+      "ask": "Preguntar",
+      "asking": "Consultando…",
+      "you": "Tú",
+      "ai": "IA",
+      "unavailable": "IA no disponible (no hay clave de API configurada).",
+      "error": "No se pudo obtener la respuesta de la IA."
+    }
   }
 }

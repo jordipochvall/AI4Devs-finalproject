@@ -38,5 +38,14 @@
     "label": "Language",
     "es": "Español",
     "en": "English"
+  },
+  "compliance": {
+    "seal": "Operator authorised by DGOJ",
+    "plus18": "+18",
+    "responsibleGaming": "Responsible gaming",
+    "dialogTitle": "Responsible gaming",
+    "dialogBody": "Gambling should be a form of entertainment, not a way to make money. Play in moderation and set your limits. If you think gambling is a problem, seek help.",
+    "dialogClose": "Close",
+    "pauseNotice": "You are on a losing streak this session. We recommend taking a break."
   }
 }

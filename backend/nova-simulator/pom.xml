@@ -14,6 +14,12 @@
     <name>nova-simulator</name>
     <description>Simulador masivo Map-Reduce: ForkJoinPool + CountingSink sobre SpinKernel</description>
 
+    <properties>
+        <!-- The perf test (10M spins) is excluded from the normal build; the dedicated CI 'perf'
+             job (HU-2-DEV-01) runs it with -Dgroups=perf -DexcludedGroups= (see readme §2.6). -->
+        <excludedGroups>perf</excludedGroups>
+    </properties>
+
     <!-- Sin Spring: usa ForkJoinPool y LongAdder de la JDK directamente -->
     <dependencies>
         <dependency>

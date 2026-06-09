@@ -38,5 +38,14 @@
     "label": "Idioma",
     "es": "Español",
     "en": "English"
+  },
+  "compliance": {
+    "seal": "Operador autorizado por la DGOJ",
+    "plus18": "+18",
+    "responsibleGaming": "Juego responsable",
+    "dialogTitle": "Juego responsable",
+    "dialogBody": "El juego debe ser una forma de entretenimiento, no una manera de ganar dinero. Juega con moderación y establece tus límites. Si crees que el juego es un problema, busca ayuda.",
+    "dialogClose": "Cerrar",
+    "pauseNotice": "Llevas una racha de pérdidas en esta sesión. Te recomendamos hacer una pausa."
   }
 }

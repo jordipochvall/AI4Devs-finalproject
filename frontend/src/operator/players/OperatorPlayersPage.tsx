@@ -32,6 +32,9 @@ export default function OperatorPlayersPage() {
       <header className="operator-header">
         <h1>{t('operator:players.title')}</h1>
         <div className="operator-header-right">
+          <button type="button" className="btn-secondary" onClick={() => navigate('/operator/audit')}>
+            {t('operator:players.toAudit')}
+          </button>
           <LanguageSwitcher />
           <button type="button" className="btn-secondary" onClick={logout}>{t('common.logout')}</button>
         </div>

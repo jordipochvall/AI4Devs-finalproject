@@ -1,0 +1,28 @@
+.replay-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+}
+
+.replay-meta > div {
+  background: #1f1f38;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+.replay-meta dt {
+  font-size: 0.75rem;
+  color: #aaa;
+  margin: 0;
+}
+
+.replay-meta dd {
+  margin: 0.2rem 0 0;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+
+.replay-again {
+  margin-top: 1.5rem;
+}

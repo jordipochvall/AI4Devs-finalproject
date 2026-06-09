@@ -5,6 +5,7 @@ import axios from 'axios'
 import { authApi } from '../../shared/auth/authApi'
 import { useAuthStore, roleHomeRoute } from '../../shared/auth/authStore'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
+import ComplianceBanner from '../../shared/compliance/ComplianceBanner'
 import './auth.css'
 
 /** Registration screen: client-side validation, server error mapping and auto-login on success. */
@@ -131,11 +132,7 @@ export default function RegisterPage() {
         </p>
       </div>
 
-      <p className="responsible-gaming">
-        <strong>{t('auth.login.ageWarning')}</strong>
-        <br />
-        {t('common.dgoj')}
-      </p>
+      <ComplianceBanner />
     </div>
   )
 }

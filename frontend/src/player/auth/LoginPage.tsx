@@ -5,6 +5,7 @@ import axios from 'axios'
 import { authApi } from '../../shared/auth/authApi'
 import { useAuthStore, roleHomeRoute } from '../../shared/auth/authStore'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
+import ComplianceBanner from '../../shared/compliance/ComplianceBanner'
 import './auth.css'
 
 /** Login screen: client-side validation, server error handling and role-based redirect. */
@@ -109,14 +110,8 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Age warning and responsible-gaming notice (supports HU-12) */}
-      <p className="responsible-gaming">
-        <strong>{t('auth.login.ageWarning')}</strong>
-        <br />
-        {t('auth.login.responsibleGaming')}
-        <br />
-        {t('common.dgoj')}
-      </p>
+      {/* Permanent compliance banner: DGOJ seal, +18 and responsible-gaming link (HU-12) */}
+      <ComplianceBanner />
     </div>
   )
 }

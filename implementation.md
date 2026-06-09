@@ -73,78 +73,78 @@
 | [HU-7-FE-01](tickets/HU-7/HU-7-FE-01-editor-de-matematica.md) — Editor de matemática | FE | 3 | ✅ |
 | [HU-7-QA-01](tickets/HU-7/HU-7-QA-01-tests-versionado-e-invariantes.md) — Tests de versionado e invariantes | QA | 2 | ✅ |
 
-## ⬜ HU-12 — Juego responsable y sello DGOJ *(4 SP)*
+## ✅ HU-12 — Juego responsable y sello DGOJ *(4 SP · completado)*
 
 > Depende de HU-4.
 
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-12-FE-01](tickets/HU-12/HU-12-FE-01-sello-dgoj-y-juego-responsable.md) — Sello DGOJ y mensajes de juego responsable | FE | 3 |
-| [HU-12-QA-01](tickets/HU-12/HU-12-QA-01-tests-compliance-ui.md) — Tests de la capa de cumplimiento | QA | 1 |
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-12-FE-01](tickets/HU-12/HU-12-FE-01-sello-dgoj-y-juego-responsable.md) — Sello DGOJ y mensajes de juego responsable | FE | 3 | ✅ |
+| [HU-12-QA-01](tickets/HU-12/HU-12-QA-01-tests-compliance-ui.md) — Tests de la capa de cumplimiento | QA | 1 | ✅ |
 
-## ⬜ HU-1 — El jugador realiza un giro *(26 SP restantes)*
+## ✅ HU-1 — El jugador realiza un giro *(26 SP · completado)*
 
 > Depende de HU-5. Núcleo del producto y de mayor riesgo (motor data-driven). Sus fundaciones
-> (`HU-1-DEV-01`, `HU-1-DB-01`) ya están hechas.
+> (`HU-1-DEV-01`, `HU-1-DB-01`) ya estaban hechas.
 
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-1-BE-01](tickets/HU-1/HU-1-BE-01-motor-de-juego-data-driven.md) — `SpinKernel` + `GameCompiler` + `RoundSink` | BE | 8 |
-| [HU-1-BE-02](tickets/HU-1/HU-1-BE-02-spinusecase-idempotencia-endpoint.md) — `SpinUseCase`, idempotencia y endpoint `/spin` | BE | 5 |
-| [HU-1-FE-01](tickets/HU-1/HU-1-FE-01-componente-slotgame-y-spin.md) — Componente `<SlotGame>` y spin | FE | 8 |
-| [HU-1-QA-01](tickets/HU-1/HU-1-QA-01-tests-flujo-de-juego.md) — Suite de tests del flujo de juego | QA | 5 |
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-1-BE-01](tickets/HU-1/HU-1-BE-01-motor-de-juego-data-driven.md) — `SpinKernel` + `GameCompiler` + `RoundSink` | BE | 8 | ✅ |
+| [HU-1-BE-02](tickets/HU-1/HU-1-BE-02-spinusecase-idempotencia-endpoint.md) — `SpinUseCase`, idempotencia y endpoint `/spin` | BE | 5 | ✅ |
+| [HU-1-FE-01](tickets/HU-1/HU-1-FE-01-componente-slotgame-y-spin.md) — Componente `<SlotGame>` y spin | FE | 8 | ✅ |
+| [HU-1-QA-01](tickets/HU-1/HU-1-QA-01-tests-flujo-de-juego.md) — Suite de tests del flujo de juego | QA | 5 | ✅ |
 
-## ⬜ HU-2 — El matemático valida un juego con el simulador *(18 SP)*
+## ✅ HU-2 — El matemático valida un juego con el simulador *(18 SP · completado)*
 
 > Depende de HU-1 (motor) y HU-7 (configs).
 
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-2-BE-01](tickets/HU-2/HU-2-BE-01-modulo-nova-simulator.md) — Módulo `nova-simulator` | BE | 5 |
-| [HU-2-BE-02](tickets/HU-2/HU-2-BE-02-api-simulaciones-asincrona.md) — API de simulaciones asíncrona | BE | 3 |
-| [HU-2-FE-01](tickets/HU-2/HU-2-FE-01-backoffice-matematico-y-dashboard.md) — Backoffice matemático y dashboard | FE | 5 |
-| [HU-2-QA-01](tickets/HU-2/HU-2-QA-01-tests-del-simulador-y-convergencia-rtp.md) — Tests del simulador y convergencia | QA | 3 |
-| [HU-2-DEV-01](tickets/HU-2/HU-2-DEV-01-job-perf-en-ci.md) — Job `perf` en CI (10M spins <10 min) | DEV | 2 |
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-2-BE-01](tickets/HU-2/HU-2-BE-01-modulo-nova-simulator.md) — Módulo `nova-simulator` | BE | 5 | ✅ |
+| [HU-2-BE-02](tickets/HU-2/HU-2-BE-02-api-simulaciones-asincrona.md) — API de simulaciones asíncrona | BE | 3 | ✅ |
+| [HU-2-FE-01](tickets/HU-2/HU-2-FE-01-backoffice-matematico-y-dashboard.md) — Backoffice matemático y dashboard | FE | 5 | ✅ |
+| [HU-2-QA-01](tickets/HU-2/HU-2-QA-01-tests-del-simulador-y-convergencia-rtp.md) — Tests del simulador y convergencia | QA | 3 | ✅ |
+| [HU-2-DEV-01](tickets/HU-2/HU-2-DEV-01-job-perf-en-ci.md) — Job `perf` en CI (10M spins <10 min) | DEV | 2 | ✅ |
 
-## ⬜ HU-3 — Auditoría y replay *(15 SP)*
-
-> Depende de HU-1.
-
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-3-BE-01](tickets/HU-3/HU-3-BE-01-api-auditoria-con-filtros.md) — API de auditoría con filtros | BE | 3 |
-| [HU-3-BE-02](tickets/HU-3/HU-3-BE-02-endpoint-replay-determinista.md) — Endpoint de replay determinista | BE | 3 |
-| [HU-3-FE-01](tickets/HU-3/HU-3-FE-01-backoffice-operador-auditoria.md) — Backoffice operador: auditoría | FE | 3 |
-| [HU-3-FE-02](tickets/HU-3/HU-3-FE-02-pantalla-de-replay.md) — Pantalla de Replay | FE | 3 |
-| [HU-3-QA-01](tickets/HU-3/HU-3-QA-01-tests-auditoria-y-replay.md) — Tests de auditoría y replay | QA | 3 |
-
-## ⬜ HU-9 — Auto-spin con safeguards *(5 SP)*
+## ✅ HU-3 — Auditoría y replay *(15 SP · completado)*
 
 > Depende de HU-1.
 
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-9-FE-01](tickets/HU-9/HU-9-FE-01-auto-spin-con-safeguards.md) — Auto-spin con safeguards | FE | 3 |
-| [HU-9-QA-01](tickets/HU-9/HU-9-QA-01-tests-auto-spin.md) — Tests de auto-spin | QA | 2 |
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-3-BE-01](tickets/HU-3/HU-3-BE-01-api-auditoria-con-filtros.md) — API de auditoría con filtros | BE | 3 | ✅ |
+| [HU-3-BE-02](tickets/HU-3/HU-3-BE-02-endpoint-replay-determinista.md) — Endpoint de replay determinista | BE | 3 | ✅ |
+| [HU-3-FE-01](tickets/HU-3/HU-3-FE-01-backoffice-operador-auditoria.md) — Backoffice operador: auditoría | FE | 3 | ✅ |
+| [HU-3-FE-02](tickets/HU-3/HU-3-FE-02-pantalla-de-replay.md) — Pantalla de Replay | FE | 3 | ✅ |
+| [HU-3-QA-01](tickets/HU-3/HU-3-QA-01-tests-auditoria-y-replay.md) — Tests de auditoría y replay | QA | 3 | ✅ |
 
-## ⬜ HU-10 — Audio inmersivo *(4 SP)*
+## ✅ HU-9 — Auto-spin con safeguards *(5 SP · completado)*
 
 > Depende de HU-1.
 
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-10-FE-01](tickets/HU-10/HU-10-FE-01-capa-de-audio.md) — Capa de audio inmersivo (Howler.js) | FE | 3 |
-| [HU-10-QA-01](tickets/HU-10/HU-10-QA-01-tests-audio.md) — Tests de la capa de audio | QA | 1 |
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-9-FE-01](tickets/HU-9/HU-9-FE-01-auto-spin-con-safeguards.md) — Auto-spin con safeguards | FE | 3 | ✅ |
+| [HU-9-QA-01](tickets/HU-9/HU-9-QA-01-tests-auto-spin.md) — Tests de auto-spin | QA | 2 | ✅ |
 
-## ⬜ HU-8 — Explicación con IA *(9 SP)*
+## ✅ HU-10 — Audio inmersivo *(4 SP · completado)*
+
+> Depende de HU-1.
+
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-10-FE-01](tickets/HU-10/HU-10-FE-01-capa-de-audio.md) — Capa de audio inmersivo | FE | 3 | ✅ |
+| [HU-10-QA-01](tickets/HU-10/HU-10-QA-01-tests-audio.md) — Tests de la capa de audio | QA | 1 | ✅ |
+
+## ✅ HU-8 — Explicación con IA *(9 SP · completado)*
 
 > Depende de HU-2.
 
-| Ticket | Equipo | SP |
-|--------|--------|----|
-| [HU-8-BE-01](tickets/HU-8/HU-8-BE-01-adaptador-anthropic-y-endpoint-explain.md) — Adaptador Anthropic y endpoint `explain` | BE | 5 |
-| [HU-8-FE-01](tickets/HU-8/HU-8-FE-01-caja-pregunta-ia.md) — Caja de pregunta a la IA | FE | 2 |
-| [HU-8-QA-01](tickets/HU-8/HU-8-QA-01-tests-explainability.md) — Tests de AI explainability | QA | 2 |
+| Ticket | Equipo | SP | Estado |
+|--------|--------|----|--------|
+| [HU-8-BE-01](tickets/HU-8/HU-8-BE-01-adaptador-anthropic-y-endpoint-explain.md) — Adaptador Anthropic y endpoint `explain` | BE | 5 | ✅ |
+| [HU-8-FE-01](tickets/HU-8/HU-8-FE-01-caja-pregunta-ia.md) — Caja de pregunta a la IA | FE | 2 | ✅ |
+| [HU-8-QA-01](tickets/HU-8/HU-8-QA-01-tests-explainability.md) — Tests de AI explainability | QA | 2 | ✅ |
 
 ---
 
@@ -158,10 +158,26 @@
 | HU-5 | 6 | 30 | ✅ |
 | HU-6 | 8 | 38 | ✅ |
 | HU-7 | 10 | 48 | ✅ |
-| HU-12 | 4 | 52 | ⬜ siguiente |
-| HU-1 (resto) | 26 | 78 | ⬜ |
-| HU-2 | 18 | 96 | ⬜ |
-| HU-3 | 15 | 111 | ⬜ |
-| HU-9 | 5 | 116 | ⬜ |
-| HU-10 | 4 | 120 | ⬜ |
-| HU-8 | 9 | 129 | ⬜ |
+| HU-12 | 4 | 52 | ✅ |
+| HU-1-BE-01 (motor) | 8 | 60 | ✅ |
+| HU-1-BE-02 (spin+endpoint) | 5 | 65 | ✅ |
+| HU-1-FE-01 (`<SlotGame>`) | 8 | 73 | ✅ |
+| HU-1-QA-01 (suite) | 5 | 78 | ✅ |
+| HU-2-BE-01 (simulador) | 5 | 83 | ✅ |
+| HU-2-BE-02 (API async) | 3 | 86 | ✅ |
+| HU-2-FE-01 (dashboard) | 5 | 91 | ✅ |
+| HU-2-QA-01 (tests sim) | 3 | 94 | ✅ |
+| HU-2-DEV-01 (job perf) | 2 | 96 | ✅ |
+| HU-3-BE-01 (API auditoría) | 3 | 99 | ✅ |
+| HU-3-BE-02 (replay) | 3 | 102 | ✅ |
+| HU-3-FE-01 (auditoría UI) | 3 | 105 | ✅ |
+| HU-3-FE-02 (replay UI) | 3 | 108 | ✅ |
+| HU-3-QA-01 (tests) | 3 | 111 | ✅ |
+| HU-9-FE-01 (auto-spin) | 3 | 114 | ✅ |
+| HU-9-QA-01 (tests) | 2 | 116 | ✅ |
+| HU-10-FE-01 (audio) | 3 | 119 | ✅ |
+| HU-10-QA-01 (tests) | 1 | 120 | ✅ |
+| HU-8-BE-01 (Anthropic+explain) | 5 | 125 | ✅ |
+| HU-8-FE-01 (caja IA) | 2 | 127 | ✅ |
+| HU-8-QA-01 (tests) | 2 | 129 | ✅ |
+| **TOTAL** | **129** | **129** | **✅ MVP COMPLETO** |

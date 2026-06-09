@@ -4,6 +4,7 @@ import { useGames, useWallet, type GameSummary } from '../api/playerApi'
 import { useAuthStore } from '../../shared/auth/authStore'
 import { formatMoney } from '../../shared/format/money'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
+import ComplianceBanner from '../../shared/compliance/ComplianceBanner'
 import './lobby.css'
 
 /** Player lobby: header with balance, a responsive grid of active games, and navigation to play. */
@@ -50,6 +51,8 @@ export default function LobbyPage() {
           </ul>
         )}
       </main>
+
+      <ComplianceBanner />
     </div>
   )
 }

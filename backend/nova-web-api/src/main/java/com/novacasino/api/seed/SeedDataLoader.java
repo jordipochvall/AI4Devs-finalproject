@@ -119,7 +119,11 @@ public class SeedDataLoader implements ApplicationRunner {
     }
 
     // =========================================================================
-    // JSON configs of the three seed games
+    // JSON configs of the three seed games.
+    // Note: free-spins retrigger is disabled in the seed configs so the demo can never hang.
+    // The engine supports unbounded retrigger (HU-1-BE-01, AC6b), but whether a config converges
+    // is the mathematician's responsibility (readme §3.3.3); these illustrative seeds are kept
+    // bounded on purpose. Enabling retrigger requires a config whose cascade actually terminates.
     // =========================================================================
 
     private static final String EGYPTIAN_CONFIG = """
@@ -161,7 +165,7 @@ public class SeedDataLoader implements ApplicationRunner {
                   "minTriggerCount": 3,
                   "award": { "3": 8, "4": 12, "5": 20 },
                   "multiplier": 2,
-                  "retrigger": true
+                  "retrigger": false
                 }
               }
             }
@@ -254,7 +258,7 @@ public class SeedDataLoader implements ApplicationRunner {
                   "minTriggerCount": 3,
                   "award": { "3": 10, "4": 15, "5": 25 },
                   "multiplier": 3,
-                  "retrigger": true
+                  "retrigger": false
                 }
               }
             }

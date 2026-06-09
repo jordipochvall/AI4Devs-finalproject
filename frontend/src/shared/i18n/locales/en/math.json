@@ -20,5 +20,47 @@
     "saved": "Version {{version}} created with target RTP {{rtp}}.",
     "errorsTitle": "The backend rejected the configuration:",
     "genericError": "Could not save the configuration."
+  },
+  "sim": {
+    "title": "Mass simulation",
+    "numSpins": "Number of spins (1–10,000,000)",
+    "betCents": "Bet (cents)",
+    "run": "Simulate",
+    "running": "Simulating…",
+    "runningHint": "Running {{spins}} spins… polling status.",
+    "launchError": "Could not launch the simulation.",
+    "invalidParams": "Invalid parameters: check the number of spins and the bet.",
+    "failed": "The simulation failed",
+    "rtp": "Empirical RTP",
+    "ci95": "95% CI",
+    "target": "Target",
+    "verdict": {
+      "green": "within the confidence interval",
+      "amber": "moderate deviation",
+      "red": "significant deviation",
+      "na": "no target declared"
+    },
+    "rtpBase": "Base-game RTP",
+    "rtpFree": "Free-spins RTP",
+    "hitFreq": "Hit frequency",
+    "volatility": "Volatility",
+    "maxWin": "Max win",
+    "triggerFreq": "Free-spins trigger freq.",
+    "dryStreak": "Longest dry streak",
+    "duration": "Duration",
+    "convergence": "RTP convergence curve",
+    "breakdown": "Contribution by symbol",
+    "histogram": "Prize distribution",
+    "reelStats": "Reel statistics",
+    "explain": {
+      "title": "Ask the AI",
+      "placeholder": "Ask about these results…",
+      "ask": "Ask",
+      "asking": "Asking…",
+      "you": "You",
+      "ai": "AI",
+      "unavailable": "AI not available (no API key configured).",
+      "error": "Could not get the AI answer."
+    }
   }
 }

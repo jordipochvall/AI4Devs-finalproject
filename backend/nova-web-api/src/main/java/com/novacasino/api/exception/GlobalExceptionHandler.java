@@ -20,12 +20,21 @@ import com.novacasino.api.auth.exception.AgeVerificationException;
 import com.novacasino.api.auth.exception.EmailAlreadyRegisteredException;
 import com.novacasino.api.auth.exception.InvalidCredentialsException;
 import com.novacasino.api.player.exception.GameNotFoundException;
+import com.novacasino.api.player.exception.InvalidBetException;
+import com.novacasino.api.player.exception.InsufficientBalanceException;
+import com.novacasino.api.player.exception.ConcurrentSpinException;
 import com.novacasino.api.operator.exception.InvalidAmountException;
 import com.novacasino.api.operator.exception.PlayerNotFoundException;
+import com.novacasino.api.operator.exception.RoundNotFoundException;
 import com.novacasino.api.idempotency.IdempotencyConflictException;
 import com.novacasino.api.math.exception.ConfigNotFoundException;
+import com.novacasino.api.math.exception.SimulationNotFoundException;
+import com.novacasino.api.math.exception.InvalidSimulationParamsException;
+import com.novacasino.api.math.exception.SimulationNotCompletedException;
+import com.novacasino.api.math.exception.ExplainerUnavailableException;
 import com.novacasino.api.math.validation.ConfigValidationException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import java.net.URI;
 import java.util.List;
 import java.util.Locale;
@@ -138,7 +147,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // Resource not found — 404
     // -------------------------------------------------------------------------
 
-    @ExceptionHandler({GameNotFoundException.class, PlayerNotFoundException.class, ConfigNotFoundException.class})
+    @ExceptionHandler({GameNotFoundException.class, PlayerNotFoundException.class,
+            ConfigNotFoundException.class, SimulationNotFoundException.class, RoundNotFoundException.class})
     ResponseEntity<ProblemDetail> handleNotFound(final RuntimeException ex) {
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
@@ -167,6 +177,44 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     // -------------------------------------------------------------------------
+    // Invalid simulation parameters (numSpins out of range / bad bet) — 422
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(InvalidSimulationParamsException.class)
+    ResponseEntity<ProblemDetail> handleInvalidSimulationParams(final InvalidSimulationParamsException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.validation.title", locale));
+        body.setDetail(msg("error.simulation.spinsOutOfRange.detail", locale));
+        return ResponseEntity.status(422).body(body);
+    }
+
+    // -------------------------------------------------------------------------
+    // AI explainability — 422 (not completed), 503 (explainer unavailable)
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(SimulationNotCompletedException.class)
+    ResponseEntity<ProblemDetail> handleSimulationNotCompleted(final SimulationNotCompletedException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.validation.title", locale));
+        body.setDetail(msg("error.explain.notCompleted.detail", locale));
+        return ResponseEntity.status(422).body(body);
+    }
+
+    @ExceptionHandler(ExplainerUnavailableException.class)
+    ResponseEntity<ProblemDetail> handleExplainerUnavailable(final ExplainerUnavailableException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.SERVICE_UNAVAILABLE);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.serviceUnavailable.title", locale));
+        body.setDetail(msg("error.explain.unavailable.detail", locale));
+        return ResponseEntity.status(503).body(body);
+    }
+
+    // -------------------------------------------------------------------------
     // Invalid amount — 422
     // -------------------------------------------------------------------------
 
@@ -177,6 +225,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         body.setType(ABOUT_BLANK);
         body.setTitle(msg("error.validation.title", locale));
         body.setDetail(msg("error.recharge.invalidAmount.detail", locale));
+        return ResponseEntity.status(422).body(body);
+    }
+
+    // -------------------------------------------------------------------------
+    // Spin — invalid bet / insufficient balance — 422
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(InvalidBetException.class)
+    ResponseEntity<ProblemDetail> handleInvalidBet(final InvalidBetException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.validation.title", locale));
+        body.setDetail(msg("error.spin.invalidBet.detail", locale));
+        return ResponseEntity.status(422).body(body);
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    ResponseEntity<ProblemDetail> handleInsufficientBalance(final InsufficientBalanceException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.validation.title", locale));
+        body.setDetail(msg("error.spin.insufficientBalance.detail", locale,
+                ex.getNeededCents(), ex.getAvailableCents()));
         return ResponseEntity.status(422).body(body);
     }
 
@@ -192,6 +265,34 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         body.setTitle(msg("error.conflict.title", locale));
         body.setDetail(msg("error.idempotency.conflict.detail", locale));
         return ResponseEntity.status(409).body(body);
+    }
+
+    // -------------------------------------------------------------------------
+    // Concurrent wallet modification (optimistic lock exhausted) — 409
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(ConcurrentSpinException.class)
+    ResponseEntity<ProblemDetail> handleConcurrentSpin(final ConcurrentSpinException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.conflict.title", locale));
+        body.setDetail(msg("error.idempotency.concurrentModification.detail", locale));
+        return ResponseEntity.status(409).body(body);
+    }
+
+    // -------------------------------------------------------------------------
+    // Malformed path/header value (e.g. a non-UUID Idempotency-Key) — 400
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ProblemDetail> handleTypeMismatch(final MethodArgumentTypeMismatchException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.badRequest.title", locale));
+        body.setDetail(msg("error.badRequest.detail", locale));
+        return ResponseEntity.status(400).body(body);
     }
 
     // -------------------------------------------------------------------------
@@ -217,5 +318,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private String msg(final String code, final Locale locale) {
         return messages.getMessage(code, null, code, locale);
+    }
+
+    private String msg(final String code, final Locale locale, final Object... args) {
+        return messages.getMessage(code, args, code, locale);
     }
 }

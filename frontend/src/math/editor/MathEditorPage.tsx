@@ -5,6 +5,7 @@ import axios from 'axios'
 import { useMathGames, useConfig, useCreateConfig } from '../api/mathApi'
 import { useAuthStore } from '../../shared/auth/authStore'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
+import SimulationPanel from '../sim/SimulationPanel'
 import './math.css'
 
 interface FieldError { field: string; message: string }
@@ -151,6 +152,14 @@ export default function MathEditorPage() {
             <button type="button" className="btn-primary" onClick={save} disabled={create.isPending}>
               {create.isPending ? t('math:editor.saving') : t('math:editor.save')}
             </button>
+
+            {selectedGame.activeConfigId != null && (
+              <SimulationPanel
+                configId={selectedGame.activeConfigId}
+                rtpTarget={config.data?.rtpTarget ?? null}
+                config={config.data?.config}
+              />
+            )}
           </>
         )}
       </main>

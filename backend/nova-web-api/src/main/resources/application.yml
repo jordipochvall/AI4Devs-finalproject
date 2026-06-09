@@ -41,9 +41,14 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     ttl-seconds: ${JWT_TTL_SECONDS:3600}
-  anthropic:
-    api-key: ${ANTHROPIC_API_KEY:}
-    model: ${ANTHROPIC_MODEL:claude-haiku-4-5}
+
+# AI explainability (HU-8). Disabled by default: with no key the explain endpoint returns 503 and
+# the rest of the platform works. Set ANTHROPIC_ENABLED=true (and ANTHROPIC_API_KEY) to activate.
+anthropic:
+  enabled: ${ANTHROPIC_ENABLED:false}
+  base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
+  api-key: ${ANTHROPIC_API_KEY:}
+  model: ${ANTHROPIC_MODEL:claude-haiku-4-5}
 
 springdoc:
   api-docs:

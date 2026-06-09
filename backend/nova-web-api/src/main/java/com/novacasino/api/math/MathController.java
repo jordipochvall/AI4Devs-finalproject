@@ -3,7 +3,12 @@ package com.novacasino.api.math;
 import com.novacasino.api.math.dto.ConfigCreatedDto;
 import com.novacasino.api.math.dto.ConfigDetailDto;
 import com.novacasino.api.math.dto.CreateConfigRequest;
+import com.novacasino.api.math.dto.ExplainRequest;
+import com.novacasino.api.math.dto.ExplanationDto;
+import com.novacasino.api.math.dto.LaunchSimulationRequest;
 import com.novacasino.api.math.dto.MathGameDto;
+import com.novacasino.api.math.dto.SimulationAcceptedDto;
+import com.novacasino.api.math.dto.SimulationStatusDto;
 import com.novacasino.api.security.NovaUserDetails;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -22,9 +27,14 @@ import java.util.List;
 public class MathController {
 
     private final MathService math;
+    private final SimulationService simulations;
+    private final ExplainService explain;
 
-    public MathController(final MathService math) {
+    public MathController(final MathService math, final SimulationService simulations,
+                          final ExplainService explain) {
         this.math = math;
+        this.simulations = simulations;
+        this.explain = explain;
     }
 
     /** GET /math/games — games with their active version. */
@@ -49,5 +59,35 @@ public class MathController {
         final Long mathUserId = principal.getUser().getId();
         final ConfigCreatedDto created = math.createConfig(gameId, operatorId, mathUserId, body);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    /** POST /math/configs/{id}/simulations — launches a mass simulation (async, 202). */
+    @PostMapping("/configs/{configId}/simulations")
+    public ResponseEntity<SimulationAcceptedDto> launchSimulation(
+            @AuthenticationPrincipal final NovaUserDetails principal,
+            @PathVariable final Long configId,
+            @Valid @RequestBody final LaunchSimulationRequest body) {
+        final SimulationAcceptedDto accepted = simulations.launch(
+                principal.getUser().getOperatorId(), principal.getUser().getId(),
+                configId, body.numSpins(), body.betCents());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(accepted);
+    }
+
+    /** GET /math/simulations/{id} — status and, once completed, the metrics (polling). */
+    @GetMapping("/simulations/{simulationId}")
+    public SimulationStatusDto getSimulation(
+            @AuthenticationPrincipal final NovaUserDetails principal,
+            @PathVariable final Long simulationId) {
+        return simulations.getSimulation(simulationId, principal.getUser().getOperatorId());
+    }
+
+    /** POST /math/simulations/{id}/explain — AI explanation of a completed simulation (HU-8). */
+    @PostMapping("/simulations/{simulationId}/explain")
+    public ExplanationDto explainSimulation(
+            @AuthenticationPrincipal final NovaUserDetails principal,
+            @PathVariable final Long simulationId,
+            @Valid @RequestBody final ExplainRequest body) {
+        return explain.explain(simulationId, principal.getUser().getOperatorId(),
+                principal.getUser().getId(), body.question());
     }
 }

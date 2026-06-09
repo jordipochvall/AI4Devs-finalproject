@@ -69,6 +69,34 @@ public class WalletTransactionEntity {
                 balanceAfterCents, null, operatorUserId);
     }
 
+    /**
+     * Factory for the BET movement of a spin (negative amount).
+     *
+     * @param walletId          player's wallet
+     * @param betCents          positive bet amount (stored as a negative movement)
+     * @param balanceAfterCents balance after the debit
+     * @param gameRoundId       the spin's base round
+     */
+    public static WalletTransactionEntity bet(final Long walletId, final long betCents,
+                                              final long balanceAfterCents, final Long gameRoundId) {
+        return new WalletTransactionEntity(walletId, WalletTxType.BET, -betCents,
+                balanceAfterCents, gameRoundId, null);
+    }
+
+    /**
+     * Factory for the WIN movement of a spin (positive amount, total round prize incl. free spins).
+     *
+     * @param walletId          player's wallet
+     * @param winCents          positive prize amount
+     * @param balanceAfterCents balance after the credit
+     * @param gameRoundId       the spin's base round
+     */
+    public static WalletTransactionEntity win(final Long walletId, final long winCents,
+                                              final long balanceAfterCents, final Long gameRoundId) {
+        return new WalletTransactionEntity(walletId, WalletTxType.WIN, winCents,
+                balanceAfterCents, gameRoundId, null);
+    }
+
     public Long getId()                { return id; }
     public Long getWalletId()          { return walletId; }
     public WalletTxType getType()      { return type; }

@@ -19,6 +19,9 @@ vi.mock('../api/mathApi', () => {
     useMathGames: () => ({ data: [game], isLoading: false, isError: false }),
     useConfig: (id: number | null) => ({ data: id != null ? configData : undefined, isLoading: false }),
     useCreateConfig: () => ({ mutate, isPending: false }),
+    // The page now embeds the simulation panel; stub its hooks too (no network).
+    useLaunchSimulation: () => ({ mutate: vi.fn(), isPending: false, isError: false, error: null }),
+    useSimulation: () => ({ data: undefined }),
   }
 })
 

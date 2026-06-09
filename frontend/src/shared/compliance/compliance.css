@@ -1,0 +1,84 @@
+.compliance-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: #0b0b14;
+  border-top: 1px solid #2a2a4a;
+  font-size: 0.8rem;
+  color: #888;
+  z-index: 50;
+}
+
+.compliance-seal { color: #aaa; }
+
+.compliance-plus18 {
+  border: 1px solid #c9a227;
+  color: #c9a227;
+  border-radius: 4px;
+  padding: 0 0.35rem;
+  font-weight: 700;
+}
+
+.compliance-link {
+  background: none;
+  border: none;
+  color: #c9a227;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.rg-pause {
+  position: fixed;
+  left: 50%;
+  bottom: 2.75rem;
+  transform: translateX(-50%);
+  background: rgba(201, 162, 39, 0.15);
+  border: 1px solid #c9a227;
+  color: #e0c45a;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  max-width: 90%;
+  text-align: center;
+  z-index: 60;
+}
+
+.rg-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.rg-dialog {
+  background: #1a1a2e;
+  border: 1px solid #2a2a4a;
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 420px;
+  color: #e0e0e0;
+}
+
+.rg-dialog h2 { margin: 0 0 0.75rem; color: #c9a227; font-size: 1.2rem; }
+.rg-dialog p { color: #bbb; line-height: 1.5; font-size: 0.9rem; }
+
+.rg-close {
+  margin-top: 1rem;
+  background: #c9a227;
+  color: #0f0f1a;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}

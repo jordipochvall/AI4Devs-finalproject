@@ -1,0 +1,59 @@
+.audit-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1.25rem;
+}
+
+.audit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.audit-field label {
+  font-size: 0.75rem;
+  color: #aaa;
+}
+
+.audit-small { width: 160px; }
+
+.audit-selected {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cfd2ff;
+}
+
+.audit-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  background: #1f1f38;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.audit-suggestions li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.audit-suggestions li button:hover {
+  background: #2a2a45;
+}
