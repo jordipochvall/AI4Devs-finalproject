@@ -11,5 +11,7 @@ public record GameDetailDto(
         long     minBetCents,
         long     maxBetCents,
         long     betStepCents,
-        JsonNode config
+        JsonNode config,
+        /** Current progressive jackpot pool in cents, or null if the game has no jackpot (HU-26). */
+        Long     jackpotCents
 ) {}

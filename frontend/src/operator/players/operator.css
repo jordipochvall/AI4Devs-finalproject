@@ -157,3 +157,13 @@
   color: #ff6b6b;
   margin-bottom: 1rem;
 }
+
+/* HU-15 — commercial config editing */
+.cell-input { width: 7rem; padding: 0.25rem 0.4rem; }
+.muted { color: #8a8a9a; font-size: 0.85em; }
+
+/* HU-20 — integrity indicator */
+.integrity-check { display: inline-flex; gap: 0.5rem; align-items: center; }
+.integrity-ok { color: #50c878; }
+.integrity-broken { color: #e06c75; font-weight: 600; }
+.integrity-msg { color: #8a8a9a; }

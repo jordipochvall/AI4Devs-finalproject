@@ -41,6 +41,12 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     ttl-seconds: ${JWT_TTL_SECONDS:3600}
+    # Refresh token de vida larga (HU-13): 30 días por defecto.
+    refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:2592000}
+
+  # Juego responsable (HU-19): enfriamiento para relajar un límite (24 h por defecto).
+  responsible-gaming:
+    cooldown-seconds: ${RG_COOLDOWN_SECONDS:86400}
 
 # AI explainability (HU-8). Disabled by default: with no key the explain endpoint returns 503 and
 # the rest of the platform works. Set ANTHROPIC_ENABLED=true (and ANTHROPIC_API_KEY) to activate.

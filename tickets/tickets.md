@@ -4,6 +4,8 @@ Backlog de implementación del MVP: **39 tickets** repartidos en las 12 historia
 
 **Convenciones:** código `HU-N-EQUIPO-NN` · equipos **BE** (Backend), **FE** (Frontend), **QA**, **DEV** (DevOps/Plataforma) · estimación en **Story Points** Fibonacci (1, 2, 3, 5, 8, 13).
 
+> **Más allá del MVP:** el desglose en tickets del backlog de evolución (`HU-13` … `HU-26`, 47 tickets) está en [`tickets-2.md`](tickets-2.md), correspondiente a las historias de [`../stories/stories-2.md`](../stories/stories-2.md).
+
 ## HU-1 — El jugador realiza un giro (33 SP)
 
 | Código | Título | Equipo | SP |

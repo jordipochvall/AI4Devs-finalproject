@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import axios from 'axios'
 import { useMathGames, useConfig, useCreateConfig } from '../api/mathApi'
-import { useAuthStore } from '../../shared/auth/authStore'
+import { logoutSession } from '../../shared/auth/session'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
 import SimulationPanel from '../sim/SimulationPanel'
+import VersionsPanel from './VersionsPanel'
+import SimulationHistoryPanel from './SimulationHistoryPanel'
 import './math.css'
 
 interface FieldError { field: string; message: string }
@@ -17,7 +19,6 @@ interface FieldError { field: string; message: string }
 export default function MathEditorPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const clearAuth = useAuthStore(s => s.clearAuth)
 
   const games = useMathGames()
   const [gameId, setGameId] = useState<number | null>(null)
@@ -46,7 +47,7 @@ export default function MathEditorPage() {
     }
   }, [config.data])
 
-  const logout = () => { clearAuth(); navigate('/login', { replace: true }) }
+  const logout = () => { logoutSession(); navigate('/login', { replace: true }) }
 
   const save = () => {
     setClientError(null); setServerErrors(null); setSuccess(null)
@@ -109,6 +110,10 @@ export default function MathEditorPage() {
             <p className="math-version">
               {t('math:editor.activeVersion')}: <strong>{selectedGame.activeVersion ?? '—'}</strong>
             </p>
+
+            <VersionsPanel gameId={selectedGame.id} />
+
+            <SimulationHistoryPanel gameId={selectedGame.id} />
 
             {config.isLoading && <p className="math-msg">{t('math:editor.loading')}</p>}
 

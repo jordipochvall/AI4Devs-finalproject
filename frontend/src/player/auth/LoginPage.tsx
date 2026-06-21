@@ -51,7 +51,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const resp = await authApi.login({ email, password })
-      setAuth(resp.token, resp.user)
+      setAuth(resp.token, resp.refreshToken, resp.user)
       i18n.changeLanguage(resp.user.locale)
       navigate(roleHomeRoute(resp.user.role), { replace: true })
     } catch (err) {

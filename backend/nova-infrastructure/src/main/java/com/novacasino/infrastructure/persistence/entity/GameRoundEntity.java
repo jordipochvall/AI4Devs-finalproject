@@ -65,6 +65,13 @@ public class GameRoundEntity {
     @Column(name = "created_at", insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    /** Integrity chain (HU-20): set by a DB trigger on insert; never written by the app. */
+    @Column(name = "prev_hash", insertable = false, updatable = false)
+    private String prevHash;
+
+    @Column(name = "row_hash", insertable = false, updatable = false)
+    private String rowHash;
+
     protected GameRoundEntity() { }
 
     private GameRoundEntity(final Long operatorId, final Long playerId, final Long gameId,
@@ -131,4 +138,6 @@ public class GameRoundEntity {
     public Long getTriggeringRoundId()      { return triggeringRoundId; }
     public Integer getFreeSpinsRemainingAfter() { return freeSpinsRemainingAfter; }
     public OffsetDateTime getCreatedAt()    { return createdAt; }
+    public String getPrevHash()             { return prevHash; }
+    public String getRowHash()              { return rowHash; }
 }

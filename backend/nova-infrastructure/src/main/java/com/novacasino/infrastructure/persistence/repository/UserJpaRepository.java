@@ -14,6 +14,9 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
     /** Finds a user by email within an operator (the unique key in multi-tenant mode). */
     Optional<UserEntity> findByOperatorIdAndEmail(Long operatorId, String email);
 
+    /** Finds a user by email across operators (login; emails are unique platform-wide, HU-25). */
+    Optional<UserEntity> findByEmail(String email);
+
     /** Returns whether an email already exists within an operator. */
     boolean existsByOperatorIdAndEmail(Long operatorId, String email);
 

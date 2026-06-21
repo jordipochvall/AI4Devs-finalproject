@@ -6,6 +6,7 @@ import com.novacasino.api.auth.dto.RegisterRequest;
 import com.novacasino.api.auth.exception.AgeVerificationException;
 import com.novacasino.api.auth.exception.EmailAlreadyRegisteredException;
 import com.novacasino.api.auth.exception.InvalidCredentialsException;
+import com.novacasino.api.auth.exception.InvalidRefreshTokenException;
 import com.novacasino.api.security.JwtService;
 import com.novacasino.domain.user.UserRole;
 import com.novacasino.infrastructure.persistence.entity.OperatorEntity;
@@ -36,21 +37,26 @@ class AuthServiceTest {
     private WalletJpaRepository   walletRepo;
     private OperatorJpaRepository operatorRepo;
     private JwtService            jwtService;
+    private RefreshTokenService   refreshTokenService;
     private PasswordEncoder       passwordEncoder;
     private AuthService           authService;
 
     @BeforeEach
     void setUp() {
-        userRepo        = mock(UserJpaRepository.class);
-        walletRepo      = mock(WalletJpaRepository.class);
-        operatorRepo    = mock(OperatorJpaRepository.class);
-        jwtService      = mock(JwtService.class);
-        passwordEncoder = new BCryptPasswordEncoder(4); // low cost for fast tests
-        authService     = new AuthService(userRepo, walletRepo, operatorRepo, passwordEncoder, jwtService);
+        userRepo            = mock(UserJpaRepository.class);
+        walletRepo          = mock(WalletJpaRepository.class);
+        operatorRepo        = mock(OperatorJpaRepository.class);
+        jwtService          = mock(JwtService.class);
+        refreshTokenService = mock(RefreshTokenService.class);
+        passwordEncoder     = new BCryptPasswordEncoder(4); // low cost for fast tests
+        authService         = new AuthService(userRepo, walletRepo, operatorRepo, passwordEncoder,
+                jwtService, refreshTokenService);
 
         when(operatorRepo.findByCode("novacasino-default")).thenReturn(Optional.of(stubOperator(1L)));
+        when(operatorRepo.findById(1L)).thenReturn(Optional.of(stubOperator(1L))); // active by default
         when(jwtService.generateToken(any())).thenReturn("test-token");
         when(jwtService.getTtlSeconds()).thenReturn(3600L);
+        when(refreshTokenService.issue(anyLong())).thenReturn("test-refresh");
     }
 
     // --- AC1: under 18 → AgeVerificationException ---
@@ -136,7 +142,7 @@ class AuthServiceTest {
     @Test
     void login_validCredentials_returnsJwt() {
         final UserEntity user = stubUser(1L, "user@test.com", passwordEncoder.encode("pass123"));
-        when(userRepo.findByOperatorIdAndEmail(anyLong(), eq("user@test.com")))
+        when(userRepo.findByEmail(eq("user@test.com")))
                 .thenReturn(Optional.of(user));
 
         final AuthResponse resp = authService.login(new LoginRequest("user@test.com", "pass123"));
@@ -149,7 +155,7 @@ class AuthServiceTest {
     @Test
     void login_wrongPassword_throws401() {
         final UserEntity user = stubUser(1L, "user@test.com", passwordEncoder.encode("correct"));
-        when(userRepo.findByOperatorIdAndEmail(anyLong(), eq("user@test.com")))
+        when(userRepo.findByEmail(eq("user@test.com")))
                 .thenReturn(Optional.of(user));
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("user@test.com", "wrong")))
@@ -178,6 +184,51 @@ class AuthServiceTest {
         assertThat(passwordEncoder.matches("PlainPass1!", saved[0].getPasswordHash())).isTrue();
     }
 
+    // --- HU-13: login/register issue a refresh token ---
+
+    @Test
+    void login_issuesRefreshToken() {
+        final UserEntity user = stubUser(1L, "user@test.com", passwordEncoder.encode("pass123"));
+        when(userRepo.findByEmail(eq("user@test.com")))
+                .thenReturn(Optional.of(user));
+
+        final AuthResponse resp = authService.login(new LoginRequest("user@test.com", "pass123"));
+
+        assertThat(resp.refreshToken()).isEqualTo("test-refresh");
+        verify(refreshTokenService).issue(1L);
+    }
+
+    // --- HU-13: refresh rotates and mints a new session ---
+
+    @Test
+    void refresh_validToken_returnsNewSession() {
+        final UserEntity user = stubUser(7L, "user@test.com", "hash");
+        when(refreshTokenService.consume("old-refresh")).thenReturn(7L);
+        when(userRepo.findById(7L)).thenReturn(Optional.of(user));
+
+        final AuthResponse resp = authService.refresh("old-refresh");
+
+        assertThat(resp.token()).isEqualTo("test-token");
+        assertThat(resp.refreshToken()).isEqualTo("test-refresh");
+        verify(refreshTokenService).consume("old-refresh"); // the old one is rotated/revoked
+        verify(refreshTokenService).issue(7L);
+    }
+
+    @Test
+    void refresh_userGone_throws() {
+        when(refreshTokenService.consume("orphan")).thenReturn(99L);
+        when(userRepo.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.refresh("orphan"))
+                .isInstanceOf(InvalidRefreshTokenException.class);
+    }
+
+    @Test
+    void logout_revokesRefreshToken() {
+        authService.logout("some-refresh");
+        verify(refreshTokenService).revoke("some-refresh");
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
@@ -191,6 +242,7 @@ class AuthServiceTest {
     private static UserEntity stubUser(final Long id, final String email, final String hash) {
         final UserEntity u = new UserEntity();
         setId(u, id);
+        u.setOperatorId(1L);
         u.setEmail(email);
         u.setPasswordHash(hash);
         u.setRole(UserRole.PLAYER);

@@ -4,5 +4,6 @@ package com.novacasino.domain.user;
 public enum UserRole {
     PLAYER,
     OPERATOR,
-    MATH_ANALYST
+    MATH_ANALYST,
+    ADMIN
 }

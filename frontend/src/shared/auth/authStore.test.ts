@@ -18,19 +18,30 @@ describe('authStore', () => {
     expect(isAuthenticated()).toBe(false)
   })
 
-  it('setAuth persists token and user', () => {
-    useAuthStore.getState().setAuth('tok123', player)
-    const { token, user, isAuthenticated } = useAuthStore.getState()
+  it('setAuth persists tokens and user', () => {
+    useAuthStore.getState().setAuth('tok123', 'refresh123', player)
+    const { token, refreshToken, user, isAuthenticated } = useAuthStore.getState()
     expect(token).toBe('tok123')
+    expect(refreshToken).toBe('refresh123')
     expect(user?.email).toBe('p@test.com')
     expect(isAuthenticated()).toBe(true)
   })
 
+  it('setTokens rotates tokens but keeps the user (silent refresh)', () => {
+    useAuthStore.getState().setAuth('tok1', 'refresh1', player)
+    useAuthStore.getState().setTokens('tok2', 'refresh2')
+    const { token, refreshToken, user } = useAuthStore.getState()
+    expect(token).toBe('tok2')
+    expect(refreshToken).toBe('refresh2')
+    expect(user?.email).toBe('p@test.com') // user untouched
+  })
+
   it('clearAuth removes session', () => {
-    useAuthStore.getState().setAuth('tok', player)
+    useAuthStore.getState().setAuth('tok', 'refresh', player)
     useAuthStore.getState().clearAuth()
     expect(useAuthStore.getState().isAuthenticated()).toBe(false)
     expect(useAuthStore.getState().token).toBeNull()
+    expect(useAuthStore.getState().refreshToken).toBeNull()
   })
 })
 

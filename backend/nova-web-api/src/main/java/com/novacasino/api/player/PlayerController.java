@@ -1,12 +1,21 @@
 package com.novacasino.api.player;
 
+import com.novacasino.api.common.PageResponse;
 import com.novacasino.api.player.dto.GameDetailDto;
 import com.novacasino.api.player.dto.GameSummaryDto;
+import com.novacasino.api.player.dto.LimitDto;
+import com.novacasino.api.player.dto.PlayerRoundDto;
+import com.novacasino.api.player.dto.SelfExclusionDto;
+import com.novacasino.api.player.dto.SelfExclusionRequest;
+import com.novacasino.api.player.dto.SetLimitRequest;
 import com.novacasino.api.player.dto.SpinRequest;
 import com.novacasino.api.player.dto.SpinResultDto;
 import com.novacasino.api.player.dto.WalletDto;
+import com.novacasino.api.player.dto.WalletTransactionDto;
 import com.novacasino.api.security.NovaUserDetails;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,10 +35,16 @@ public class PlayerController {
 
     private final PlayerCatalogService catalog;
     private final SpinService spinService;
+    private final PlayerHistoryService history;
+    private final ResponsibleGamingService responsibleGaming;
 
-    public PlayerController(final PlayerCatalogService catalog, final SpinService spinService) {
+    public PlayerController(final PlayerCatalogService catalog, final SpinService spinService,
+                           final PlayerHistoryService history,
+                           final ResponsibleGamingService responsibleGaming) {
         this.catalog = catalog;
         this.spinService = spinService;
+        this.history = history;
+        this.responsibleGaming = responsibleGaming;
     }
 
     /** GET /player/games — active games for the lobby. */
@@ -62,5 +77,38 @@ public class PlayerController {
         final Long operatorId = principal.getUser().getOperatorId();
         final String currency = body.currency() != null ? body.currency() : "EUR";
         return spinService.spin(userId, operatorId, gameId, idempotencyKey, body.betCents(), currency);
+    }
+
+    /** GET /player/wallet/transactions — the player's own ledger movements, paginated (HU-14). */
+    @GetMapping("/wallet/transactions")
+    public PageResponse<WalletTransactionDto> listTransactions(
+            @AuthenticationPrincipal final NovaUserDetails principal,
+            @PageableDefault(size = 20) final Pageable pageable) {
+        return history.listTransactions(principal.getUser().getId(), pageable);
+    }
+
+    /** GET /player/rounds — the player's own rounds, paginated (HU-14). */
+    @GetMapping("/rounds")
+    public PageResponse<PlayerRoundDto> listRounds(
+            @AuthenticationPrincipal final NovaUserDetails principal,
+            @PageableDefault(size = 20) final Pageable pageable) {
+        return history.listRounds(principal.getUser().getId(), pageable);
+    }
+
+    /** POST /player/limits — sets/changes a responsible-gaming limit (HU-19, Fase 2). */
+    @PostMapping("/limits")
+    public LimitDto setLimit(
+            @AuthenticationPrincipal final NovaUserDetails principal,
+            @Valid @RequestBody final SetLimitRequest body) {
+        return responsibleGaming.setLimit(principal.getUser().getId(),
+                body.limitType(), body.period(), body.amountCents());
+    }
+
+    /** POST /player/self-exclusion — registers a self-exclusion period (HU-19, Fase 2). */
+    @PostMapping("/self-exclusion")
+    public SelfExclusionDto selfExclude(
+            @AuthenticationPrincipal final NovaUserDetails principal,
+            @Valid @RequestBody final SelfExclusionRequest body) {
+        return responsibleGaming.setSelfExclusion(principal.getUser().getId(), body.days());
     }
 }

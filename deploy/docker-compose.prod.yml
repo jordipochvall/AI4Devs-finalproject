@@ -1,0 +1,45 @@
+# IaC (HU-24): production/staging stack. Images are pulled by version tag from the registry; all
+# secrets are injected from the environment (secret manager), never baked into the image.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-novacasino}
+      POSTGRES_USER: ${POSTGRES_USER:?set in secret manager}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in secret manager}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX}-api:${VERSION:?image tag required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:?}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:?}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?}
+      JWT_SECRET: ${JWT_SECRET:?}
+      ANTHROPIC_ENABLED: ${ANTHROPIC_ENABLED:-false}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    ports: ["8080:8080"]
+
+  web:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX}-web:${VERSION:?image tag required}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports: ["80:80"]
+
+volumes:
+  pgdata:

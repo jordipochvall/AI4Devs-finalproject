@@ -7,8 +7,11 @@ import com.novacasino.api.auth.dto.UserDto;
 import com.novacasino.api.auth.exception.AgeVerificationException;
 import com.novacasino.api.auth.exception.EmailAlreadyRegisteredException;
 import com.novacasino.api.auth.exception.InvalidCredentialsException;
+import com.novacasino.api.auth.exception.InvalidRefreshTokenException;
+import com.novacasino.api.auth.exception.OperatorInactiveException;
 import com.novacasino.api.security.JwtService;
 import com.novacasino.domain.user.UserRole;
+import com.novacasino.infrastructure.persistence.entity.OperatorEntity;
 import com.novacasino.infrastructure.persistence.entity.UserEntity;
 import com.novacasino.infrastructure.persistence.entity.WalletEntity;
 import com.novacasino.infrastructure.persistence.repository.OperatorJpaRepository;
@@ -35,17 +38,20 @@ public class AuthService {
     private final OperatorJpaRepository operatorRepo;
     private final PasswordEncoder       passwordEncoder;
     private final JwtService            jwtService;
+    private final RefreshTokenService   refreshTokenService;
 
     public AuthService(final UserJpaRepository userRepo,
                        final WalletJpaRepository walletRepo,
                        final OperatorJpaRepository operatorRepo,
                        final PasswordEncoder passwordEncoder,
-                       final JwtService jwtService) {
-        this.userRepo        = userRepo;
-        this.walletRepo      = walletRepo;
-        this.operatorRepo    = operatorRepo;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtService      = jwtService;
+                       final JwtService jwtService,
+                       final RefreshTokenService refreshTokenService) {
+        this.userRepo            = userRepo;
+        this.walletRepo          = walletRepo;
+        this.operatorRepo        = operatorRepo;
+        this.passwordEncoder     = passwordEncoder;
+        this.jwtService          = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     /** Registers a player and creates their wallet (zero balance) in the same transaction. */
@@ -80,24 +86,48 @@ public class AuthService {
         wallet.setBalanceCents(0L);
         walletRepo.save(wallet);
 
-        final String token = jwtService.generateToken(user);
-        return toAuthResponse(token, user);
+        return issueSession(user);
     }
 
-    /** Authenticates any role (player, operator, math analyst). */
-    @Transactional(readOnly = true)
+    /**
+     * Authenticates any role (player, operator, math analyst, admin) and starts a session. Resolves
+     * the user by email across operators (multi-tenant, HU-25) and refuses login when the user or its
+     * operator is inactive (AC3 — a deactivated operator's users cannot operate).
+     */
+    @Transactional
     public AuthResponse login(final LoginRequest req) {
-        final Long operatorId = defaultOperatorId();
-
-        final UserEntity user = userRepo.findByOperatorIdAndEmail(operatorId, req.email())
+        final UserEntity user = userRepo.findByEmail(req.email())
                 .orElseThrow(InvalidCredentialsException::new);
 
         if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
 
-        final String token = jwtService.generateToken(user);
-        return toAuthResponse(token, user);
+        final OperatorEntity operator = operatorRepo.findById(user.getOperatorId())
+                .orElseThrow(InvalidCredentialsException::new);
+        if (!operator.isActive() || !user.isActive()) {
+            throw new OperatorInactiveException();
+        }
+
+        return issueSession(user);
+    }
+
+    /**
+     * Renews the session from a valid refresh token (HU-13). Rotates the refresh token (the presented
+     * one is revoked and a new one is issued) and mints a fresh access token.
+     */
+    @Transactional
+    public AuthResponse refresh(final String refreshToken) {
+        final Long userId = refreshTokenService.consume(refreshToken);
+        final UserEntity user = userRepo.findById(userId)
+                .orElseThrow(InvalidRefreshTokenException::new);
+        return issueSession(user);
+    }
+
+    /** Revokes a refresh token on logout (best-effort; idempotent). */
+    @Transactional
+    public void logout(final String refreshToken) {
+        refreshTokenService.revoke(refreshToken);
     }
 
     // -------------------------------------------------------------------------
@@ -108,9 +138,12 @@ public class AuthService {
                 .getId();
     }
 
-    private AuthResponse toAuthResponse(final String token, final UserEntity user) {
+    /** Mints an access token and a fresh refresh token for the user. */
+    private AuthResponse issueSession(final UserEntity user) {
+        final String accessToken = jwtService.generateToken(user);
+        final String refreshToken = refreshTokenService.issue(user.getId());
         final UserDto userDto = new UserDto(user.getId(), user.getEmail(),
                 user.getRole().name(), user.getLocale());
-        return new AuthResponse(token, jwtService.getTtlSeconds(), userDto);
+        return new AuthResponse(accessToken, jwtService.getTtlSeconds(), refreshToken, userDto);
     }
 }

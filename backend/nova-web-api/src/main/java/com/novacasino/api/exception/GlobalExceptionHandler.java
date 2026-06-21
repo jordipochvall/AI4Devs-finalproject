@@ -19,14 +19,23 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import com.novacasino.api.auth.exception.AgeVerificationException;
 import com.novacasino.api.auth.exception.EmailAlreadyRegisteredException;
 import com.novacasino.api.auth.exception.InvalidCredentialsException;
+import com.novacasino.api.auth.exception.InvalidRefreshTokenException;
+import com.novacasino.api.auth.exception.OperatorInactiveException;
 import com.novacasino.api.player.exception.GameNotFoundException;
 import com.novacasino.api.player.exception.InvalidBetException;
 import com.novacasino.api.player.exception.InsufficientBalanceException;
 import com.novacasino.api.player.exception.ConcurrentSpinException;
+import com.novacasino.api.player.exception.LimitReachedException;
+import com.novacasino.api.player.exception.SelfExcludedException;
 import com.novacasino.api.operator.exception.InvalidAmountException;
+import com.novacasino.api.operator.exception.InvalidCommercialConfigException;
 import com.novacasino.api.operator.exception.PlayerNotFoundException;
 import com.novacasino.api.operator.exception.RoundNotFoundException;
+import com.novacasino.api.operator.exception.ReportIntegrityException;
+import com.novacasino.api.admin.exception.OperatorCodeExistsException;
+import com.novacasino.api.admin.exception.OperatorNotFoundException;
 import com.novacasino.api.idempotency.IdempotencyConflictException;
+import com.novacasino.api.math.exception.ConfigAlreadyActiveException;
 import com.novacasino.api.math.exception.ConfigNotFoundException;
 import com.novacasino.api.math.exception.SimulationNotFoundException;
 import com.novacasino.api.math.exception.InvalidSimulationParamsException;
@@ -133,6 +142,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(409).body(body);
     }
 
+    @ExceptionHandler(ConfigAlreadyActiveException.class)
+    ResponseEntity<ProblemDetail> handleConfigAlreadyActive(final ConfigAlreadyActiveException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.conflict.title", locale));
+        body.setDetail(msg("error.math.configAlreadyActive.detail", locale));
+        return ResponseEntity.status(409).body(body);
+    }
+
+    @ExceptionHandler(OperatorCodeExistsException.class)
+    ResponseEntity<ProblemDetail> handleOperatorCodeExists(final OperatorCodeExistsException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.conflict.title", locale));
+        body.setDetail(msg("error.admin.operatorCodeExists.detail", locale));
+        return ResponseEntity.status(409).body(body);
+    }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     ResponseEntity<ProblemDetail> handleInvalidCredentials(final InvalidCredentialsException ex) {
         final Locale locale = LocaleContextHolder.getLocale();
@@ -143,12 +172,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(401).body(body);
     }
 
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    ResponseEntity<ProblemDetail> handleInvalidRefreshToken(final InvalidRefreshTokenException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.unauthorized.title", locale));
+        body.setDetail(msg("error.auth.invalidRefresh.detail", locale));
+        return ResponseEntity.status(401).body(body);
+    }
+
     // -------------------------------------------------------------------------
     // Resource not found — 404
     // -------------------------------------------------------------------------
 
     @ExceptionHandler({GameNotFoundException.class, PlayerNotFoundException.class,
-            ConfigNotFoundException.class, SimulationNotFoundException.class, RoundNotFoundException.class})
+            ConfigNotFoundException.class, SimulationNotFoundException.class, RoundNotFoundException.class,
+            OperatorNotFoundException.class})
     ResponseEntity<ProblemDetail> handleNotFound(final RuntimeException ex) {
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
@@ -187,6 +227,57 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         body.setType(ABOUT_BLANK);
         body.setTitle(msg("error.validation.title", locale));
         body.setDetail(msg("error.simulation.spinsOutOfRange.detail", locale));
+        return ResponseEntity.status(422).body(body);
+    }
+
+    @ExceptionHandler(LimitReachedException.class)
+    ResponseEntity<ProblemDetail> handleLimitReached(final LimitReachedException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.validation.title", locale));
+        body.setDetail(msg("error.responsibleGaming.limitReached.detail", locale));
+        return ResponseEntity.status(422).body(body);
+    }
+
+    @ExceptionHandler(OperatorInactiveException.class)
+    ResponseEntity<ProblemDetail> handleOperatorInactive(final OperatorInactiveException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.forbidden.title", locale));
+        body.setDetail(msg("error.auth.operatorInactive.detail", locale));
+        return ResponseEntity.status(403).body(body);
+    }
+
+    @ExceptionHandler(SelfExcludedException.class)
+    ResponseEntity<ProblemDetail> handleSelfExcluded(final SelfExcludedException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.forbidden.title", locale));
+        body.setDetail(msg("error.responsibleGaming.selfExcluded.detail", locale));
+        return ResponseEntity.status(403).body(body);
+    }
+
+    @ExceptionHandler(ReportIntegrityException.class)
+    ResponseEntity<ProblemDetail> handleReportIntegrity(final ReportIntegrityException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.validation.title", locale));
+        body.setDetail(msg("error.report.integrityBroken.detail", locale));
+        body.setProperty("firstBrokenRoundId", ex.getFirstBrokenRoundId());
+        return ResponseEntity.status(422).body(body);
+    }
+
+    @ExceptionHandler(InvalidCommercialConfigException.class)
+    ResponseEntity<ProblemDetail> handleInvalidCommercialConfig(final InvalidCommercialConfigException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.validation.title", locale));
+        body.setDetail(msg("error.operator.commercialConfigInvalid.detail", locale));
         return ResponseEntity.status(422).body(body);
     }
 

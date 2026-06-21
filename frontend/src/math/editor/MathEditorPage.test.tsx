@@ -22,6 +22,12 @@ vi.mock('../api/mathApi', () => {
     // The page now embeds the simulation panel; stub its hooks too (no network).
     useLaunchSimulation: () => ({ mutate: vi.fn(), isPending: false, isError: false, error: null }),
     useSimulation: () => ({ data: undefined }),
+    // HU-17 version/publish panel hooks (no network).
+    useConfigVersions: () => ({ data: [{ id: 30, version: 1, rtpTarget: 0.965, volatilityTarget: 12, active: true, createdAt: '2026-06-01T00:00:00Z' }], isLoading: false }),
+    usePublishConfig: () => ({ mutate: vi.fn(), isPending: false, variables: undefined }),
+    // HU-18 simulation history panel hooks (no network).
+    useSimulationHistory: () => ({ data: { content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 }, isLoading: false }),
+    useSimulationExplanations: () => ({ data: [], isLoading: false }),
   }
 })
 

@@ -13,6 +13,49 @@
     "FRUITS": "Frutas",
     "SPACE": "Espacial"
   },
+  "limits": {
+    "title": "Juego responsable",
+    "back": "Volver",
+    "intro": "Estos límites se aplican en el servidor: una vez fijados, son vinculantes aunque cambies de dispositivo.",
+    "lossTitle": "Límite de pérdida diaria",
+    "dailyLoss": "Pérdida máxima diaria (€)",
+    "exclusionTitle": "Autoexclusión",
+    "days": "Días de autoexclusión",
+    "save": "Guardar límite",
+    "selfExclude": "Autoexcluirme",
+    "saving": "Guardando…",
+    "limitSaved": "Límite guardado. Se aplica de inmediato (relajarlo requiere un periodo de enfriamiento).",
+    "exclusionSaved": "Autoexclusión activada durante {{days}} días.",
+    "invalidAmount": "Introduce un importe válido (≥ 0).",
+    "invalidDays": "Introduce un número de días válido.",
+    "error": "No se ha podido completar la operación."
+  },
+  "history": {
+    "title": "Mi historial",
+    "back": "Volver",
+    "tabTransactions": "Movimientos",
+    "tabRounds": "Partidas",
+    "loading": "Cargando…",
+    "error": "No se ha podido cargar el historial.",
+    "emptyTransactions": "No tienes movimientos todavía.",
+    "emptyRounds": "No tienes partidas todavía.",
+    "colType": "Tipo",
+    "colAmount": "Importe",
+    "colBalance": "Saldo",
+    "colDate": "Fecha",
+    "colGame": "Juego",
+    "colBet": "Apuesta",
+    "colWin": "Premio",
+    "type": {
+      "RECHARGE": "Recarga",
+      "BET": "Apuesta",
+      "WIN": "Premio"
+    },
+    "freeSpinTag": "(gratis)",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "pageInfo": "Página {{page}} de {{total}}"
+  },
   "game": {
     "title": "Juego",
     "underConstruction": "En construcción — próximas HU.",
@@ -35,6 +78,7 @@
     "autoStop": "Detener ({{remaining}})",
     "autoPaused": "Auto-spin detenido (juego responsable). Tómate un descanso.",
     "mute": "Silenciar el audio",
-    "unmute": "Activar el audio"
+    "unmute": "Activar el audio",
+    "jackpot": "Bote progresivo"
   }
 }

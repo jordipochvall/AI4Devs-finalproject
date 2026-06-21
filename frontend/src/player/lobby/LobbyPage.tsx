@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useGames, useWallet, type GameSummary } from '../api/playerApi'
-import { useAuthStore } from '../../shared/auth/authStore'
+import { logoutSession } from '../../shared/auth/session'
 import { formatMoney } from '../../shared/format/money'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
 import ComplianceBanner from '../../shared/compliance/ComplianceBanner'
@@ -11,12 +11,11 @@ import './lobby.css'
 export default function LobbyPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const clearAuth = useAuthStore(s => s.clearAuth)
 
   const games  = useGames()
   const wallet = useWallet()
 
-  const logout = () => { clearAuth(); navigate('/login', { replace: true }) }
+  const logout = () => { logoutSession(); navigate('/login', { replace: true }) }
 
   return (
     <div className="lobby">
@@ -31,6 +30,12 @@ export default function LobbyPage() {
                 : '—'}
             </strong>
           </span>
+          <button type="button" className="btn-secondary" onClick={() => navigate('/history')}>
+            {t('player:history.title')}
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => navigate('/limits')}>
+            {t('player:limits.title')}
+          </button>
           <LanguageSwitcher />
           <button type="button" className="lobby-logout" onClick={logout}>
             {t('common.logout')}

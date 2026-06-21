@@ -21,6 +21,37 @@
     "errorsTitle": "The backend rejected the configuration:",
     "genericError": "Could not save the configuration."
   },
+  "versions": {
+    "title": "Math versions",
+    "colVersion": "Version",
+    "colRtp": "Target RTP",
+    "colStatus": "Status",
+    "active": "Active",
+    "publish": "Publish",
+    "publishing": "Publishing…",
+    "publishedOk": "Version {{version}} published and activated.",
+    "alreadyActive": "That version is already the active one.",
+    "error": "Could not publish the version.",
+    "empty": "This game has no versions yet.",
+    "loading": "Loading versions…"
+  },
+  "history": {
+    "title": "Simulation history",
+    "loading": "Loading…",
+    "empty": "This game has no simulations yet.",
+    "colId": "ID",
+    "colStatus": "Status",
+    "colRtp": "Empirical RTP",
+    "colDate": "Date",
+    "showThread": "Show AI",
+    "hideThread": "Hide AI",
+    "noThread": "No AI questions.",
+    "q": "Q",
+    "a": "A",
+    "prev": "Previous",
+    "next": "Next",
+    "pageInfo": "Page {{page}} of {{total}}"
+  },
   "sim": {
     "title": "Mass simulation",
     "numSpins": "Number of spins (1–10,000,000)",

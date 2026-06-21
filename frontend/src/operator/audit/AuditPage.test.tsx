@@ -16,6 +16,8 @@ vi.mock('../api/operatorApi', () => ({
     },
     isLoading: false, isError: false,
   }),
+  // HU-20 integrity indicator embedded in the audit header (no network).
+  useIntegrity: () => ({ data: undefined, isLoading: false }),
 }))
 
 import AuditPage from './AuditPage'

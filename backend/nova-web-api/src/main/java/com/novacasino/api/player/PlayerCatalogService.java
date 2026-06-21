@@ -11,6 +11,7 @@ import com.novacasino.infrastructure.persistence.entity.GameConfigEntity;
 import com.novacasino.infrastructure.persistence.entity.GameEntity;
 import com.novacasino.infrastructure.persistence.repository.GameConfigJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.GameJpaRepository;
+import com.novacasino.infrastructure.persistence.repository.JackpotPoolJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.WalletJpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,16 +28,19 @@ public class PlayerCatalogService {
     private final GameJpaRepository gameRepo;
     private final GameConfigJpaRepository configRepo;
     private final WalletJpaRepository walletRepo;
+    private final JackpotPoolJpaRepository jackpotPoolRepo;
     private final ObjectMapper objectMapper;
 
     public PlayerCatalogService(final GameJpaRepository gameRepo,
                                 final GameConfigJpaRepository configRepo,
                                 final WalletJpaRepository walletRepo,
+                                final JackpotPoolJpaRepository jackpotPoolRepo,
                                 final ObjectMapper objectMapper) {
-        this.gameRepo     = gameRepo;
-        this.configRepo   = configRepo;
-        this.walletRepo   = walletRepo;
-        this.objectMapper = objectMapper;
+        this.gameRepo        = gameRepo;
+        this.configRepo      = configRepo;
+        this.walletRepo      = walletRepo;
+        this.jackpotPoolRepo = jackpotPoolRepo;
+        this.objectMapper    = objectMapper;
     }
 
     /** Lobby catalogue: active games, exposing only `grid` (not the full math). */
@@ -56,6 +60,8 @@ public class PlayerCatalogService {
         final GameEntity game = gameRepo.findByIdAndActiveTrue(gameId)
                 .orElseThrow(() -> new GameNotFoundException(gameId));
         final JsonNode config = activeConfigNode(game);
+        final Long jackpotCents = jackpotPoolRepo.findByGameId(game.getId())
+                .map(p -> p.getCurrentCents()).orElse(null);
         return new GameDetailDto(
                 game.getId(),
                 game.getName(),
@@ -64,7 +70,8 @@ public class PlayerCatalogService {
                 game.getMinBetCents(),
                 game.getMaxBetCents(),
                 game.getBetStepCents(),
-                config);
+                config,
+                jackpotCents);
     }
 
     /** Balance of the authenticated player. */

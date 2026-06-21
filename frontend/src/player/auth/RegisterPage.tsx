@@ -54,7 +54,7 @@ export default function RegisterPage() {
       // Register with the active UI language as the user's locale.
       const locale = i18n.language?.slice(0, 2) ?? 'es'
       const resp = await authApi.register({ email, password, birthDate, locale })
-      setAuth(resp.token, resp.user)
+      setAuth(resp.token, resp.refreshToken, resp.user)
       i18n.changeLanguage(resp.user.locale)
       navigate(roleHomeRoute(resp.user.role), { replace: true })
     } catch (err) {

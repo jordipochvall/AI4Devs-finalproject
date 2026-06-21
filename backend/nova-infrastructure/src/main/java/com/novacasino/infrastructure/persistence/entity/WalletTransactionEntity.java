@@ -104,4 +104,5 @@ public class WalletTransactionEntity {
     public long getBalanceAfterCents() { return balanceAfterCents; }
     public Long getGameRoundId()       { return gameRoundId; }
     public Long getPerformedByUserId() { return performedByUserId; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
 }

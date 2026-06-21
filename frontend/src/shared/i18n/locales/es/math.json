@@ -21,6 +21,37 @@
     "errorsTitle": "El backend rechazó la configuración:",
     "genericError": "No se pudo guardar la configuración."
   },
+  "versions": {
+    "title": "Versiones de matemática",
+    "colVersion": "Versión",
+    "colRtp": "RTP objetivo",
+    "colStatus": "Estado",
+    "active": "Activa",
+    "publish": "Publicar",
+    "publishing": "Publicando…",
+    "publishedOk": "Versión {{version}} publicada y activada.",
+    "alreadyActive": "Esa versión ya es la activa.",
+    "error": "No se pudo publicar la versión.",
+    "empty": "Este juego aún no tiene versiones.",
+    "loading": "Cargando versiones…"
+  },
+  "history": {
+    "title": "Historial de simulaciones",
+    "loading": "Cargando…",
+    "empty": "Este juego no tiene simulaciones todavía.",
+    "colId": "ID",
+    "colStatus": "Estado",
+    "colRtp": "RTP empírico",
+    "colDate": "Fecha",
+    "showThread": "Ver IA",
+    "hideThread": "Ocultar IA",
+    "noThread": "Sin preguntas a la IA.",
+    "q": "P",
+    "a": "R",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "pageInfo": "Página {{page}} de {{total}}"
+  },
   "sim": {
     "title": "Simulación masiva",
     "numSpins": "Nº de giros (1–10.000.000)",

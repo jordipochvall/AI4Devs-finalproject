@@ -2,6 +2,8 @@ package com.novacasino.api.auth;
 
 import com.novacasino.api.auth.dto.AuthResponse;
 import com.novacasino.api.auth.dto.LoginRequest;
+import com.novacasino.api.auth.dto.LogoutRequest;
+import com.novacasino.api.auth.dto.RefreshRequest;
 import com.novacasino.api.auth.dto.RegisterRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -32,5 +34,18 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody final LoginRequest req) {
         return ResponseEntity.ok(authService.login(req));
+    }
+
+    /** POST /api/v1/auth/refresh — renews the session from a valid refresh token (HU-13). */
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody final RefreshRequest req) {
+        return ResponseEntity.ok(authService.refresh(req.refreshToken()));
+    }
+
+    /** POST /api/v1/auth/logout — revokes a refresh token (HU-13). */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody final LogoutRequest req) {
+        authService.logout(req.refreshToken());
+        return ResponseEntity.noContent().build();
     }
 }

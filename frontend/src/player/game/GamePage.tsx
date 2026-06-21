@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import playerApi, { useGame, useWallet, type SpinResult } from '../api/playerApi'
-import { useAuthStore } from '../../shared/auth/authStore'
+import { logoutSession } from '../../shared/auth/session'
 import { useSessionGuard } from '../../shared/compliance/sessionGuardStore'
 import { useAudioStore } from '../../shared/audio/audioStore'
 import { useGameAudio } from '../../shared/audio/useGameAudio'
@@ -20,7 +20,6 @@ export default function GamePage() {
   const id = Number(gameId)
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const clearAuth = useAuthStore(s => s.clearAuth)
   const recordRound = useSessionGuard(s => s.recordRound)
   const muted = useAudioStore(s => s.muted)
   const toggleMute = useAudioStore(s => s.toggleMute)
@@ -107,7 +106,7 @@ export default function GamePage() {
   // Immersive audio layer (HU-10): music per theme, SFX/voice per event, honoring the mute toggle.
   useGameAudio(game.data?.theme ?? '', result, betCents ?? 0, spin.isPending)
 
-  const logout = () => { clearAuth(); navigate('/login', { replace: true }) }
+  const logout = () => { logoutSession(); navigate('/login', { replace: true }) }
 
   return (
     <div className="game-page">
@@ -140,6 +139,13 @@ export default function GamePage() {
       <main className="game-main">
         {game.isLoading && <p className="game-msg">{t('player:game.loading')}</p>}
         {game.isError && <p className="game-msg game-error">{t('player:game.loadError')}</p>}
+
+        {game.data?.jackpotCents != null && (
+          <div className="game-jackpot" role="status" aria-label={t('player:game.jackpot')}>
+            🎰 {t('player:game.jackpot')}:{' '}
+            <strong>{formatMoney(game.data.jackpotCents, 'EUR', i18n.language)}</strong>
+          </div>
+        )}
 
         {game.data && (
           <SlotGame

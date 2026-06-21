@@ -141,6 +141,7 @@ export default function SlotGame({
         data-testid="slot-grid"
         role="grid"
         aria-label={t('player:game.grid')}
+        aria-busy={spinning}
       >
         {Array.from({ length: rows }).map((_, row) =>
           Array.from({ length: cols }).map((_, col) => {

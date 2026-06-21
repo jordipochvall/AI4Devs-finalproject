@@ -4,6 +4,8 @@ Backlog completo del MVP: **12 historias** (`HU-1` … `HU-12`), una por fichero
 
 > El `readme.md` §5 documenta en detalle solo las **3 historias-faro** (`HU-1`, `HU-2`, `HU-3`), una por perfil y por endpoint prioritario (★). El resto del backlog vive aquí.
 
+> **Más allá del MVP:** el backlog de evolución (`HU-13` … `HU-26`) —que completa los 11 endpoints *post-MVP* y materializa las decisiones diferidas D2–D12— está en [`stories-2.md`](stories-2.md).
+
 ## Unidades de estimación
 
 Las **historias** se estiman con **tallas** (esfuerzo relativo de la historia completa); los **tickets** en que se descomponen usan **Story Points** Fibonacci (1, 2, 3, 5, 8, 13).

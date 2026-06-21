@@ -80,3 +80,19 @@
   color: #b9c44a;
   margin-bottom: 1rem;
 }
+
+/* HU-17 — math version history & publish panel */
+.versions-panel { margin: 1.5rem 0; }
+.versions-table { width: 100%; border-collapse: collapse; }
+.versions-table th, .versions-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #2a2a3a; }
+.versions-table tr.version-active { background: rgba(80, 200, 120, 0.08); }
+.badge-active { color: #50c878; font-weight: 600; }
+
+/* HU-18 — simulation/AI history */
+.sim-history { margin: 1.5rem 0; }
+.sim-history-table { width: 100%; border-collapse: collapse; }
+.sim-history-table th, .sim-history-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #2a2a3a; }
+.sim-history-table .num { text-align: right; }
+.sim-thread { list-style: none; padding: 0.5rem 0; margin: 0; }
+.sim-thread-item { padding: 0.5rem; border-left: 2px solid rgba(80,200,120,0.4); margin-bottom: 0.5rem; }
+.sim-thread-meta { color: #8a8a9a; font-size: 0.8em; }

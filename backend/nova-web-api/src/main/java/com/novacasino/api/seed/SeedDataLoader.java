@@ -42,6 +42,7 @@ public class SeedDataLoader implements ApplicationRunner {
                 "SELECT id FROM operators WHERE code = 'novacasino-default'", Long.class);
 
         // --- Users ---
+        insertUser(operatorId, "admin@nova.test",    "admin123",    "ADMIN",        "1975-01-01", "es");
         insertUser(operatorId, "operator@nova.test", "operator123", "OPERATOR",     "1980-01-01", "es");
         final Long mathUserId = insertUser(operatorId,
                 "math@nova.test",    "math123",     "MATH_ANALYST", "1985-06-15", "es");

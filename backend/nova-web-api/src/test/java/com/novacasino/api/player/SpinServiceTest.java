@@ -62,6 +62,8 @@ class SpinServiceTest {
     private GameRoundJpaRepository roundRepo;
     private RngFactory rngFactory;
     private IdempotencyService idempotency;
+    private ResponsibleGamingService responsibleGaming;
+    private JackpotService jackpotService;
     private SpinService service;
 
     @BeforeEach
@@ -73,9 +75,13 @@ class SpinServiceTest {
         roundRepo = mock(GameRoundJpaRepository.class);
         rngFactory = mock(RngFactory.class);
         idempotency = mock(IdempotencyService.class);
+        responsibleGaming = mock(ResponsibleGamingService.class); // no-op gate by default
+        jackpotService = mock(JackpotService.class);
+        when(jackpotService.findPool(anyLong())).thenReturn(java.util.Optional.empty()); // no jackpot by default
 
         service = new SpinService(gameRepo, configRepo, walletRepo, txRepo, roundRepo,
-                new GameConfigMapper(), new GameCompiler(), rngFactory, idempotency, new ObjectMapper());
+                new GameConfigMapper(), new GameCompiler(), rngFactory, idempotency,
+                responsibleGaming, jackpotService, new ObjectMapper());
 
         // Run the supplied operation directly (idempotency itself is covered by the IT suite).
         when(idempotency.execute(anyLong(), anyString(), any(), any(), any(), any()))

@@ -358,6 +358,8 @@ Este apartado consolida en un único lugar los supuestos sobre los que se constr
 
 #### Decisiones diferidas (post-MVP)
 
+> **✅ Estado.** Estas decisiones diferidas **ya están abordadas** por el backlog de evolución (`HU-13`…`HU-26`, [stories/stories-2.md](stories/stories-2.md)): **D1** (HU-13…HU-18), **D2** (HU-13), **D3/D12** (HU-20, integridad *tamper-evident*; la firma con *anchor* externo sigue como ampliación), **D4** (HU-23, BRIN + runbook de particionado), **D5** (HU-15), **D6** (HU-21), **D7** (HU-19), **D8** (HU-22), **D9** (HU-24), **D10** (HU-18), **D11** jackpots (HU-26; el dinero real con pasarela de pago permanece fuera de alcance por diseño de saldo virtual). El multi-tenancy operativo lo activa HU-25.
+
 | # | Diferido | Motivo / disparador para abordarlo |
 |---|---|---|
 | D1 | Endpoints de soporte secundarios (ver marcas *post-MVP* en el [catálogo 4.2](#42-catálogo-de-endpoints)) | El MVP implementa los 5 endpoints ★ + el soporte mínimo; el resto se especifica pero no se construye. |
@@ -798,7 +800,7 @@ AI4Devs-finalproject/
 │   │   │   │   └── config/        # OpenApiConfig, I18nConfig, CorsConfig
 │   │   │   └── resources/
 │   │   │       ├── application.yml
-│   │   │       ├── db/migration/  # Flyway: V1__schema.sql, V2__immutability_triggers.sql, V3__seed.sql
+│   │   │       ├── db/migration/  # Flyway: V1 schema, V2 triggers, V3 seed (MVP) · V4–V10 evolución (refresh, auditoría comercial, juego responsable, integridad, rol ADMIN, jackpot, BRIN)
 │   │   │       └── games/         # JSON de configuración de los 3 juegos (semilla)
 │   │   ├── src/test/java/         # Unit tests de controllers (MockMvc + Surefire)
 │   │   ├── src/it/java/           # Integration tests de API (Failsafe + Testcontainers)
@@ -915,7 +917,7 @@ Las prácticas se agrupan en cuatro bloques: autenticación, integridad de datos
 - **Roles**: `PLAYER`, `OPERATOR`, `MATH_ANALYST`. Cada controller solo acepta su rol.
 - **Passwords**: hash con BCrypt (cost 12). Nunca se almacenan en claro ni se loguean.
 - **Verificación de edad ≥18** obligatoria en el registro: se valida en el caso de uso de registro (capa de aplicación) a partir de `birth_date`. **No** se usa un `CHECK` en BBDD porque una expresión dependiente de la fecha actual no es inmutable y se re-evaluaría de forma inconsistente en un `restore` (ver justificación en 3.2.2).
-- **Access tokens** con TTL de 1 h. En el MVP, al expirar el token el usuario vuelve a autenticarse. El endpoint `POST /auth/refresh` y la renovación silenciosa por interceptor en el cliente quedan **post-MVP** (ver 4.2).
+- **Access tokens** con TTL de 1 h. En el MVP, al expirar el token el usuario volvía a autenticarse; el endpoint `POST /auth/refresh` y la renovación silenciosa por interceptor en el cliente eran post-MVP. **Implementados en HU-13** (evolución, decisión D2): refresh tokens opacos (se persiste solo su hash SHA-256) con rotación de un solo uso y revocación en logout (migración `V4`).
 
 #### 2.5.2 Inmutabilidad de la auditoría
 
@@ -924,7 +926,7 @@ Las tablas histórico-regulatorias (`game_rounds`, `wallet_transactions`, `game_
 1. **Por contrato**: ningún caso de uso del módulo `nova-application` expone una operación que modifique o borre filas de esas tablas.
 2. **Por la base de datos**: una función PL/pgSQL compartida `fn_forbid_update_delete()` y un trigger `BEFORE UPDATE OR DELETE` en cada una de esas tablas que **lanza excepción siempre**. Cualquier UPDATE o DELETE — incluso ejecutado a mano por un DBA descuidado — falla. Migración Flyway: `V2__immutability_triggers.sql`. El detalle se documenta en el punto 3.2.12.
 
-> **Nota sobre tamper-evidence (fuera de scope v1).** La arquitectura está preparada para incorporar en fases posteriores un *hash-chain* SHA-256 sobre `game_rounds` con firma externa de los hashes (clave privada fuera del servidor o replicación a un sistema append-only externo como Amazon QLDB). En un MVP single-node sin esa firma externa, el hash-chain por sí solo no añade seguridad real frente al trigger anti-UPDATE/DELETE — un atacante con acceso DBA podría deshabilitar el trigger y recalcular hashes en cascada porque el algoritmo es público y determinista. Por eso se difiere a la fase donde exista anchor de confianza externo.
+> **Nota sobre tamper-evidence.** En la v1 la inmutabilidad se apoyaba solo en el trigger anti-UPDATE/DELETE. **HU-20** (evolución) añade el *hash-chain* SHA-256 sobre `game_rounds` (`prev_hash`/`row_hash`, encadenado por operador en un trigger `BEFORE INSERT`, migración `V7`) y el endpoint de verificación `GET /operator/audit/integrity`, que detecta e identifica la primera fila alterada. La **firma con clave externa de custodia / anclaje a un sistema de *timestamping* de confianza** (p. ej. Amazon QLDB) sigue como ampliación: en single-node sin ese *anchor* externo, un atacante con acceso DBA podría recalcular la cadena (el algoritmo es público); cierra el caso de confianza la firma externa, planificada como continuación de HU-20.
 
 #### 2.5.3 RNG criptográficamente fuerte y replay determinista
 
@@ -965,7 +967,7 @@ Cada giro registra su `seed`; con él, el motor es **completamente determinista*
 - **Trazabilidad total**: 100% de los giros quedan en `game_rounds` con `seed`, `bet`, `result`, `balance_pre`, `balance_post`, `timestamp`.
 - **Verificación de edad** y sello DGOJ visible en todas las pantallas del jugador.
 - **Mensajes de juego responsable** en login, lobby y al alcanzar umbrales de pérdida.
-- **Auto-spin con safeguards**: el cliente para automáticamente al cruzar umbrales y muestra un mensaje de pausa. En el MVP estas salvaguardas son **solo de cliente**; la imposición *server-side* de límites de pérdida y autoexclusión queda diferida (D7) — a tener presente para certificación.
+- **Auto-spin con safeguards**: el cliente para automáticamente al cruzar umbrales y muestra un mensaje de pausa. En el MVP estas salvaguardas eran **solo de cliente**; la imposición *server-side* de límites de pérdida y autoexclusión se **implementó en HU-19** (evolución, D7): el servidor rechaza el giro al cruzar un límite o durante una autoexclusión vigente, sin descontar saldo ni registrar partida.
 - **Separación motor/RNG**: prerequisito para certificación; ya descrito en 2.5.3.
 
 ---
@@ -1246,7 +1248,7 @@ A continuación se describen las once entidades del modelo. Por cada una se docu
 
 #### 3.2.1 `operators`
 
-Tabla raíz del *multi-tenancy*. En MVP existe un único registro semilla (`code = 'novacasino-default'`), pero todas las entidades transaccionales referencian su `operator_id` para no requerir migración masiva si se incorpora un segundo operador.
+Tabla raíz del *multi-tenancy*. En el MVP existía un único registro semilla (`code = 'novacasino-default'`) y todas las entidades transaccionales referencian su `operator_id`. **HU-25** activa operativamente el modelo multi-tenant: el rol `ADMIN` da de alta y gestiona varios operadores (`/admin/operators`), el login resuelve al usuario **por email a nivel de plataforma**, y desactivar un operador bloquea a sus usuarios.
 
 | Columna | Tipo | Restricciones | Notas |
 |---|---|---|---|
@@ -1355,7 +1357,7 @@ Catálogo de juegos del operador. Define los parámetros **comerciales** (apuest
 
 **Índices:** `idx_games_active_config` sobre `(active_config_id)` — índice de la FK.
 
-> **Auditoría de cambios comerciales (post-MVP).** Las modificaciones de la configuración comercial de un juego (apuestas, monedas, `active`) vía `PUT /operator/games/{id}` **no se auditan en el MVP**. La matemática sí queda trazada en `game_config_publications`; la auditoría de los cambios comerciales se difiere a una fase posterior (ver [1.5](#15-supuestos-y-decisiones-diferidas), D5).
+> **Auditoría de cambios comerciales.** Las modificaciones de la configuración comercial de un juego (apuestas, monedas, `active`) vía `PUT /operator/games/{id}` no se auditaban en el MVP. **Implementada en HU-15** (evolución, decisión D5): cada cambio se registra *append-only* con *antes/después*, autor y fecha en `game_commercial_audits` (migración `V5`). La matemática sigue trazada en `game_config_publications`.
 
 #### 3.2.6 `game_configs`
 
@@ -1531,7 +1533,9 @@ Soporte de la **idempotencia** de las operaciones con efecto económico (`spin` 
 | `wallet_transactions.type` | `'RECHARGE'`, `'BET'`, `'WIN'` |
 | `simulation_runs.status` | `'RUNNING'`, `'COMPLETED'`, `'FAILED'` |
 
-**Triggers de inmutabilidad.** Una única función PL/pgSQL `fn_forbid_update_delete()` lanza `RAISE EXCEPTION` ante cualquier `UPDATE` o `DELETE`. Cuatro triggers `BEFORE UPDATE OR DELETE` la invocan, sobre las tablas histórico-regulatorias: `game_rounds`, `wallet_transactions`, `game_configs` y `game_config_publications`. Definidos en la migración Flyway `V2__immutability_triggers.sql`.
+**Triggers de inmutabilidad.** Una única función PL/pgSQL `fn_forbid_update_delete()` lanza `RAISE EXCEPTION` ante cualquier `UPDATE` o `DELETE`. La invocan triggers `BEFORE UPDATE OR DELETE` sobre las tablas histórico-regulatorias: en el MVP `game_rounds`, `wallet_transactions`, `game_configs` y `game_config_publications` (migración `V2`); la evolución añade `game_commercial_audits` (`V5`) y `jackpot_grants` (`V9`) reutilizando la misma función.
+
+> **Migraciones de la evolución (post-MVP).** Sobre `V1`–`V3` (MVP), el backlog de evolución añade: **`V4`** `refresh_tokens` (HU-13) · **`V5`** `game_commercial_audits` (HU-15) · **`V6`** `player_limits` + `self_exclusions` (HU-19) · **`V7`** cadena de integridad en `game_rounds` (`prev_hash`/`row_hash` + trigger `BEFORE INSERT`, HU-20) · **`V8`** rol `ADMIN` en el `CHECK` de `users.role` (HU-25) · **`V9`** `jackpot_pools` + `jackpot_grants` (HU-26) · **`V10`** índice BRIN sobre `game_rounds.created_at` (HU-23). Todas son aditivas.
 
 ### **3.3. Esquema del JSON de configuración de juego (`game_configs.config`)**
 
@@ -1653,11 +1657,16 @@ El backend `nova-web-api` expone una **API REST** consumida por la SPA. Este apa
 
 ### **4.2. Catálogo de endpoints**
 
-El MVP implementa **16 endpoints**: los 5 prioritarios (★) más el soporte mínimo imprescindible para que los tres flujos (jugador, operador, matemático) funcionen de principio a fin. Los 11 restantes quedan **especificados pero no implementados** en esta versión (ver [1.5](#15-supuestos-y-decisiones-diferidas), D1). La columna *Fase* indica:
+El MVP implementa **16 endpoints**: los 5 prioritarios (★) más el soporte mínimo imprescindible para que los tres flujos (jugador, operador, matemático) funcionen de principio a fin. Los 11 *post-MVP* quedaron especificados en el contrato del MVP pero no construidos en aquella versión (ver [1.5](#15-supuestos-y-decisiones-diferidas), D1); un bloque de endpoints **Fase 2** (nuevos, no contemplados en el contrato del MVP) lo introduce el backlog de evolución ([stories/stories-2.md](stories/stories-2.md)).
+
+> **✅ Estado de evolución (post-MVP).** Los **11 endpoints *post-MVP*** y los **6 endpoints *Fase 2*** del catálogo están **implementados y verificados** por el backlog de evolución (`HU-13`…`HU-26`): backend **89 tests unitarios + 107 de integración** y frontend **109 tests** en verde. La columna *Fase* se conserva como **origen en el contrato** (no como estado de construcción): `MVP` = en el contrato y construido en la v1; `post-MVP` = en el contrato y construido en la evolución; `Fase 2` = endpoint **nuevo** de la evolución. Detalle en [stories/stories-2.md](stories/stories-2.md) y [tickets/tickets-2.md](tickets/tickets-2.md).
+
+La columna *Fase* indica el **origen** de cada endpoint:
 
 - **★ MVP** — endpoint prioritario; núcleo de valor, con especificación OpenAPI y ejemplos en 4.4.
 - **MVP** — endpoint de soporte imprescindible; se implementa en esta versión.
-- **post-MVP** — especificado en el contrato pero no implementado en el MVP.
+- **post-MVP** — especificado en el contrato del MVP; **implementado** en el backlog de evolución (`HU-13`…`HU-18`).
+- **Fase 2** — endpoint **nuevo** del backlog de evolución (no existía en el contrato del MVP); **implementado** (`HU-19`…`HU-21`, `HU-25`).
 
 **Auth — `/api/v1/auth`**
 
@@ -1677,6 +1686,8 @@ El MVP implementa **16 endpoints**: los 5 prioritarios (★) más el soporte mí
 | MVP | `GET` | `/player/wallet` | Saldo virtual actual del jugador. |
 | post-MVP | `GET` | `/player/wallet/transactions` | Movimientos del wallet (paginado). |
 | post-MVP | `GET` | `/player/rounds` | Historial de partidas propias (paginado). |
+| Fase 2 | `POST` | `/player/limits` | Fijar límites de juego responsable (pérdida/depósito/tiempo), impuestos en servidor (HU-19). |
+| Fase 2 | `POST` | `/player/self-exclusion` | Autoexclusión temporal del jugador, impuesta en servidor (HU-19). |
 
 **Operator — `/api/v1/operator`** (rol `OPERATOR`)
 
@@ -1690,6 +1701,8 @@ El MVP implementa **16 endpoints**: los 5 prioritarios (★) más el soporte mí
 | post-MVP | `GET` | `/operator/rounds/{roundId}` | Detalle de una partida auditada. |
 | ★ MVP | `GET` | `/operator/rounds/{roundId}/replay` | Datos completos para el *replay* visual determinista. |
 | post-MVP | `GET` | `/operator/dashboard` | Métricas de actividad: jugadores activos, GGR, juegos más jugados. |
+| Fase 2 | `GET` | `/operator/audit/integrity` | Verificar la integridad *tamper-evident* de la auditoría (cadena de hashes) (HU-20). |
+| Fase 2 | `POST` | `/operator/reports/rfj` | Generar el informe regulatorio DGOJ (RFJ) de un periodo (HU-21). |
 
 **Math — `/api/v1/math`** (rol `MATH_ANALYST`)
 
@@ -1706,7 +1719,16 @@ El MVP implementa **16 endpoints**: los 5 prioritarios (★) más el soporte mí
 | MVP | `POST` | `/math/simulations/{simulationId}/explain` | Preguntar a Claude sobre los resultados (IA explainability). |
 | post-MVP | `GET` | `/math/simulations/{simulationId}/explanations` | Historial de preguntas y respuestas IA. |
 
-> **Activación de matemática en el MVP.** La **publicación** (`POST /math/games/{gameId}/publish`, que mueve `games.active_config_id`) es **post-MVP**. En el MVP el matemático **crea y simula** versiones nuevas — la simulación opera sobre un `configId` concreto, no sobre la activa —, pero **el jugador siempre juega la `config` semilla** activada en el *seed*. Servir una versión nueva al jugador (activarla) llega en una fase posterior; no hay que buscar un flujo de activación en el MVP.
+> **Activación de matemática.** La **publicación** (`POST /math/games/{gameId}/publish`, que mueve `games.active_config_id`) era **post-MVP**: en el MVP el matemático creaba y simulaba versiones pero el jugador siempre jugaba la `config` semilla. **Implementada en HU-17** (evolución): publicar una versión la activa y los nuevos giros del jugador usan esa `config`, con registro inmutable en `game_config_publications`.
+
+**Admin — `/api/v1/admin`** (rol `ADMIN`)
+
+| Fase | Método | Ruta | Descripción |
+|---|---|---|---|
+| Fase 2 | `GET` | `/admin/operators` | Listar operadores de la plataforma (multi-tenant) (HU-25). |
+| Fase 2 | `POST` | `/admin/operators` | Alta de un operador y su usuario operador inicial (HU-25). |
+
+> **Fases del catálogo.** La columna *Fase* indica el **origen** de cada endpoint, no su estado (todo el catálogo está implementado, ver el callout al inicio de [§4.2](#42-catálogo-de-endpoints)). `★ MVP`/`MVP` se construyeron en la v1; `post-MVP` son endpoints **especificados en el contrato del MVP** e implementados en la evolución por `HU-13`…`HU-18` ([stories/stories-2.md](stories/stories-2.md)); `Fase 2` son endpoints **nuevos** del backlog —no existían en el contrato del MVP— para las decisiones diferidas D3/D6/D7 y la operativa multi-tenant: límites/autoexclusión (HU-19), integridad de auditoría (HU-20), informes DGOJ (HU-21) y gestión de operadores (HU-25). El rol `ADMIN` amplió el dominio `users.role` en la migración `V8` ([§3.2.12](#3-modelo-de-datos)).
 
 ### **4.3. Ficha de cada endpoint**
 

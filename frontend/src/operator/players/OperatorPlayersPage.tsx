@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePlayers, type PlayerSummary } from '../api/operatorApi'
-import { useAuthStore } from '../../shared/auth/authStore'
+import { logoutSession } from '../../shared/auth/session'
 import { formatMoney } from '../../shared/format/money'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
 import RechargeDialog from './RechargeDialog'
@@ -12,7 +12,6 @@ import './operator.css'
 export default function OperatorPlayersPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const clearAuth = useAuthStore(s => s.clearAuth)
 
   const [email, setEmail] = useState('')
   const [page, setPage] = useState(0)
@@ -20,7 +19,7 @@ export default function OperatorPlayersPage() {
 
   const players = usePlayers(email, page)
 
-  const logout = () => { clearAuth(); navigate('/login', { replace: true }) }
+  const logout = () => { logoutSession(); navigate('/login', { replace: true }) }
 
   const onSearch = (value: string) => { setEmail(value); setPage(0) }
 
@@ -32,6 +31,15 @@ export default function OperatorPlayersPage() {
       <header className="operator-header">
         <h1>{t('operator:players.title')}</h1>
         <div className="operator-header-right">
+          <button type="button" className="btn-secondary" onClick={() => navigate('/operator/dashboard')}>
+            {t('operator:players.toDashboard')}
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => navigate('/operator/reports')}>
+            {t('operator:players.toReports')}
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => navigate('/operator/games')}>
+            {t('operator:players.toGames')}
+          </button>
           <button type="button" className="btn-secondary" onClick={() => navigate('/operator/audit')}>
             {t('operator:players.toAudit')}
           </button>

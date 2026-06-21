@@ -2,9 +2,11 @@ package com.novacasino.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
 
+import java.time.OffsetDateTime;
+
 /**
- * Read-oriented view of the game catalogue. Only maps the columns the player endpoints
- * need (not the full commercial configuration nor audit timestamps).
+ * Read-oriented view of the game catalogue. Maps the columns the player endpoints need plus the
+ * {@code active_config_id} pointer (mutable: it moves when a math version is published, HU-17).
  */
 @Entity
 @Table(name = "games")
@@ -44,6 +46,9 @@ public class GameEntity {
     @Column(name = "active_config_id")
     private Long activeConfigId;
 
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
+
     public Long getId()             { return id; }
     public Long getOperatorId()     { return operatorId; }
     public String getCode()         { return code; }
@@ -55,4 +60,10 @@ public class GameEntity {
     public long getBetStepCents()   { return betStepCents; }
     public boolean isActive()       { return active; }
     public Long getActiveConfigId() { return activeConfigId; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
+
+    /** Moves the active math version pointer (HU-17 publish). */
+    public void setActiveConfigId(final Long activeConfigId) { this.activeConfigId = activeConfigId; }
+
+    public void setUpdatedAt(final OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

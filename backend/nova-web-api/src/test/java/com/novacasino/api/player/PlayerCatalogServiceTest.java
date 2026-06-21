@@ -22,6 +22,7 @@ class PlayerCatalogServiceTest {
     private GameJpaRepository gameRepo;
     private GameConfigJpaRepository configRepo;
     private WalletJpaRepository walletRepo;
+    private com.novacasino.infrastructure.persistence.repository.JackpotPoolJpaRepository jackpotPoolRepo;
     private PlayerCatalogService service;
 
     @BeforeEach
@@ -29,7 +30,8 @@ class PlayerCatalogServiceTest {
         gameRepo   = mock(GameJpaRepository.class);
         configRepo = mock(GameConfigJpaRepository.class);
         walletRepo = mock(WalletJpaRepository.class);
-        service    = new PlayerCatalogService(gameRepo, configRepo, walletRepo, new ObjectMapper());
+        jackpotPoolRepo = mock(com.novacasino.infrastructure.persistence.repository.JackpotPoolJpaRepository.class);
+        service    = new PlayerCatalogService(gameRepo, configRepo, walletRepo, jackpotPoolRepo, new ObjectMapper());
     }
 
     @Test

@@ -1,0 +1,14 @@
+/* HU-14 — player history screens */
+.history { max-width: 900px; margin: 0 auto; padding: 1rem; }
+.history-header { display: flex; align-items: center; justify-content: space-between; }
+.history-header-right { display: flex; gap: 0.5rem; align-items: center; }
+.history-tabs { display: flex; gap: 0.5rem; margin: 1rem 0; }
+.history-tabs .tab { padding: 0.4rem 0.9rem; background: transparent; border: 1px solid #2a2a3a; cursor: pointer; }
+.history-tabs .tab.active { background: rgba(80, 200, 120, 0.12); font-weight: 600; }
+.history-table { width: 100%; border-collapse: collapse; }
+.history-table th, .history-table td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #2a2a3a; }
+.history-table .num { text-align: right; }
+.history-msg { padding: 1rem 0; }
+.history-error { color: #e06c75; }
+.history .muted { color: #8a8a9a; font-size: 0.85em; }
+.pagination { display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; }

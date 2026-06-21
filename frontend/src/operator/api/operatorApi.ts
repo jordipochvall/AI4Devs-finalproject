@@ -102,6 +102,118 @@ export function useReplay(roundId: number) {
   })
 }
 
+/** A game's commercial configuration as seen by the operator backoffice (HU-15). */
+export interface OperatorGame {
+  id: number
+  code: string
+  name: string
+  theme: string
+  minBetCents: number
+  maxBetCents: number
+  betStepCents: number
+  allowedCurrencies: string[]
+  active: boolean
+  activeConfigId: number | null
+  paylineCount: number | null
+}
+
+/** Editable commercial fields submitted on a PUT /operator/games/{id}. */
+export interface UpdateGamePayload {
+  minBetCents: number
+  maxBetCents: number
+  betStepCents: number
+  active: boolean
+  allowedCurrencies: string[]
+}
+
+/** Query hook for the operator's games with their commercial configuration. */
+export function useOperatorGames() {
+  return useQuery({
+    queryKey: ['operator', 'games'],
+    queryFn: () => api.get<OperatorGame[]>('/operator/games').then(r => r.data),
+  })
+}
+
+/** Mutation hook that updates a game's commercial configuration, refreshing the list. */
+export function useUpdateGame() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ gameId, payload }: { gameId: number; payload: UpdateGamePayload }) =>
+      api.put<OperatorGame>(`/operator/games/${gameId}`, payload).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['operator', 'games'] }),
+  })
+}
+
+/** A most-played game entry in the dashboard. */
+export interface TopGame {
+  gameId: number
+  name: string | null
+  theme: string | null
+  rounds: number
+}
+
+/** Aggregated operator activity KPIs (HU-16). */
+export interface Dashboard {
+  from: string
+  to: string
+  activePlayers: number
+  ggrCents: number
+  totalRounds: number
+  topGames: TopGame[]
+}
+
+/** Query hook for the operator activity dashboard, optionally bounded by a date window. */
+export function useDashboard(from?: string, to?: string) {
+  return useQuery({
+    queryKey: ['operator', 'dashboard', from ?? null, to ?? null],
+    queryFn: () =>
+      api.get<Dashboard>('/operator/dashboard', {
+        params: { from: from || undefined, to: to || undefined },
+      }).then(r => r.data),
+  })
+}
+
+/** RFJ regulatory report for a period (HU-21). */
+export interface RfjReport {
+  operatorId: number
+  periodFrom: string
+  periodTo: string
+  totalRounds: number
+  activePlayers: number
+  totalWageredCents: number
+  totalWonCents: number
+  ggrCents: number
+  integrityConsistent: boolean
+  integrityChecked: number
+  generatedAt: string
+}
+
+/** Mutation hook to generate the RFJ report for a month (HU-21). */
+export function useGenerateRfj() {
+  return useMutation({
+    mutationFn: ({ year, month }: { year: number; month: number }) =>
+      api.post<RfjReport>('/operator/reports/rfj', { year, month }).then(r => r.data),
+  })
+}
+
+/** Result of an audit integrity verification (HU-20). */
+export interface IntegrityReport {
+  from: string
+  to: string
+  checked: number
+  consistent: boolean
+  firstBrokenRoundId: number | null
+}
+
+/** Query hook for the audit integrity check; runs only once enabled (on demand). */
+export function useIntegrity(enabled: boolean) {
+  return useQuery({
+    queryKey: ['operator', 'integrity'],
+    queryFn: () => api.get<IntegrityReport>('/operator/audit/integrity').then(r => r.data),
+    enabled,
+  })
+}
+
 /** Arguments for a recharge mutation. */
 export interface RechargeArgs {
   playerId: number

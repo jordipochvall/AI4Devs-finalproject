@@ -13,6 +13,49 @@
     "FRUITS": "Fruits",
     "SPACE": "Space"
   },
+  "limits": {
+    "title": "Responsible gaming",
+    "back": "Back",
+    "intro": "These limits are enforced on the server: once set, they are binding even if you switch device.",
+    "lossTitle": "Daily loss limit",
+    "dailyLoss": "Maximum daily loss (€)",
+    "exclusionTitle": "Self-exclusion",
+    "days": "Self-exclusion days",
+    "save": "Save limit",
+    "selfExclude": "Self-exclude",
+    "saving": "Saving…",
+    "limitSaved": "Limit saved. It applies immediately (relaxing it requires a cooldown period).",
+    "exclusionSaved": "Self-exclusion enabled for {{days}} days.",
+    "invalidAmount": "Enter a valid amount (>= 0).",
+    "invalidDays": "Enter a valid number of days.",
+    "error": "The operation could not be completed."
+  },
+  "history": {
+    "title": "My history",
+    "back": "Back",
+    "tabTransactions": "Movements",
+    "tabRounds": "Rounds",
+    "loading": "Loading…",
+    "error": "Could not load the history.",
+    "emptyTransactions": "You have no movements yet.",
+    "emptyRounds": "You have no rounds yet.",
+    "colType": "Type",
+    "colAmount": "Amount",
+    "colBalance": "Balance",
+    "colDate": "Date",
+    "colGame": "Game",
+    "colBet": "Bet",
+    "colWin": "Win",
+    "type": {
+      "RECHARGE": "Recharge",
+      "BET": "Bet",
+      "WIN": "Win"
+    },
+    "freeSpinTag": "(free)",
+    "prev": "Previous",
+    "next": "Next",
+    "pageInfo": "Page {{page}} of {{total}}"
+  },
   "game": {
     "title": "Game",
     "underConstruction": "Under construction — upcoming user stories.",
@@ -35,6 +78,7 @@
     "autoStop": "Stop ({{remaining}})",
     "autoPaused": "Auto-spin stopped (responsible gaming). Take a break.",
     "mute": "Mute audio",
-    "unmute": "Unmute audio"
+    "unmute": "Unmute audio",
+    "jackpot": "Progressive jackpot"
   }
 }

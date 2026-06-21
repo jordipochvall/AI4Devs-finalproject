@@ -117,11 +117,95 @@ export interface Explanation {
   askedAt: string
 }
 
+/** Standard pagination wrapper (§4.1). */
+export interface PageResponse<T> {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+/** One simulation in the operator's history (HU-18). */
+export interface SimulationSummary {
+  id: number
+  gameConfigId: number
+  status: 'RUNNING' | 'COMPLETED' | 'FAILED'
+  numSpins: number
+  betCents: number
+  rtpEmpirical: number | null
+  startedAt: string
+  completedAt: string | null
+}
+
+/** Query hook for the operator's simulation history, optionally filtered by game (HU-18). */
+export function useSimulationHistory(gameId: number | null, page: number, size = 10) {
+  return useQuery({
+    queryKey: ['math', 'simHistory', gameId, page, size],
+    queryFn: () =>
+      api.get<PageResponse<SimulationSummary>>('/math/simulations', {
+        params: { gameId: gameId ?? undefined, page, size },
+      }).then(r => r.data),
+    enabled: gameId != null,
+  })
+}
+
+/** Query hook for the AI Q&A thread of a simulation (HU-18); enabled only when an id is given. */
+export function useSimulationExplanations(simulationId: number | null) {
+  return useQuery({
+    queryKey: ['math', 'explanations', simulationId],
+    queryFn: () =>
+      api.get<Explanation[]>(`/math/simulations/${simulationId}/explanations`).then(r => r.data),
+    enabled: simulationId != null,
+  })
+}
+
 /** Mutation hook that asks the AI to explain a completed simulation. */
 export function useExplain() {
   return useMutation({
     mutationFn: ({ simulationId, question }: { simulationId: number; question: string }) =>
       api.post<Explanation>(`/math/simulations/${simulationId}/explain`, { question }).then(r => r.data),
+  })
+}
+
+/** A math version in a game's history (HU-17), flagged with whether it is the active one. */
+export interface ConfigVersion {
+  id: number
+  version: number
+  rtpTarget: number
+  volatilityTarget: number | null
+  active: boolean
+  createdAt: string
+}
+
+/** Result of publishing (activating) a math version. */
+export interface PublishResult {
+  gameId: number
+  activeConfigId: number
+  version: number
+  publishedByUserId: number
+  publishedAt: string
+}
+
+/** Query hook for a game's math version history (newest first). */
+export function useConfigVersions(gameId: number | null) {
+  return useQuery({
+    queryKey: ['math', 'versions', gameId],
+    queryFn: () => api.get<ConfigVersion[]>(`/math/games/${gameId}/configs`).then(r => r.data),
+    enabled: gameId != null,
+  })
+}
+
+/** Mutation hook that publishes (activates) a math version, refreshing games + version list. */
+export function usePublishConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ gameId, configId }: { gameId: number; configId: number }) =>
+      api.post<PublishResult>(`/math/games/${gameId}/publish`, { configId }).then(r => r.data),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['math', 'games'] })
+      qc.invalidateQueries({ queryKey: ['math', 'versions', vars.gameId] })
+    },
   })
 }
 

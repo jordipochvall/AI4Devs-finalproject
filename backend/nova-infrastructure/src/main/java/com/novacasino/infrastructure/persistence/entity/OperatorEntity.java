@@ -30,6 +30,15 @@ public class OperatorEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
+    public OperatorEntity() { }
+
+    /** Creates a new active operator (HU-25 admin onboarding). */
+    public OperatorEntity(final String code, final String name) {
+        this.code = code;
+        this.name = name;
+        this.active = true;
+    }
+
     /** Keeps {@code updated_at} current on insert and update. */
     @PrePersist
     @PreUpdate
@@ -39,4 +48,8 @@ public class OperatorEntity {
     public String getCode()    { return code; }
     public String getName()    { return name; }
     public boolean isActive()  { return active; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+
+    public void setName(final String name)      { this.name = name; }
+    public void setActive(final boolean active) { this.active = active; }
 }

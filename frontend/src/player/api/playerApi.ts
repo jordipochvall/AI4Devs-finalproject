@@ -1,5 +1,35 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query'
 import api from '../../shared/api/axiosClient'
+
+/** Standard pagination wrapper (matches the API's PageResponse, §4.1). */
+export interface PageResponse<T> {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+/** One of the player's wallet ledger movements (HU-14). */
+export interface WalletTransaction {
+  id: number
+  type: 'RECHARGE' | 'BET' | 'WIN'
+  amountCents: number
+  balanceAfterCents: number
+  gameRoundId: number | null
+  createdAt: string
+}
+
+/** One of the player's own rounds (HU-14). */
+export interface PlayerRound {
+  id: number
+  gameId: number
+  betCents: number
+  winCents: number
+  balancePostCents: number
+  freeSpin: boolean
+  createdAt: string
+}
 
 /** Grid dimensions of a game. */
 export interface Grid {
@@ -39,6 +69,8 @@ export interface GameDetail extends GameSummary {
   maxBetCents: number
   betStepCents: number
   config: GameConfig
+  /** Current progressive jackpot pool in cents, or null if the game has no jackpot (HU-26). */
+  jackpotCents?: number | null
 }
 
 /** Player virtual balance. */
@@ -101,6 +133,54 @@ export function useWallet() {
 /** Query hook for a single game's detail. */
 export function useGame(id: number) {
   return useQuery({ queryKey: ['player', 'game', id], queryFn: () => playerApi.getGame(id) })
+}
+
+/** Query hook for the player's wallet movements, paginated (HU-14). */
+export function useWalletTransactions(page: number, size = 10) {
+  return useQuery({
+    queryKey: ['player', 'transactions', page, size],
+    queryFn: () =>
+      api.get<PageResponse<WalletTransaction>>('/player/wallet/transactions', { params: { page, size } })
+        .then(r => r.data),
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** Query hook for the player's own rounds, paginated (HU-14). */
+export function usePlayerRounds(page: number, size = 10) {
+  return useQuery({
+    queryKey: ['player', 'rounds', page, size],
+    queryFn: () =>
+      api.get<PageResponse<PlayerRound>>('/player/rounds', { params: { page, size } })
+        .then(r => r.data),
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** A responsible-gaming limit echoed back by the API (HU-19). */
+export interface Limit {
+  limitType: string
+  period: string
+  amountCents: number
+  effectiveAt: string
+  pendingAmountCents: number | null
+  pendingEffectiveAt: string | null
+}
+
+/** Mutation hook to set/change a responsible-gaming limit (HU-19). */
+export function useSetLimit() {
+  return useMutation({
+    mutationFn: (payload: { limitType: string; period: string; amountCents: number }) =>
+      api.post<Limit>('/player/limits', payload).then(r => r.data),
+  })
+}
+
+/** Mutation hook to self-exclude for a number of days (HU-19). */
+export function useSelfExclude() {
+  return useMutation({
+    mutationFn: (days: number) =>
+      api.post('/player/self-exclusion', { days }).then(r => r.data),
+  })
 }
 
 export default playerApi

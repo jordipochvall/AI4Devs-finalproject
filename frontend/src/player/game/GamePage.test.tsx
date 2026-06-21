@@ -16,7 +16,7 @@ vi.mock('../api/playerApi', () => ({
   useGame: () => ({
     data: {
       id: 3, name: 'Frutas', theme: 'FRUITS', coverImageUrl: '', grid: { cols: 3, rows: 3 },
-      minBetCents: 100, maxBetCents: 1000, betStepCents: 100,
+      minBetCents: 100, maxBetCents: 1000, betStepCents: 100, jackpotCents: 500000,
       config: { grid: { cols: 3, rows: 3 }, symbols: [], reels: [], paylines: [[1, 1, 1]], paytable: [] },
     },
     isLoading: false, isError: false,
@@ -53,6 +53,13 @@ const waitForReady = () => waitFor(() => expect(screen.getByText(/1,00/)).toBeIn
 describe('GamePage auto-spin (HU-9)', () => {
   beforeAll(async () => { await i18n.changeLanguage('es') })
   beforeEach(() => { h.spin.mockReset(); h.wallet.balanceCents = 100_000 })
+
+  it('shows the progressive jackpot ticker when the game has a pool (HU-26)', async () => {
+    renderGame()
+    await waitForReady()
+    expect(screen.getByText(/Bote progresivo/)).toBeInTheDocument()
+    expect(screen.getByText(/5[.\s ]?000,00/)).toBeInTheDocument()
+  })
 
   it('runs N spins then stops (AC1/AC2)', async () => {
     h.spin.mockImplementation(() => Promise.resolve(spinResult(99_000)))

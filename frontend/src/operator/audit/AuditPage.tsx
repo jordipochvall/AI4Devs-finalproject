@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { usePlayers, useRounds, type RoundFilters } from '../api/operatorApi'
-import { useAuthStore } from '../../shared/auth/authStore'
+import { logoutSession } from '../../shared/auth/session'
 import { formatMoney } from '../../shared/format/money'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
+import IntegrityCheck from './IntegrityCheck'
 import '../players/operator.css'
 import './audit.css'
 
@@ -30,7 +31,6 @@ function readFilters(params: URLSearchParams): RoundFilters & { page: number; da
 export default function AuditPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const clearAuth = useAuthStore(s => s.clearAuth)
   const [params, setParams] = useSearchParams()
 
   const f = readFilters(params)
@@ -39,7 +39,7 @@ export default function AuditPage() {
   const suggestions = usePlayers(emailSearch, 0, 20)
   const rounds = useRounds({ playerId: f.playerId, gameId: f.gameId, from: f.from, to: f.to }, f.page)
 
-  const logout = () => { clearAuth(); navigate('/login', { replace: true }) }
+  const logout = () => { logoutSession(); navigate('/login', { replace: true }) }
 
   /** Merges params, always resetting to page 0 unless a page change is requested. */
   const update = (changes: Record<string, string | null>, keepPage = false) => {
@@ -60,6 +60,7 @@ export default function AuditPage() {
       <header className="operator-header">
         <h1>{t('operator:audit.title')}</h1>
         <div className="operator-header-right">
+          <IntegrityCheck />
           <button type="button" className="btn-secondary" onClick={() => navigate('/operator')}>
             {t('operator:audit.toPlayers')}
           </button>
