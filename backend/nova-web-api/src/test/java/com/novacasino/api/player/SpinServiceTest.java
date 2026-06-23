@@ -1,8 +1,9 @@
 package com.novacasino.api.player;
 
+import com.novacasino.application.player.ResponsibleGamingUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.novacasino.api.idempotency.IdempotencyService;
-import com.novacasino.api.player.dto.SpinResultDto;
+import com.novacasino.common.dto.SpinResultDto;
 import com.novacasino.api.player.exception.ConcurrentSpinException;
 import com.novacasino.api.player.exception.InsufficientBalanceException;
 import com.novacasino.api.player.exception.InvalidBetException;
@@ -62,7 +63,7 @@ class SpinServiceTest {
     private GameRoundJpaRepository roundRepo;
     private RngFactory rngFactory;
     private IdempotencyService idempotency;
-    private ResponsibleGamingService responsibleGaming;
+    private ResponsibleGamingUseCase responsibleGaming;
     private JackpotService jackpotService;
     private SpinService service;
 
@@ -75,7 +76,7 @@ class SpinServiceTest {
         roundRepo = mock(GameRoundJpaRepository.class);
         rngFactory = mock(RngFactory.class);
         idempotency = mock(IdempotencyService.class);
-        responsibleGaming = mock(ResponsibleGamingService.class); // no-op gate by default
+        responsibleGaming = mock(ResponsibleGamingUseCase.class); // no-op gate by default
         jackpotService = mock(JackpotService.class);
         when(jackpotService.findPool(anyLong())).thenReturn(java.util.Optional.empty()); // no jackpot by default
 

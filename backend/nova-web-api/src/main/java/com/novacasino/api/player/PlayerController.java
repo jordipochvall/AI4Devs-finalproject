@@ -1,17 +1,21 @@
 package com.novacasino.api.player;
 
-import com.novacasino.api.common.PageResponse;
-import com.novacasino.api.player.dto.GameDetailDto;
-import com.novacasino.api.player.dto.GameSummaryDto;
-import com.novacasino.api.player.dto.LimitDto;
-import com.novacasino.api.player.dto.PlayerRoundDto;
-import com.novacasino.api.player.dto.SelfExclusionDto;
+import com.novacasino.common.dto.PageRequestDto;
+import com.novacasino.common.dto.PageResponse;
+import com.novacasino.common.dto.PlayerRoundDto;
+import com.novacasino.common.dto.WalletTransactionDto;
+import com.novacasino.application.player.PlayerCatalogUseCase;
+import com.novacasino.application.player.PlayerHistoryUseCase;
+import com.novacasino.application.player.ResponsibleGamingUseCase;
+import com.novacasino.common.dto.GameDetailDto;
+import com.novacasino.common.dto.GameSummaryDto;
+import com.novacasino.common.dto.LimitDto;
+import com.novacasino.common.dto.SelfExclusionDto;
 import com.novacasino.api.player.dto.SelfExclusionRequest;
 import com.novacasino.api.player.dto.SetLimitRequest;
 import com.novacasino.api.player.dto.SpinRequest;
-import com.novacasino.api.player.dto.SpinResultDto;
-import com.novacasino.api.player.dto.WalletDto;
-import com.novacasino.api.player.dto.WalletTransactionDto;
+import com.novacasino.common.dto.SpinResultDto;
+import com.novacasino.common.dto.WalletDto;
 import com.novacasino.api.security.NovaUserDetails;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
@@ -33,14 +37,14 @@ import java.util.UUID;
 @RequestMapping("/api/v1/player")
 public class PlayerController {
 
-    private final PlayerCatalogService catalog;
+    private final PlayerCatalogUseCase catalog;
     private final SpinService spinService;
-    private final PlayerHistoryService history;
-    private final ResponsibleGamingService responsibleGaming;
+    private final PlayerHistoryUseCase history;
+    private final ResponsibleGamingUseCase responsibleGaming;
 
-    public PlayerController(final PlayerCatalogService catalog, final SpinService spinService,
-                           final PlayerHistoryService history,
-                           final ResponsibleGamingService responsibleGaming) {
+    public PlayerController(final PlayerCatalogUseCase catalog, final SpinService spinService,
+                           final PlayerHistoryUseCase history,
+                           final ResponsibleGamingUseCase responsibleGaming) {
         this.catalog = catalog;
         this.spinService = spinService;
         this.history = history;
@@ -84,7 +88,8 @@ public class PlayerController {
     public PageResponse<WalletTransactionDto> listTransactions(
             @AuthenticationPrincipal final NovaUserDetails principal,
             @PageableDefault(size = 20) final Pageable pageable) {
-        return history.listTransactions(principal.getUser().getId(), pageable);
+        return history.listTransactions(principal.getUser().getId(),
+                new PageRequestDto(pageable.getPageNumber(), pageable.getPageSize()));
     }
 
     /** GET /player/rounds — the player's own rounds, paginated (HU-14). */
@@ -92,7 +97,8 @@ public class PlayerController {
     public PageResponse<PlayerRoundDto> listRounds(
             @AuthenticationPrincipal final NovaUserDetails principal,
             @PageableDefault(size = 20) final Pageable pageable) {
-        return history.listRounds(principal.getUser().getId(), pageable);
+        return history.listRounds(principal.getUser().getId(),
+                new PageRequestDto(pageable.getPageNumber(), pageable.getPageSize()));
     }
 
     /** POST /player/limits — sets/changes a responsible-gaming limit (HU-19, Fase 2). */

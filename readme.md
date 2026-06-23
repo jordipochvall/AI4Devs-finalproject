@@ -722,11 +722,13 @@ Conceptualmente es un **"núcleo *data-oriented* + cáscara DDD"**: el dominio c
 | Módulo | Tecnología | Responsabilidad |
 |---|---|---|
 | **nova-domain** | Java 21 puro (sin Spring) | Núcleo de negocio: agregados ricos (`Game`, `Round`, `Reels`, `Paytable`, `Symbol`, `Payline`, `BonusFeature`, `Wallet`, `Money`, `Bet`, `GameRound`) y el **núcleo de cálculo data-oriented** (`SpinKernel`, `GameCompiler`→`CompiledGame`, puertos `RngEngine` y `RoundSink`). Cero dependencias externas más allá de la JDK. Ver 2.1.7. |
-| **nova-application** | Java 21 + `jakarta.transaction` | Casos de uso (`SpinUseCase`, `ReplayRoundUseCase`, `RechargeWalletUseCase`, `RunSimulationUseCase`, `ExplainSimulationUseCase`…). Orquesta dominio + puertos. |
-| **nova-infrastructure** | Spring Data JPA · Flyway · Anthropic SDK · BCrypt | Adaptadores: repositorios JPA, migraciones, cliente Anthropic, implementación `SecureRandom` del RNG. |
+| **nova-application** | Java 21 + `jakarta.transaction` | Casos de uso framework-agnósticos (POJOs con `@jakarta.transaction.Transactional`) que orquestan dominio + **puertos de salida** que ellos mismos definen: `PlayerCatalogUseCase`, `PlayerHistoryUseCase`, `ResponsibleGamingUseCase`, `MathConfigUseCase`, `SimulationUseCase`, `SimulationHistoryUseCase`, `ExplainUseCase`, `AuditUseCase`, `ReplayUseCase`, `OperatorGameUseCase`, `OperatorPlayerUseCase`, `OperatorDashboardUseCase`, `RfjReportUseCase`, `VerifyIntegrityUseCase`, `RefreshTokenUseCase`, `AdminUseCase`. Sin Spring, sin JPA, sin web (regla forzada por ArchUnit, ver 2.2.5). Los `@Bean` se ensamblan en `nova-web-api` (`UseCaseConfig`). |
+| **nova-infrastructure** | Spring Data JPA · Flyway · Anthropic SDK · BCrypt | Adaptadores `@Component` que implementan los puertos de `nova-application` (`*JpaAdapter`), el **motor** Flyway, cliente Anthropic, implementación `SecureRandom` del RNG. (Los **scripts** de migración `V*.sql` viven en `nova-web-api/src/main/resources/db/migration` y se aplican al arrancar la app; ver [§6](#6-tickets-de-trabajo).) |
 | **nova-simulator** | Java 21 + `ForkJoinPool` + `LongAdder` | Ejecuta el **mismo `SpinKernel`** sobre un `CompiledGame` (vía un `CountingSink` cero-alloc) — sin wallet, sin auditoría y sin BBDD. Cada worker tiene su `RngEngine` y sus buffers; agrega métricas con `LongAdder` (lock-free) y devuelve `SimulationResult`. Ver 2.1.7. |
 | **nova-web-api** | Spring Boot 3.4 · Spring Security 6 · springdoc-openapi | Punto de entrada HTTP. Controllers por perfil (`/api/v1/player/*`, `/api/v1/operator/*`, `/api/v1/math/*`). Filtro JWT, CORS, manejo de errores i18n. |
-| **nova-common** | — | DTOs compartidos, utilidades, constantes. |
+| **nova-common** | Java 21 + `jackson-databind` | DTOs compartidos entre capas (respuestas de API: `SpinResultDto`, `ReplayDto`, `GameDetailDto`, `OperatorGameDto`, `DashboardDto`, `ConfigDetailDto`, `SimulationStatusDto`, `PageResponse`/`PageRequestDto`…), utilidades y constantes. Depende de `jackson-databind` porque algunos DTOs transportan JSON (`JsonNode`: config de juego, métricas). Sin lógica de negocio. |
+
+> **Núcleo transaccional del spin (HU-1).** `SpinService`, `IdempotencyService`, `JackpotService` y `MaterializingSink` residen en `nova-web-api` (capa de composición), **no** en `nova-application`. Motivo: el reintento ante conflicto de bloqueo optimista captura `org.springframework.dao.OptimisticLockingFailureException` y la frontera transaccional idempotente (`IdempotencyService.execute`) la gestiona Spring; meter esa orquestación en `nova-application` violaría la regla ArchUnit (la capa de aplicación no depende de Spring). El cálculo puro del spin ya vive en `nova-domain` (`SpinKernel`, `GameCompiler`, `RngEngine`, sorteo determinista del jackpot), y el gate de juego responsable se invoca vía `ResponsibleGamingUseCase` (aplicación). El adaptador del lanzador de simulaciones (`SimulationLaunchAdapter`) y el de hashing (`PasswordHasherAdapter`) viven en `nova-web-api` por la misma razón: envuelven colaboradores de Spring (`@Async`, `PasswordEncoder`).
 
 #### 2.2.2 Frontend — workspaces
 
@@ -834,7 +836,7 @@ AI4Devs-finalproject/
 
 **Convenciones clave**:
 
-- **Regla de dependencia hexagonal**: `domain` no depende de nadie. `application` depende de `domain`. `infrastructure` y `web-api` dependen de `application` y `domain`. **Nunca** al revés. `nova-common` (utilidades y constantes sin lógica de negocio, sin dependencias de terceros) es la única excepción: puede ser usado por cualquier módulo. La regla se enforza con [ArchUnit](https://www.archunit.org/) en los tests.
+- **Regla de dependencia hexagonal**: `domain` no depende de nadie. `application` depende de `domain` y `common`. `infrastructure` y `web-api` dependen de `application` y `domain`. **Nunca** al revés. `nova-common` (DTOs compartidos, utilidades y constantes sin lógica de negocio; única dependencia de terceros: `jackson-databind` para los DTOs que llevan `JsonNode`) puede ser usado por cualquier módulo. La regla se enforza con [ArchUnit](https://www.archunit.org/) en los tests: además de la regla sobre `nova-domain`, `ApplicationArchTest` (en `nova-application`) prohíbe que la capa de aplicación dependa de `com.novacasino.infrastructure..`, `com.novacasino.api..` ni `org.springframework..`.
 - **Frontend por carpetas verticales** (no por tipo de fichero): cada superficie (`player/`, `operator/`, `math/`) contiene sus pages, components, hooks y stores juntos. Reduce navegación.
 - **JSON de juegos como semilla**: las configuraciones se persisten en BBDD pero se versionan como ficheros en `nova-web-api/src/main/resources/games/` para rebuild reproducible.
 
@@ -952,7 +954,7 @@ Cada giro registra su `seed`; con él, el motor es **completamente determinista*
 |---|---|
 | **CORS** | Lista blanca de orígenes en `CorsConfig`. |
 | **CSRF** | Desactivado por ser API stateless con JWT (Spring Security recomendación). |
-| **Rate limiting** | `Bucket4j` en filtros sobre `/api/v1/auth/login` y `/api/v1/player/*/spin` (anti-bot/anti-abuse). |
+| **Rate limiting** | `RateLimitFilter` (Bucket4j, *token bucket* en memoria single-node) en la cadena de seguridad sobre `POST /api/v1/auth/login` (clave por IP, anti fuerza-bruta) y `POST /api/v1/player/games/*/spin` (clave por usuario autenticado, o IP si no lo está). Al agotar el cupo responde `429` (RFC 9457) con cabecera `Retry-After`. Cupos configurables en `app.rate-limit.*` (por defecto login 10/min, spin 60/min). |
 | **Idempotencia** | Cada `POST .../spin` lleva una *idempotency key* (cabecera `Idempotency-Key`). El backend deduplica: un doble-submit o un reintento de red devuelve el resultado del giro ya ejecutado, sin generar un segundo giro ni un segundo movimiento de saldo. |
 | **Validación de entrada** | `jakarta.validation` (`@Valid`, `@Min`, `@Max`) en DTOs. |
 | **SQL injection** | Imposible vía JPA/PreparedStatement; cero string concatenation en queries. |
@@ -1007,7 +1009,7 @@ flowchart TB
 - **Golden-master del motor**: un **corpus congelado** de fixtures `(seed, config) → result` que el `SpinKernel` debe reproducir **bit a bit**; si el motor deriva, **falla el build**. Es el *tripwire* que da **conciencia consciente** de cuándo se rompe el determinismo/comportamiento del motor: ante un fallo, el equipo decide explícitamente entre *(a)* revertir (ruptura accidental), o *(b)* asumir el cambio re-baselinando el corpus (cambio intencionado) — preferiblemente modelando los cambios de matemática *deseados* como **nueva versión de `config`** y no alterando cómo el motor interpreta. No genera retrocompatibilidad: la fidelidad de los replays históricos la garantiza el registro inmutable (guardar-y-renderizar, ver 2.5.3), no el recálculo.
 - **Simulador — rendimiento**: `SimulationRunner.run(10_000_000)` debe completar en <10 min. El objetivo descansa en el **`SpinKernel` cero-alloc** (ver 2.1.7): un test de *allocation* (p. ej. con JMH o contadores de la JVM) verifica que el bucle del simulador **no asigna por giro** —una regresión que reintroduzca asignaciones lo haría fallar—. Al ser un requisito funcional del producto, **se ejecuta en CI** en el *job* `perf` dedicado (separado del `mvn verify` de cada commit). Además, los `MetricsAccumulator` agregados deben coincidir con la suma directa para datasets pequeños (test unitario rápido).
 - **Fidelidad simulador↔producción**: para una misma semilla y `CompiledGame`, el resultado que produce el `SpinKernel` es idéntico por ambas vías (`CountingSink` y `MaterializingSink`); un test compara los agregados de una corrida pequeña con la materialización giro a giro.
-- **ArchUnit**: regla "ninguna clase de `nova-domain.*` importa `org.springframework.*` ni `jakarta.persistence.*`". Falla el build si alguien acopla por error.
+- **ArchUnit**: dos reglas. (1) en `nova-domain`, "ninguna clase de `nova-domain.*` importa `org.springframework.*` ni `jakarta.persistence.*`"; (2) en `nova-application` (`ApplicationArchTest`), "ninguna clase de `com.novacasino.application..` depende de `com.novacasino.infrastructure..`, `com.novacasino.api..` ni `org.springframework..`". Falla el build si alguien acopla por error.
 - **Integration con Testcontainers** (en `src/it/java`): arranca un Postgres 18 real, aplica migraciones Flyway, ejecuta `POST /api/v1/player/spin` con JWT y verifica que (a) la respuesta es correcta, (b) hay una nueva fila en `game_rounds` con todos sus campos, (c) cualquier intento de UPDATE/DELETE sobre el row falla con la excepción del trigger.
 - **E2E con Playwright** (en `e2e/`): un único *happy path* que arranca el `docker-compose`, abre el navegador, hace login con un usuario semilla, entra a un juego, hace spin y verifica que el balance cambia.
 
@@ -1675,6 +1677,7 @@ La columna *Fase* indica el **origen** de cada endpoint:
 | ★ MVP | `POST` | `/auth/register` | Registro de jugador; valida mayoría de edad (≥18). | Público |
 | ★ MVP | `POST` | `/auth/login` | Autenticación; emite el JWT. | Público |
 | post-MVP | `POST` | `/auth/refresh` | Renueva el access token a partir de uno válido. | Autenticado |
+| post-MVP | `POST` | `/auth/logout` | Revoca el refresh token de la sesión (HU-13). | Autenticado |
 
 **Player — `/api/v1/player`** (rol `PLAYER`)
 
@@ -1709,7 +1712,7 @@ La columna *Fase* indica el **origen** de cada endpoint:
 | Fase | Método | Ruta | Descripción |
 |---|---|---|---|
 | MVP | `GET` | `/math/games` | Juegos disponibles para el equipo matemático. |
-| post-MVP | `GET` | `/math/games/{gameId}/configs` | Versiones de matemática de un juego (paginado). |
+| post-MVP | `GET` | `/math/games/{gameId}/configs` | Versiones de matemática de un juego (lista, más reciente primero). |
 | MVP | `GET` | `/math/configs/{configId}` | Detalle de una versión de `config`. |
 | MVP | `POST` | `/math/games/{gameId}/configs` | Crear una nueva versión de matemática (editor). |
 | post-MVP | `POST` | `/math/games/{gameId}/publish` | Publicar (activar) una versión de `config`. |
@@ -1727,6 +1730,7 @@ La columna *Fase* indica el **origen** de cada endpoint:
 |---|---|---|---|
 | Fase 2 | `GET` | `/admin/operators` | Listar operadores de la plataforma (multi-tenant) (HU-25). |
 | Fase 2 | `POST` | `/admin/operators` | Alta de un operador y su usuario operador inicial (HU-25). |
+| Fase 2 | `PUT` | `/admin/operators/{operatorId}` | Activar/desactivar un operador; desactivar bloquea a sus usuarios (HU-25). |
 
 > **Fases del catálogo.** La columna *Fase* indica el **origen** de cada endpoint, no su estado (todo el catálogo está implementado, ver el callout al inicio de [§4.2](#42-catálogo-de-endpoints)). `★ MVP`/`MVP` se construyeron en la v1; `post-MVP` son endpoints **especificados en el contrato del MVP** e implementados en la evolución por `HU-13`…`HU-18` ([stories/stories-2.md](stories/stories-2.md)); `Fase 2` son endpoints **nuevos** del backlog —no existían en el contrato del MVP— para las decisiones diferidas D3/D6/D7 y la operativa multi-tenant: límites/autoexclusión (HU-19), integridad de auditoría (HU-20), informes DGOJ (HU-21) y gestión de operadores (HU-25). El rol `ADMIN` amplió el dominio `users.role` en la migración `V8` ([§3.2.12](#3-modelo-de-datos)).
 
@@ -1742,7 +1746,8 @@ En las columnas *Petición* y *Respuestas*, cada elemento ocupa su propia línea
 |---|---|---|---|
 | `POST /auth/register` ★ | Registra un jugador e inicia sesión. | Body — `email`<br>Body — `password`<br>Body — `birthDate`<br>Body — `locale` | `201` — Usuario creado + JWT<br>`409` — Email ya registrado<br>`422` — Edad inferior a 18 |
 | `POST /auth/login` ★ | Autentica a cualquier rol. | Body — `email`<br>Body — `password` | `200` — JWT + datos de usuario<br>`401` — Credenciales inválidas |
-| `POST /auth/refresh` | Renueva el access token. | Auth — token válido | `200` — Nuevo JWT<br>`401` — Token no renovable |
+| `POST /auth/refresh` | Renueva el access token (rotación de un solo uso). | Body — `refreshToken` | `200` — Nuevo JWT + nuevo refresh token<br>`401` — Token no renovable |
+| `POST /auth/logout` | Revoca el refresh token de la sesión (HU-13). | Body — `refreshToken` | `204` — Sesión cerrada |
 
 #### 4.3.2 Player — `/api/v1/player` (rol `PLAYER`)
 
@@ -1752,8 +1757,10 @@ En las columnas *Petición* y *Respuestas*, cada elemento ocupa su propia línea
 | `GET /player/games/{gameId}` | Detalle y `config` del juego (apartado 3.3). | Path — `gameId` | `200` — Juego + config<br>`404` — Inexistente o inactivo |
 | `POST /player/games/{gameId}/spin` ★ | Ejecuta un giro y resuelve la ronda completa. | Path — `gameId`<br>Header — `Idempotency-Key` (UUID)<br>Body — `betCents`<br>Body — `currency` | `200` — Resultado del giro<br>`409` — Idempotency-Key duplicada<br>`422` — Apuesta o saldo inválidos<br>`404` — Juego no encontrado |
 | `GET /player/wallet` | Saldo virtual actual. | — | `200` — `balanceCents`, `currency` |
-| `GET /player/wallet/transactions` | Movimientos del wallet (paginado). | Query — `page`, `size`<br>Query — `type` *(opcional)* | `200` — Página de transacciones |
-| `GET /player/rounds` | Historial de partidas propias (paginado). | Query — `page`, `size`<br>Query — `gameId` *(opcional)* | `200` — Página de partidas |
+| `GET /player/wallet/transactions` | Movimientos del wallet (paginado). | Query — `page`, `size` | `200` — Página de transacciones |
+| `GET /player/rounds` | Historial de partidas propias (paginado). | Query — `page`, `size` | `200` — Página de partidas |
+| `POST /player/limits` | Fija un límite de juego responsable, impuesto en servidor (HU-19). | Body — `limitType`<br>Body — `period`<br>Body — `amountCents` | `200` — Límite vigente (con relajación pendiente si aplica) |
+| `POST /player/self-exclusion` | Registra una autoexclusión temporal (HU-19). | Body — `days` | `200` — Periodo de autoexclusión |
 
 #### 4.3.3 Operator — `/api/v1/operator` (rol `OPERATOR`)
 
@@ -1766,22 +1773,32 @@ En las columnas *Petición* y *Respuestas*, cada elemento ocupa su propia línea
 | `GET /operator/rounds` | Auditoría de partidas (paginado). | Query — `page`, `size`<br>Query — `playerId`, `gameId` *(opcional)*<br>Query — `from`, `to` *(opcional)* | `200` — Página de partidas |
 | `GET /operator/rounds/{roundId}` | Detalle de una partida. | Path — `roundId` | `200` — Partida completa<br>`404` — Inexistente |
 | `GET /operator/rounds/{roundId}/replay` ★ | Datos para el *replay* determinista. | Path — `roundId` | `200` — Seed + result + config + free spins<br>`404` — Inexistente |
-| `GET /operator/dashboard` | Métricas de actividad. | — | `200` — `activePlayers`, `ggrCents`, `topGames` |
+| `GET /operator/dashboard` | Métricas de actividad. | Query — `from`, `to` *(opcional)* | `200` — `activePlayers`, `ggrCents`, `topGames` |
+| `GET /operator/audit/integrity` | Verifica la cadena de hashes *tamper-evident* (HU-20). | Query — `from`, `to` *(opcional)* | `200` — Informe de integridad (consistente + primera fila alterada) |
+| `POST /operator/reports/rfj` | Genera el informe regulatorio DGOJ (RFJ) de un mes (HU-21). | Body — `year`<br>Body — `month` | `200` — Informe RFJ<br>`422` — Integridad del periodo comprometida |
 
 #### 4.3.4 Math — `/api/v1/math` (rol `MATH_ANALYST`)
 
 | Endpoint | Descripción | Petición | Respuestas |
 |---|---|---|---|
 | `GET /math/games` | Juegos disponibles para el matemático. | — | `200` — Juegos con su `config` activa |
-| `GET /math/games/{gameId}/configs` | Versiones de matemática de un juego (paginado). | Path — `gameId`<br>Query — `page`, `size` | `200` — Página de versiones |
+| `GET /math/games/{gameId}/configs` | Versiones de matemática de un juego (más reciente primero). | Path — `gameId` | `200` — Lista de versiones (activa marcada)<br>`404` — Juego ajeno al operador |
 | `GET /math/configs/{configId}` | Detalle de una versión de `config`. | Path — `configId` | `200` — Config + RTP/volatilidad **objetivo declarados**<br>`404` — Inexistente |
 | `POST /math/games/{gameId}/configs` | Crea una versión nueva de matemática. | Path — `gameId`<br>Body — `config` (apartado 3.3)<br>Body — `rtpTarget`, `volatilityTarget` (objetivo declarado)<br>Body — `notes` | `201` — Versión creada (con el `rtpTarget`/`volatilityTarget` declarados)<br>`422` — `config` inválida (detalle en `errors`) |
 | `POST /math/games/{gameId}/publish` | Publica (activa) una versión de `config`. | Path — `gameId`<br>Body — `configId` | `200` — Versión activada<br>`409` — Versión ya activa<br>`422` — `configId` ajeno al juego |
 | `POST /math/configs/{configId}/simulations` ★ | Lanza una simulación masiva (asíncrona). | Path — `configId`<br>Body — `numSpins` (≤ 10M)<br>Body — `betCents` | `202` — Simulación `RUNNING`<br>`422` — `numSpins` fuera de rango |
 | `GET /math/simulations/{simulationId}` | Estado y resultado de una simulación (*polling*). | Path — `simulationId` | `200` — Estado + métricas si `COMPLETED`<br>`404` — Inexistente |
-| `GET /math/simulations` | Historial de simulaciones (paginado). | Query — `page`, `size`<br>Query — `gameId`, `status` *(opcional)* | `200` — Página de simulaciones |
+| `GET /math/simulations` | Historial de simulaciones (paginado). | Query — `page`, `size`<br>Query — `configId`, `gameId` *(opcional)* | `200` — Página de simulaciones |
 | `POST /math/simulations/{simulationId}/explain` | Pregunta a Claude sobre los resultados. | Path — `simulationId`<br>Body — `question` | `200` — `answer`, `model`, `askedAt`<br>`404` — Simulación inexistente<br>`422` — Simulación no `COMPLETED`<br>`503` — IA no disponible |
-| `GET /math/simulations/{simulationId}/explanations` | Historial de preguntas y respuestas IA (paginado). | Path — `simulationId`<br>Query — `page`, `size` | `200` — Página de Q&A |
+| `GET /math/simulations/{simulationId}/explanations` | Hilo de preguntas y respuestas IA de una simulación. | Path — `simulationId` | `200` — Hilo de Q&A (orden cronológico)<br>`404` — Simulación inexistente |
+
+#### 4.3.5 Admin — `/api/v1/admin` (rol `ADMIN`)
+
+| Endpoint | Descripción | Petición | Respuestas |
+|---|---|---|---|
+| `GET /admin/operators` | Lista los operadores de la plataforma (HU-25). | — | `200` — Lista de operadores |
+| `POST /admin/operators` | Alta de un operador y su usuario operador inicial (HU-25). | Body — `code`<br>Body — `name`<br>Body — `operatorEmail`<br>Body — `operatorPassword` | `201` — Operador creado<br>`409` — Código u email ya existentes |
+| `PUT /admin/operators/{operatorId}` | Activa/desactiva un operador; desactivar bloquea a sus usuarios (HU-25). | Path — `operatorId`<br>Body — `active` | `200` — Operador actualizado<br>`404` — Operador inexistente |
 
 ### **4.4. Especificación OpenAPI 3.1 y ejemplos — endpoints prioritarios**
 

@@ -48,6 +48,18 @@ app:
   responsible-gaming:
     cooldown-seconds: ${RG_COOLDOWN_SECONDS:86400}
 
+  # Rate limiting anti-bot/anti-abuso (token bucket en memoria, single-node). Se aplica a
+  # POST /api/v1/auth/login (clave por IP) y POST /api/v1/player/games/{id}/spin (clave por
+  # usuario autenticado, o IP si no lo está). Al agotarse el cupo se responde 429 (RFC 9457).
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    login:
+      capacity: ${RATE_LIMIT_LOGIN_CAPACITY:10}
+      refill-period-seconds: ${RATE_LIMIT_LOGIN_REFILL_SECONDS:60}
+    spin:
+      capacity: ${RATE_LIMIT_SPIN_CAPACITY:60}
+      refill-period-seconds: ${RATE_LIMIT_SPIN_REFILL_SECONDS:60}
+
 # AI explainability (HU-8). Disabled by default: with no key the explain endpoint returns 503 and
 # the rest of the platform works. Set ANTHROPIC_ENABLED=true (and ANTHROPIC_API_KEY) to activate.
 anthropic:

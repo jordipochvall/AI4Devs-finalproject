@@ -1,0 +1,47 @@
+package com.novacasino.application.math;
+
+import com.novacasino.application.math.exception.ConfigNotFoundException;
+import com.novacasino.application.math.exception.InvalidSimulationParamsException;
+import com.novacasino.application.math.exception.SimulationNotFoundException;
+import com.novacasino.common.dto.SimulationAcceptedDto;
+import com.novacasino.common.dto.SimulationStatusDto;
+
+/**
+ * Launches mass simulations and exposes their status (HU-2). It validates the parameters (numSpins
+ * range and betCents as a positive multiple of the payline count) before recording a RUNNING run and
+ * triggering its asynchronous execution. The platform measures; it never declares the target RTP.
+ */
+public class SimulationUseCase {
+
+    /** Hard cap on simulated spins (readme §4.4.4). */
+    static final long MAX_SPINS = 10_000_000L;
+
+    private final SimulationLaunchPort port;
+
+    public SimulationUseCase(final SimulationLaunchPort port) {
+        this.port = port;
+    }
+
+    /**
+     * Validates the parameters, records a RUNNING run and triggers its asynchronous execution.
+     * Not transactional: the RUNNING row is committed before the async worker reads it.
+     */
+    public SimulationAcceptedDto launch(final Long operatorId, final Long userId, final Long configId,
+                                        final Long numSpins, final Long betCents) {
+        if (numSpins == null || numSpins <= 0 || numSpins > MAX_SPINS) {
+            throw new InvalidSimulationParamsException("numSpins must be between 1 and " + MAX_SPINS);
+        }
+        final int paylineCount = port.ownedConfigPaylineCount(configId, operatorId)
+                .orElseThrow(() -> new ConfigNotFoundException(configId));
+        if (betCents == null || betCents <= 0 || betCents % paylineCount != 0) {
+            throw new InvalidSimulationParamsException("betCents must be a positive multiple of the payline count");
+        }
+        return port.createAndLaunch(operatorId, userId, configId, numSpins, betCents);
+    }
+
+    /** Returns the status (and metrics if completed) of a simulation owned by the operator. */
+    public SimulationStatusDto getSimulation(final Long simulationId, final Long operatorId) {
+        return port.getSimulation(simulationId, operatorId)
+                .orElseThrow(() -> new SimulationNotFoundException(simulationId));
+    }
+}

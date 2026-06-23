@@ -1,15 +1,16 @@
 package com.novacasino.api.player;
 
+import com.novacasino.application.player.ResponsibleGamingUseCase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.novacasino.api.idempotency.IdempotencyService;
 import com.novacasino.api.player.MaterializingSink.MechSpin;
-import com.novacasino.api.player.dto.SpinResultDto;
-import com.novacasino.api.player.dto.SpinResultDto.FreeSpinsDto;
-import com.novacasino.api.player.dto.WinningPaylineDto;
+import com.novacasino.common.dto.SpinResultDto;
+import com.novacasino.common.dto.SpinResultDto.FreeSpinsDto;
+import com.novacasino.common.dto.WinningPaylineDto;
 import com.novacasino.api.player.exception.ConcurrentSpinException;
-import com.novacasino.api.player.exception.GameNotFoundException;
+import com.novacasino.application.exception.GameNotFoundException;
 import com.novacasino.api.player.exception.InsufficientBalanceException;
 import com.novacasino.api.player.exception.InvalidBetException;
 import com.novacasino.domain.engine.CompiledGame;
@@ -57,7 +58,7 @@ public class SpinService {
     private final GameCompiler compiler;
     private final RngFactory rngFactory;
     private final IdempotencyService idempotency;
-    private final ResponsibleGamingService responsibleGaming;
+    private final ResponsibleGamingUseCase responsibleGaming;
     private final JackpotService jackpotService;
     private final ObjectMapper objectMapper;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -67,7 +68,7 @@ public class SpinService {
                        final GameRoundJpaRepository roundRepo, final GameConfigMapper configMapper,
                        final GameCompiler compiler, final RngFactory rngFactory,
                        final IdempotencyService idempotency,
-                       final ResponsibleGamingService responsibleGaming,
+                       final ResponsibleGamingUseCase responsibleGaming,
                        final JackpotService jackpotService, final ObjectMapper objectMapper) {
         this.gameRepo = gameRepo;
         this.configRepo = configRepo;

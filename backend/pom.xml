@@ -33,6 +33,7 @@
         <springdoc.version>2.6.0</springdoc.version>
         <jjwt.version>0.12.6</jjwt.version>
         <logstash.version>8.0</logstash.version>
+        <bucket4j.version>8.10.1</bucket4j.version>
         <build-helper.version>3.6.0</build-helper.version>
     </properties>
 
@@ -112,6 +113,13 @@
                 <groupId>net.logstash.logback</groupId>
                 <artifactId>logstash-logback-encoder</artifactId>
                 <version>${logstash.version}</version>
+            </dependency>
+
+            <!-- Rate limiting (token bucket, in-memory single-node) -->
+            <dependency>
+                <groupId>com.bucket4j</groupId>
+                <artifactId>bucket4j-core</artifactId>
+                <version>${bucket4j.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

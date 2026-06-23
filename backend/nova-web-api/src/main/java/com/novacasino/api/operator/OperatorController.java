@@ -1,19 +1,26 @@
 package com.novacasino.api.operator;
 
-import com.novacasino.api.common.PageResponse;
+import com.novacasino.common.dto.PageResponse;
 import com.novacasino.api.idempotency.IdempotencyService;
-import com.novacasino.api.operator.dto.DashboardDto;
-import com.novacasino.api.operator.dto.IntegrityReportDto;
-import com.novacasino.api.operator.dto.OperatorGameDto;
-import com.novacasino.api.operator.dto.PlayerSummaryDto;
+import com.novacasino.common.dto.DashboardDto;
+import com.novacasino.common.dto.IntegrityReportDto;
+import com.novacasino.application.audit.VerifyIntegrityUseCase;
+import com.novacasino.application.operator.AuditUseCase;
+import com.novacasino.application.operator.OperatorPlayerUseCase;
+import com.novacasino.application.operator.ReplayUseCase;
+import com.novacasino.application.operator.RfjReportUseCase;
+import com.novacasino.application.operator.OperatorDashboardUseCase;
+import com.novacasino.application.operator.OperatorGameUseCase;
+import com.novacasino.common.dto.OperatorGameDto;
+import com.novacasino.common.dto.PlayerSummaryDto;
 import com.novacasino.api.operator.dto.RechargeRequest;
-import com.novacasino.api.operator.dto.ReplayDto;
-import com.novacasino.api.operator.dto.RfjReportDto;
+import com.novacasino.common.dto.ReplayDto;
+import com.novacasino.common.dto.RfjReportDto;
 import com.novacasino.api.operator.dto.RfjReportRequest;
-import com.novacasino.api.operator.dto.RoundDetailDto;
-import com.novacasino.api.operator.dto.RoundSummaryDto;
+import com.novacasino.common.dto.RoundDetailDto;
+import com.novacasino.common.dto.RoundSummaryDto;
 import com.novacasino.api.operator.dto.UpdateGameRequest;
-import com.novacasino.api.player.dto.WalletDto;
+import com.novacasino.common.dto.WalletDto;
 import com.novacasino.api.security.NovaUserDetails;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
@@ -31,19 +38,19 @@ import java.util.UUID;
 @RequestMapping("/api/v1/operator")
 public class OperatorController {
 
-    private final OperatorPlayerService players;
+    private final OperatorPlayerUseCase players;
     private final IdempotencyService idempotency;
-    private final AuditService audit;
-    private final ReplayService replay;
-    private final OperatorGameService games;
-    private final OperatorDashboardService dashboard;
-    private final IntegrityService integrity;
-    private final RfjReportService reports;
+    private final AuditUseCase audit;
+    private final ReplayUseCase replay;
+    private final OperatorGameUseCase games;
+    private final OperatorDashboardUseCase dashboard;
+    private final VerifyIntegrityUseCase integrity;
+    private final RfjReportUseCase reports;
 
-    public OperatorController(final OperatorPlayerService players, final IdempotencyService idempotency,
-                              final AuditService audit, final ReplayService replay,
-                              final OperatorGameService games, final OperatorDashboardService dashboard,
-                              final IntegrityService integrity, final RfjReportService reports) {
+    public OperatorController(final OperatorPlayerUseCase players, final IdempotencyService idempotency,
+                              final AuditUseCase audit, final ReplayUseCase replay,
+                              final OperatorGameUseCase games, final OperatorDashboardUseCase dashboard,
+                              final VerifyIntegrityUseCase integrity, final RfjReportUseCase reports) {
         this.players     = players;
         this.idempotency = idempotency;
         this.audit       = audit;
@@ -61,7 +68,8 @@ public class OperatorController {
             @RequestParam(required = false) final String email,
             @PageableDefault(size = 20) final Pageable pageable) {
         final Long operatorId = principal.getUser().getOperatorId();
-        return players.searchPlayers(operatorId, email, pageable);
+        return players.searchPlayers(operatorId, email,
+                new com.novacasino.common.dto.PageRequestDto(pageable.getPageNumber(), pageable.getPageSize()));
     }
 
     /** POST /operator/players/{playerId}/wallet/recharge — idempotent recharge. */
@@ -96,7 +104,8 @@ public class OperatorController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) final OffsetDateTime to,
             @PageableDefault(size = 20) final Pageable pageable) {
         final Long operatorId = principal.getUser().getOperatorId();
-        return audit.searchRounds(operatorId, playerId, gameId, from, to, pageable);
+        return audit.searchRounds(operatorId, playerId, gameId, from, to,
+                new com.novacasino.common.dto.PageRequestDto(pageable.getPageNumber(), pageable.getPageSize()));
     }
 
     /**
@@ -157,7 +166,10 @@ public class OperatorController {
             @PathVariable final Long gameId,
             @Valid @RequestBody final UpdateGameRequest body) {
         return games.updateGame(principal.getUser().getOperatorId(), gameId,
-                principal.getUser().getId(), body);
+                principal.getUser().getId(),
+                new com.novacasino.application.operator.GameCommercialUpdate(
+                        body.minBetCents(), body.maxBetCents(), body.betStepCents(),
+                        body.active(), body.allowedCurrencies()));
     }
 
     /** Payload for the idempotency hash: reusing the same key with a different target/amount → 409. */

@@ -1,19 +1,24 @@
 package com.novacasino.api.math;
 
-import com.novacasino.api.math.dto.ConfigCreatedDto;
-import com.novacasino.api.math.dto.ConfigDetailDto;
-import com.novacasino.api.math.dto.ConfigVersionDto;
+import com.novacasino.application.math.CreateConfigCommand;
+import com.novacasino.application.math.ExplainUseCase;
+import com.novacasino.application.math.MathConfigUseCase;
+import com.novacasino.application.math.SimulationHistoryUseCase;
+import com.novacasino.application.math.SimulationUseCase;
+import com.novacasino.common.dto.ConfigCreatedDto;
+import com.novacasino.common.dto.ConfigDetailDto;
+import com.novacasino.common.dto.ConfigVersionDto;
 import com.novacasino.api.math.dto.CreateConfigRequest;
 import com.novacasino.api.math.dto.ExplainRequest;
-import com.novacasino.api.math.dto.ExplanationDto;
+import com.novacasino.common.dto.ExplanationDto;
 import com.novacasino.api.math.dto.LaunchSimulationRequest;
-import com.novacasino.api.math.dto.MathGameDto;
+import com.novacasino.common.dto.MathGameDto;
 import com.novacasino.api.math.dto.PublishRequest;
-import com.novacasino.api.math.dto.PublishResultDto;
-import com.novacasino.api.math.dto.SimulationAcceptedDto;
-import com.novacasino.api.math.dto.SimulationStatusDto;
-import com.novacasino.api.math.dto.SimulationSummaryDto;
-import com.novacasino.api.common.PageResponse;
+import com.novacasino.common.dto.PublishResultDto;
+import com.novacasino.common.dto.SimulationAcceptedDto;
+import com.novacasino.common.dto.SimulationStatusDto;
+import com.novacasino.common.dto.SimulationSummaryDto;
+import com.novacasino.common.dto.PageResponse;
 import com.novacasino.api.security.NovaUserDetails;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
@@ -33,13 +38,13 @@ import java.util.List;
 @RequestMapping("/api/v1/math")
 public class MathController {
 
-    private final MathService math;
-    private final SimulationService simulations;
-    private final SimulationHistoryService simulationHistory;
-    private final ExplainService explain;
+    private final MathConfigUseCase math;
+    private final SimulationUseCase simulations;
+    private final SimulationHistoryUseCase simulationHistory;
+    private final ExplainUseCase explain;
 
-    public MathController(final MathService math, final SimulationService simulations,
-                          final SimulationHistoryService simulationHistory, final ExplainService explain) {
+    public MathController(final MathConfigUseCase math, final SimulationUseCase simulations,
+                          final SimulationHistoryUseCase simulationHistory, final ExplainUseCase explain) {
         this.math = math;
         this.simulations = simulations;
         this.simulationHistory = simulationHistory;
@@ -84,7 +89,8 @@ public class MathController {
             @Valid @RequestBody final CreateConfigRequest body) {
         final Long operatorId = principal.getUser().getOperatorId();
         final Long mathUserId = principal.getUser().getId();
-        final ConfigCreatedDto created = math.createConfig(gameId, operatorId, mathUserId, body);
+        final ConfigCreatedDto created = math.createConfig(gameId, operatorId, mathUserId,
+                new CreateConfigCommand(body.config(), body.rtpTarget(), body.volatilityTarget(), body.notes()));
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -108,7 +114,8 @@ public class MathController {
             @RequestParam(required = false) final Long gameId,
             @PageableDefault(size = 20) final Pageable pageable) {
         return simulationHistory.listSimulations(
-                principal.getUser().getOperatorId(), configId, gameId, pageable);
+                principal.getUser().getOperatorId(), configId, gameId,
+                new com.novacasino.common.dto.PageRequestDto(pageable.getPageNumber(), pageable.getPageSize()));
     }
 
     /** GET /math/simulations/{id}/explanations — the AI Q&A thread of a simulation (HU-18). */

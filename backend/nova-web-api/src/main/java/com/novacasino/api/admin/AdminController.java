@@ -1,7 +1,9 @@
 package com.novacasino.api.admin;
 
+import com.novacasino.application.admin.AdminUseCase;
+import com.novacasino.application.admin.CreateOperatorCommand;
 import com.novacasino.api.admin.dto.CreateOperatorRequest;
-import com.novacasino.api.admin.dto.OperatorDto;
+import com.novacasino.common.dto.OperatorDto;
 import com.novacasino.api.admin.dto.UpdateOperatorRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -15,9 +17,9 @@ import java.util.List;
 @RequestMapping("/api/v1/admin")
 public class AdminController {
 
-    private final AdminService admin;
+    private final AdminUseCase admin;
 
-    public AdminController(final AdminService admin) {
+    public AdminController(final AdminUseCase admin) {
         this.admin = admin;
     }
 
@@ -30,7 +32,8 @@ public class AdminController {
     /** POST /admin/operators — onboards an operator with its initial OPERATOR user (HU-25). */
     @PostMapping("/operators")
     public ResponseEntity<OperatorDto> createOperator(@Valid @RequestBody final CreateOperatorRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(admin.createOperator(req));
+        return ResponseEntity.status(HttpStatus.CREATED).body(admin.createOperator(
+                new CreateOperatorCommand(req.code(), req.name(), req.operatorEmail(), req.operatorPassword())));
     }
 
     /** PUT /admin/operators/{id} — activates/deactivates an operator (HU-25 AC3). */

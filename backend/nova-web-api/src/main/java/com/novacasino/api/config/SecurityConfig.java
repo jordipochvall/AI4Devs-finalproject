@@ -2,6 +2,9 @@ package com.novacasino.api.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.novacasino.api.security.JwtAuthFilter;
+import com.novacasino.api.security.RateLimitFilter;
+import com.novacasino.api.security.RateLimitProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,20 +39,24 @@ import java.util.Locale;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@EnableConfigurationProperties(RateLimitProperties.class)
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final UserDetailsService userDetailsService;
     private final MessageSource messageSource;
     private final ObjectMapper objectMapper;
     private final LocaleResolver localeResolver;
 
     public SecurityConfig(final JwtAuthFilter jwtAuthFilter,
+                          final RateLimitFilter rateLimitFilter,
                           final UserDetailsService userDetailsService,
                           final MessageSource messageSource,
                           final ObjectMapper objectMapper,
                           final LocaleResolver localeResolver) {
         this.jwtAuthFilter      = jwtAuthFilter;
+        this.rateLimitFilter    = rateLimitFilter;
         this.userDetailsService = userDetailsService;
         this.messageSource      = messageSource;
         this.objectMapper       = objectMapper;
@@ -73,6 +80,8 @@ public class SecurityConfig {
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            // After JWT auth so the spin limit can key by the authenticated user.
+            .addFilterAfter(rateLimitFilter, JwtAuthFilter.class)
             .exceptionHandling(ex -> ex
                 // 401 — missing or invalid token
                 .authenticationEntryPoint((request, response, e) -> {

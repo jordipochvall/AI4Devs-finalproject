@@ -5,9 +5,10 @@ import com.novacasino.api.auth.dto.LoginRequest;
 import com.novacasino.api.auth.dto.RegisterRequest;
 import com.novacasino.api.auth.dto.UserDto;
 import com.novacasino.api.auth.exception.AgeVerificationException;
-import com.novacasino.api.auth.exception.EmailAlreadyRegisteredException;
+import com.novacasino.application.auth.exception.EmailAlreadyRegisteredException;
 import com.novacasino.api.auth.exception.InvalidCredentialsException;
-import com.novacasino.api.auth.exception.InvalidRefreshTokenException;
+import com.novacasino.application.auth.exception.InvalidRefreshTokenException;
+import com.novacasino.application.auth.RefreshTokenUseCase;
 import com.novacasino.api.auth.exception.OperatorInactiveException;
 import com.novacasino.api.security.JwtService;
 import com.novacasino.domain.user.UserRole;
@@ -38,14 +39,14 @@ public class AuthService {
     private final OperatorJpaRepository operatorRepo;
     private final PasswordEncoder       passwordEncoder;
     private final JwtService            jwtService;
-    private final RefreshTokenService   refreshTokenService;
+    private final RefreshTokenUseCase   refreshTokenService;
 
     public AuthService(final UserJpaRepository userRepo,
                        final WalletJpaRepository walletRepo,
                        final OperatorJpaRepository operatorRepo,
                        final PasswordEncoder passwordEncoder,
                        final JwtService jwtService,
-                       final RefreshTokenService refreshTokenService) {
+                       final RefreshTokenUseCase refreshTokenService) {
         this.userRepo            = userRepo;
         this.walletRepo          = walletRepo;
         this.operatorRepo        = operatorRepo;

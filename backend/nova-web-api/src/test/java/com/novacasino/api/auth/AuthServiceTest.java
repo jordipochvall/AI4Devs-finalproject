@@ -4,9 +4,10 @@ import com.novacasino.api.auth.dto.AuthResponse;
 import com.novacasino.api.auth.dto.LoginRequest;
 import com.novacasino.api.auth.dto.RegisterRequest;
 import com.novacasino.api.auth.exception.AgeVerificationException;
-import com.novacasino.api.auth.exception.EmailAlreadyRegisteredException;
+import com.novacasino.application.auth.exception.EmailAlreadyRegisteredException;
 import com.novacasino.api.auth.exception.InvalidCredentialsException;
-import com.novacasino.api.auth.exception.InvalidRefreshTokenException;
+import com.novacasino.application.auth.exception.InvalidRefreshTokenException;
+import com.novacasino.application.auth.RefreshTokenUseCase;
 import com.novacasino.api.security.JwtService;
 import com.novacasino.domain.user.UserRole;
 import com.novacasino.infrastructure.persistence.entity.OperatorEntity;
@@ -37,7 +38,7 @@ class AuthServiceTest {
     private WalletJpaRepository   walletRepo;
     private OperatorJpaRepository operatorRepo;
     private JwtService            jwtService;
-    private RefreshTokenService   refreshTokenService;
+    private RefreshTokenUseCase   refreshTokenService;
     private PasswordEncoder       passwordEncoder;
     private AuthService           authService;
 
@@ -47,7 +48,7 @@ class AuthServiceTest {
         walletRepo          = mock(WalletJpaRepository.class);
         operatorRepo        = mock(OperatorJpaRepository.class);
         jwtService          = mock(JwtService.class);
-        refreshTokenService = mock(RefreshTokenService.class);
+        refreshTokenService = mock(RefreshTokenUseCase.class);
         passwordEncoder     = new BCryptPasswordEncoder(4); // low cost for fast tests
         authService         = new AuthService(userRepo, walletRepo, operatorRepo, passwordEncoder,
                 jwtService, refreshTokenService);

@@ -1,6 +1,6 @@
 package com.novacasino.api.player;
 
-import com.novacasino.api.player.dto.WinningPaylineDto;
+import com.novacasino.common.dto.WinningPaylineDto;
 import com.novacasino.domain.engine.CompiledGame;
 import com.novacasino.domain.engine.RoundSink;
 

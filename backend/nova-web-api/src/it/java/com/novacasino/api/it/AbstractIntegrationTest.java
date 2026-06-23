@@ -54,6 +54,10 @@ public abstract class AbstractIntegrationTest {
         // JWT secret required to start the context in tests
         registry.add("app.jwt.secret", () -> "integration-test-secret-at-least-32-bytes-long");
         registry.add("app.jwt.ttl-seconds", () -> "3600");
+        // Rate limiting off in ITs: they share one cached context and perform many logins/spins
+        // from localhost, which the per-IP/per-user buckets would otherwise throttle. The filter
+        // itself is covered by RateLimitFilterTest.
+        registry.add("app.rate-limit.enabled", () -> "false");
     }
 
     @Autowired protected MockMvc mockMvc;

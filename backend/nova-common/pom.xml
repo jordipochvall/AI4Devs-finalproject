@@ -15,9 +15,10 @@
     <description>DTOs compartidos, utilidades y constantes sin lógica de negocio</description>
 
     <dependencies>
+        <!-- Algunos DTOs compartidos transportan JSON (config de juego, métricas) como JsonNode. -->
         <dependency>
-            <groupId>jakarta.validation</groupId>
-            <artifactId>jakarta.validation-api</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
