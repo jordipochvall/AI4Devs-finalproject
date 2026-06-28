@@ -961,7 +961,7 @@ Cada giro registra su `seed`; con él, el motor es **completamente determinista*
 | **XSS** | React escapa por defecto; CSP `default-src 'self'` servido por nginx. |
 | **Secret management** | `.env` ignorado por git, `.env.example` versionado. |
 | **HTTPS** | Asumido en producción vía reverse proxy; en local HTTP. |
-| **Logs** | Estructurados (JSON) con `logstash-logback-encoder`. **Nunca se loguean**: passwords, tokens ni `seed` en producción. |
+| **Logs** | Estructurados (JSON, `logging.structured.format=logstash`). Un `RequestLoggingFilter` (el más externo) correla cada petición con un `requestId` (propagado desde `X-Request-Id` o generado, y devuelto en la respuesta) y el `userId` autenticado vía **MDC**; emite una línea de acceso por petición (`DEBUG` si `<400`, `WARN` si `>=400`). Severidad por gravedad: eventos de negocio significativos a `INFO` (login, publicación de matemática, alta/baja de operador, jackpot, simulaciones, informe RFJ, juego responsable), detalle del *hot path* (spin/recarga) a `DEBUG`, fallos de seguridad/idempotencia/concurrencia a `WARN` (centralizados en el `GlobalExceptionHandler`, ya correlados por MDC) y la rotura de la cadena de integridad a `ERROR`. **Nunca se loguean**: passwords, tokens, `seed` ni **emails** (solo IDs: `userId`/`operatorId`). Niveles ajustables por entorno (`LOG_LEVEL_APP`, `LOG_LEVEL_PLAYER`, `LOG_LEVEL_ACCESS`). |
 
 #### 2.5.5 Específicas de gambling / DGOJ
 

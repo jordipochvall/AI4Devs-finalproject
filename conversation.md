@@ -1704,3 +1704,14 @@ Auditados con un analizador de llaves los métodos ≥35 líneas del backend y r
 Dejados intactos a propósito: `SpinKernel.evaluateLine` (núcleo del motor en caliente, cero-alloc + golden-master) y `SeedDataLoader.run` (seeding de arranque ya factorizado en helpers, secuencia plana sin anidamiento).
 
 Validado: unit completo verde (domain 15 incl. golden-master que protege `build`, application 64, simulator 8, web-api 35) + 46 ITs sensibles (spin/jackpot/validación/motor/401-403/replay) verdes.
+
+### Prompt 100 — Logging consistente (observabilidad)
+
+Decisiones del usuario: alcance **completo** (correlación + eventos), *hot path* a **DEBUG**, **nunca el email** (solo IDs).
+
+- **Correlación/acceso**: `RequestLoggingFilter` (el más externo, `@Order(HIGHEST)`, auto-registrado) pone `requestId` (de `X-Request-Id` o generado; se devuelve en la respuesta) en el MDC y registra una línea de acceso por petición (`DEBUG` <400, `WARN` ≥400). `JwtAuthFilter` añade `userId` al MDC tras autenticar (solo id). `slf4j-api` añadido a `nova-application` (ArchUnit lo permite).
+- **Niveles por gravedad**: INFO a eventos significativos de baja frecuencia (login ok, registro, publicación de matemática, creación de versión, alta/baja de operador, jackpot, simulación lanzada/completada, informe RFJ, límites/autoexclusión); DEBUG al detalle del hot path (spin, recarga, refresh); WARN a fallos de seguridad/idempotencia/concurrencia centralizados en `GlobalExceptionHandler` (login/refresh inválidos, operador inactivo, self-excluded, limit reached, idempotency conflict, concurrent spin, rate limit en el filtro); ERROR a la rotura de la cadena de integridad (RFJ y `VerifyIntegrityUseCase`).
+- **Adaptadores**: DEBUG en `RefreshTokenStoreJpaAdapter` (alta/revocación de token) y `AuditChainJpaAdapter` (ventana de integridad).
+- **Config**: `application.yml` con niveles ajustables por entorno (`LOG_LEVEL_APP/PLAYER/ACCESS`). Doc §2.5.4 actualizada (política PII = tampoco email; solo IDs).
+
+Validado: unit completo verde (domain 15, application 64 incl. ArchUnit, simulator 8, web-api 35) + 28 ITs (auth/authorization/spin/rate-limit/admin/math) verdes con el filtro nuevo.
