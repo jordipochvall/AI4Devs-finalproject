@@ -21,6 +21,7 @@ import com.novacasino.domain.rng.RngFactory;
 import com.novacasino.infrastructure.persistence.entity.GameConfigEntity;
 import com.novacasino.infrastructure.persistence.entity.GameEntity;
 import com.novacasino.infrastructure.persistence.entity.GameRoundEntity;
+import com.novacasino.infrastructure.persistence.entity.JackpotPoolEntity;
 import com.novacasino.infrastructure.persistence.entity.WalletEntity;
 import com.novacasino.infrastructure.persistence.entity.WalletTransactionEntity;
 import com.novacasino.infrastructure.persistence.repository.GameConfigJpaRepository;
@@ -34,6 +35,7 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -120,70 +122,111 @@ public class SpinService {
         // HU-19: server-side responsible-gaming gate — refuse before any wallet effect or round.
         responsibleGaming.assertCanSpin(userId);
 
-        final GameEntity game = gameRepo.findByIdAndActiveTrue(gameId)
-                .orElseThrow(() -> new GameNotFoundException(gameId));
-        if (game.getActiveConfigId() == null) {
-            throw new GameNotFoundException(gameId);
-        }
+        final GameEntity game = activeGame(gameId);
         final GameConfigEntity config = configRepo.findById(game.getActiveConfigId())
                 .orElseThrow(() -> new GameNotFoundException(gameId));
         final CompiledGame compiled = compiler.compile(config.getId(),
                 configMapper.toSpec(parse(config.getConfig())));
         final int paylineCount = compiled.paylineCount();
-
         validateBet(game, paylineCount, betCents);
 
-        final WalletEntity wallet = walletRepo.findByUserId(userId)
-                .orElseThrow(() -> new IllegalStateException("Wallet not found for user " + userId));
+        final WalletEntity wallet = fundedWallet(userId, betCents);
         final long balancePre = wallet.getBalanceCents();
-        if (betCents > balancePre) {
-            throw new InsufficientBalanceException(betCents, balancePre);
-        }
 
         // Run the engine through the production sink (same kernel as the simulator).
         final long seed = secureRandom.nextLong();
-        final RngEngine rng = rngFactory.create(seed);
-        final MaterializingSink sink = new MaterializingSink(compiled);
-        new SpinKernel(compiled).spin(betCents, rng, sink);
-        final List<MechSpin> spins = sink.spins();
+        final List<MechSpin> spins = runEngine(compiled, betCents, seed);
+        final MechSpin base = spins.get(0);
 
-        // Progressive jackpot (HU-26): contribute a fraction of the bet and grant deterministically by
-        // seed. The jackpot win is attributed to the base round (audited there).
-        final var poolOpt = jackpotService.findPool(gameId);
-        long jackpotWin = 0L;
-        boolean jackpotAwarded = false;
-        long jackpotContribution = 0L;
-        if (poolOpt.isPresent()) {
-            final var pool = poolOpt.get();
-            jackpotContribution = jackpotService.contribution(pool, betCents);
-            jackpotAwarded = JackpotService.isAwarded(seed, pool.getOddsDenominator());
-            jackpotWin = jackpotAwarded ? pool.getCurrentCents() + jackpotContribution : 0L;
-        }
+        // Progressive jackpot (HU-26): deterministic in the seed; the win is attributed to the base round.
+        final JackpotOutcome jackpot = computeJackpot(gameId, betCents, seed);
 
-        final long baseWin = spins.get(0).winCents() + jackpotWin;
-        final long totalWin = spins.stream().mapToLong(MechSpin::winCents).sum() + jackpotWin;
+        final long baseWin = base.winCents() + jackpot.win();
+        final long totalWin = spins.stream().mapToLong(MechSpin::winCents).sum() + jackpot.win();
         final long balancePost = balancePre - betCents + totalWin;
         final long lineBet = betCents / paylineCount;
+        final long balanceAfterBase = balancePre - betCents + baseWin;
 
         // Update the balance (optimistic lock via @Version).
         wallet.setBalanceCents(balancePost);
         walletRepo.save(wallet);
 
-        // Persist the base round (including any jackpot win), then each free-spin child round.
-        final MechSpin base = spins.get(0);
-        final long balanceAfterBase = balancePre - betCents + baseWin;
+        // Persist the base round (including any jackpot win), settle the pool, then the free-spin children.
         final GameRoundEntity baseRound = roundRepo.save(GameRoundEntity.baseRound(
                 operatorId, userId, gameId, config.getId(), seed, betCents, baseWin,
                 balancePre, balanceAfterBase, toJson(resultOf(base))));
+        settleJackpot(jackpot, operatorId, gameId, baseRound.getId(), userId);
 
-        // Settle the jackpot pool and record the grant (after the round exists).
-        if (poolOpt.isPresent()) {
-            jackpotService.applyOutcome(poolOpt.get(), jackpotAwarded, jackpotContribution);
-            if (jackpotAwarded) {
-                jackpotService.recordGrant(operatorId, gameId, baseRound.getId(), userId, jackpotWin);
-            }
+        final List<SpinResultDto> freeSpinRounds = persistFreeSpins(
+                spins, balanceAfterBase, lineBet, operatorId, userId, gameId, config.getId(), seed, baseRound.getId());
+
+        recordLedger(wallet, betCents, totalWin, balancePre, balancePost, baseRound.getId());
+
+        // Top-level result: base spin view/lines, but the round's TOTAL win and final balance.
+        final int awarded = compiled.freeSpinsAwardedFor(base.scatterCount());
+        final FreeSpinsDto freeSpins = new FreeSpinsDto(awarded > 0, awarded, freeSpinRounds);
+        return new SpinResultDto(baseRound.getId(), betCents, lineBet, totalWin, balancePre, balancePost,
+                base.view(), base.winningPaylines(), base.scatterCount(), freeSpins);
+    }
+
+    /** Loads an active, playable game (active flag + an active config) or fails with 404. */
+    private GameEntity activeGame(final Long gameId) {
+        final GameEntity game = gameRepo.findByIdAndActiveTrue(gameId)
+                .orElseThrow(() -> new GameNotFoundException(gameId));
+        if (game.getActiveConfigId() == null) {
+            throw new GameNotFoundException(gameId);
         }
+        return game;
+    }
 
+    /** Loads the player's wallet and asserts it can cover the bet (else 422). */
+    private WalletEntity fundedWallet(final Long userId, final long betCents) {
+        final WalletEntity wallet = walletRepo.findByUserId(userId)
+                .orElseThrow(() -> new IllegalStateException("Wallet not found for user " + userId));
+        if (betCents > wallet.getBalanceCents()) {
+            throw new InsufficientBalanceException(betCents, wallet.getBalanceCents());
+        }
+        return wallet;
+    }
+
+    /** Runs the kernel (same engine as the simulator) and returns the base spin plus any free spins. */
+    private List<MechSpin> runEngine(final CompiledGame compiled, final long betCents, final long seed) {
+        final RngEngine rng = rngFactory.create(seed);
+        final MaterializingSink sink = new MaterializingSink(compiled);
+        new SpinKernel(compiled).spin(betCents, rng, sink);
+        return sink.spins();
+    }
+
+    /** Computes the (deterministic) jackpot contribution and grant for this spin. */
+    private JackpotOutcome computeJackpot(final Long gameId, final long betCents, final long seed) {
+        final Optional<JackpotPoolEntity> poolOpt = jackpotService.findPool(gameId);
+        if (poolOpt.isEmpty()) {
+            return new JackpotOutcome(poolOpt, false, 0L, 0L);
+        }
+        final JackpotPoolEntity pool = poolOpt.get();
+        final long contribution = jackpotService.contribution(pool, betCents);
+        final boolean awarded = JackpotService.isAwarded(seed, pool.getOddsDenominator());
+        final long win = awarded ? pool.getCurrentCents() + contribution : 0L;
+        return new JackpotOutcome(poolOpt, awarded, contribution, win);
+    }
+
+    /** Applies the jackpot outcome to the pool and records the grant, once the base round exists. */
+    private void settleJackpot(final JackpotOutcome jackpot, final Long operatorId, final Long gameId,
+                               final Long baseRoundId, final Long userId) {
+        if (jackpot.pool().isEmpty()) {
+            return;
+        }
+        jackpotService.applyOutcome(jackpot.pool().get(), jackpot.awarded(), jackpot.contribution());
+        if (jackpot.awarded()) {
+            jackpotService.recordGrant(operatorId, gameId, baseRoundId, userId, jackpot.win());
+        }
+    }
+
+    /** Persists each free-spin child round (chaining the balance) and returns their result DTOs. */
+    private List<SpinResultDto> persistFreeSpins(final List<MechSpin> spins, final long balanceAfterBase,
+                                                 final long lineBet, final Long operatorId, final Long userId,
+                                                 final Long gameId, final Long configId, final long seed,
+                                                 final Long baseRoundId) {
         final int totalFreeSpins = spins.size() - 1;
         final List<SpinResultDto> freeSpinRounds = new ArrayList<>(totalFreeSpins);
         long running = balanceAfterBase;
@@ -194,22 +237,24 @@ public class SpinService {
             running = post;
             final int remainingAfter = totalFreeSpins - i;
             final GameRoundEntity child = roundRepo.save(GameRoundEntity.freeSpinRound(
-                    operatorId, userId, gameId, config.getId(), seed, fs.winCents(),
-                    pre, post, toJson(resultOf(fs)), baseRound.getId(), remainingAfter));
+                    operatorId, userId, gameId, configId, seed, fs.winCents(),
+                    pre, post, toJson(resultOf(fs)), baseRoundId, remainingAfter));
             freeSpinRounds.add(toDto(child.getId(), 0L, lineBet, fs, pre, post, noFreeSpins()));
         }
+        return freeSpinRounds;
+    }
 
-        // Ledger: one BET and (if any prize) one WIN, both tied to the base round.
-        txRepo.save(WalletTransactionEntity.bet(wallet.getId(), betCents, balancePre - betCents, baseRound.getId()));
+    /** Records the ledger movements: one BET and (if any prize) one WIN, tied to the base round. */
+    private void recordLedger(final WalletEntity wallet, final long betCents, final long totalWin,
+                              final long balancePre, final long balancePost, final Long baseRoundId) {
+        txRepo.save(WalletTransactionEntity.bet(wallet.getId(), betCents, balancePre - betCents, baseRoundId));
         if (totalWin > 0) {
-            txRepo.save(WalletTransactionEntity.win(wallet.getId(), totalWin, balancePost, baseRound.getId()));
+            txRepo.save(WalletTransactionEntity.win(wallet.getId(), totalWin, balancePost, baseRoundId));
         }
+    }
 
-        final int awarded = compiled.freeSpinsAwardedFor(base.scatterCount());
-        final FreeSpinsDto freeSpins = new FreeSpinsDto(awarded > 0, awarded, freeSpinRounds);
-        // Top-level result: base spin view/lines, but the round's TOTAL win and final balance.
-        return new SpinResultDto(baseRound.getId(), betCents, lineBet, totalWin, balancePre, balancePost,
-                base.view(), base.winningPaylines(), base.scatterCount(), freeSpins);
+    /** The resolved progressive-jackpot outcome of a spin: the pool (if any), the grant flag and amounts. */
+    private record JackpotOutcome(Optional<JackpotPoolEntity> pool, boolean awarded, long contribution, long win) {
     }
 
     /** Validates the bet against the game's commercial range, step and the payline-multiple rule. */

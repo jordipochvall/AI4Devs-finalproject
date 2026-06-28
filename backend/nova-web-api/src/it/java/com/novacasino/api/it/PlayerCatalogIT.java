@@ -113,6 +113,31 @@ class PlayerCatalogIT extends AbstractIntegrationTest {
         }
     }
 
+    // --- AC2 (edge): an ACTIVE game without an active config is not playable → 404 ---
+
+    @Test
+    void activeGameWithoutActiveConfig_detailReturns404() throws Exception {
+        String token = loginAndGetToken(PLAYER_EMAIL, PLAYER_PASS);
+
+        // Active game but with no active_config_id (active_config_id is null by default).
+        jdbc.update("""
+                INSERT INTO games (operator_id, code, name, theme, cover_image_url,
+                                   min_bet_cents, max_bet_cents, bet_step_cents, active)
+                SELECT id, 'it-noconfig', 'Sin Config IT', 'SPACE', '/x.jpg', 25, 500, 25, TRUE
+                FROM operators WHERE code = 'novacasino-default'
+                """);
+        Long noConfigId = jdbc.queryForObject(
+                "SELECT id FROM games WHERE code = 'it-noconfig'", Long.class);
+        try {
+            // Listed in the lobby (it is active) but its detail is not playable → 404.
+            mockMvc.perform(get("/api/v1/player/games/" + noConfigId)
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isNotFound());
+        } finally {
+            jdbc.update("DELETE FROM games WHERE id = ?", noConfigId);
+        }
+    }
+
     // --- AC4: other roles → 403; no token → 401 ---
 
     @Test

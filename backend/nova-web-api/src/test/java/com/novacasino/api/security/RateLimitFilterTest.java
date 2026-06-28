@@ -2,13 +2,17 @@ package com.novacasino.api.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.MessageSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.servlet.LocaleResolver;
 
+import java.util.List;
 import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,10 +41,20 @@ class RateLimitFilterTest {
         return new RateLimitFilter(props, messageSource, objectMapper, localeResolver);
     }
 
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
     private MockHttpServletRequest req(final String method, final String uri, final String ip) {
         final MockHttpServletRequest request = new MockHttpServletRequest(method, uri);
         request.setRemoteAddr(ip);
         return request;
+    }
+
+    private void authenticateAs(final String username) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(username, null, List.of()));
     }
 
     @Test
@@ -77,6 +91,57 @@ class RateLimitFilterTest {
         assertThat(a.getStatus()).isEqualTo(200);
         assertThat(b.getStatus()).isEqualTo(200); // different IP → own bucket, not throttled
         verify(chain, times(2)).doFilter(any(), any());
+    }
+
+    @Test
+    void spin_isKeyedByAuthenticatedUser_notIp() throws Exception {
+        final RateLimitFilter filter = filter(true, 5, 1);
+        final FilterChain chain = mock(FilterChain.class);
+
+        // user1 spins once (ok), then again from a DIFFERENT ip → still throttled (same user bucket).
+        authenticateAs("user1");
+        final MockHttpServletResponse first = new MockHttpServletResponse();
+        filter.doFilter(req("POST", "/api/v1/player/games/3/spin", "10.0.0.1"), first, chain);
+        assertThat(first.getStatus()).isEqualTo(200);
+
+        final MockHttpServletResponse sameUserOtherIp = new MockHttpServletResponse();
+        filter.doFilter(req("POST", "/api/v1/player/games/3/spin", "10.0.0.2"), sameUserOtherIp, chain);
+        assertThat(sameUserOtherIp.getStatus()).isEqualTo(429);
+
+        // A different user has an independent bucket.
+        SecurityContextHolder.clearContext();
+        authenticateAs("user2");
+        final MockHttpServletResponse otherUser = new MockHttpServletResponse();
+        filter.doFilter(req("POST", "/api/v1/player/games/3/spin", "10.0.0.1"), otherUser, chain);
+        assertThat(otherUser.getStatus()).isEqualTo(200);
+
+        verify(chain, times(2)).doFilter(any(), any()); // first + user2 passed; sameUserOtherIp blocked
+    }
+
+    @Test
+    void login_honoursXForwardedFor() throws Exception {
+        final RateLimitFilter filter = filter(true, 1, 5);
+        final FilterChain chain = mock(FilterChain.class);
+
+        // Two requests from the same forwarded client IP (different remote addr) share a bucket.
+        final MockHttpServletRequest r1 = req("POST", "/api/v1/auth/login", "127.0.0.1");
+        r1.addHeader("X-Forwarded-For", "7.7.7.7, 1.2.3.4");
+        final MockHttpServletResponse a = new MockHttpServletResponse();
+        filter.doFilter(r1, a, chain);
+        assertThat(a.getStatus()).isEqualTo(200);
+
+        final MockHttpServletRequest r2 = req("POST", "/api/v1/auth/login", "127.0.0.2");
+        r2.addHeader("X-Forwarded-For", "7.7.7.7");
+        final MockHttpServletResponse b = new MockHttpServletResponse();
+        filter.doFilter(r2, b, chain);
+        assertThat(b.getStatus()).isEqualTo(429); // same forwarded IP → throttled
+
+        // A different forwarded IP is independent.
+        final MockHttpServletRequest r3 = req("POST", "/api/v1/auth/login", "127.0.0.1");
+        r3.addHeader("X-Forwarded-For", "8.8.8.8");
+        final MockHttpServletResponse c = new MockHttpServletResponse();
+        filter.doFilter(r3, c, chain);
+        assertThat(c.getStatus()).isEqualTo(200);
     }
 
     @Test

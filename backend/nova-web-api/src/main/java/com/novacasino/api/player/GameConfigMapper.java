@@ -35,37 +35,60 @@ public class GameConfigMapper {
     public GameConfigSpec toSpec(final JsonNode config) {
         final int cols = config.get("grid").get("cols").asInt();
         final int rows = config.get("grid").get("rows").asInt();
+        final JsonNode bonus = config.get("bonus");
 
+        return new GameConfigSpec(cols, rows,
+                mapSymbols(config.get("symbols")),
+                mapReels(config.get("reels")),
+                mapPaylines(config.get("paylines")),
+                mapPaytable(config.get("paytable")),
+                mapScatterPays(config.get("scatterPays")),
+                mapWild(bonus),
+                mapFreeSpins(bonus));
+    }
+
+    private List<SymbolSpec> mapSymbols(final JsonNode symbolsNode) {
         final List<SymbolSpec> symbols = new ArrayList<>();
-        for (final JsonNode s : config.get("symbols")) {
+        for (final JsonNode s : symbolsNode) {
             symbols.add(new SymbolSpec(s.get("id").asText(), SymbolKind.valueOf(s.get("kind").asText())));
         }
+        return symbols;
+    }
 
+    private List<List<String>> mapReels(final JsonNode reelsNode) {
         final List<List<String>> reels = new ArrayList<>();
-        for (final JsonNode strip : config.get("reels")) {
+        for (final JsonNode strip : reelsNode) {
             final List<String> compiledStrip = new ArrayList<>();
             for (final JsonNode sym : strip) {
                 compiledStrip.add(sym.asText());
             }
             reels.add(compiledStrip);
         }
+        return reels;
+    }
 
+    private List<List<Integer>> mapPaylines(final JsonNode paylinesNode) {
         final List<List<Integer>> paylines = new ArrayList<>();
-        for (final JsonNode line : config.get("paylines")) {
+        for (final JsonNode line : paylinesNode) {
             final List<Integer> compiledLine = new ArrayList<>();
             for (final JsonNode idx : line) {
                 compiledLine.add(idx.asInt());
             }
             paylines.add(compiledLine);
         }
+        return paylines;
+    }
 
+    private List<PaytableEntry> mapPaytable(final JsonNode paytableNode) {
         final List<PaytableEntry> paytable = new ArrayList<>();
-        for (final JsonNode entry : config.get("paytable")) {
+        for (final JsonNode entry : paytableNode) {
             paytable.add(new PaytableEntry(entry.get("symbol").asText(), readCounts(entry.get("payouts"))));
         }
+        return paytable;
+    }
 
+    private Map<String, Map<Integer, Long>> mapScatterPays(final JsonNode scatterPaysNode) {
         final Map<String, Map<Integer, Long>> scatterPays = new HashMap<>();
-        final JsonNode scatterPaysNode = config.get("scatterPays");
         if (scatterPaysNode != null && scatterPaysNode.isObject()) {
             final Iterator<String> fields = scatterPaysNode.fieldNames();
             while (fields.hasNext()) {
@@ -73,27 +96,36 @@ public class GameConfigMapper {
                 scatterPays.put(sym, readCounts(scatterPaysNode.get(sym)));
             }
         }
+        return scatterPays;
+    }
 
-        WildSpec wild = null;
-        FreeSpinsSpec freeSpins = null;
-        final JsonNode bonus = config.get("bonus");
-        if (bonus != null && bonus.isObject()) {
-            final JsonNode wildNode = bonus.get("wild");
-            if (wildNode != null && wildNode.isObject()) {
-                wild = new WildSpec(readSubstitutes(wildNode.get("substitutes")));
-            }
-            final JsonNode fsNode = bonus.get("freeSpins");
-            if (fsNode != null && fsNode.isObject()) {
-                freeSpins = new FreeSpinsSpec(
-                        fsNode.get("triggerSymbol").asText(),
-                        fsNode.get("minTriggerCount").asInt(),
-                        readIntCounts(fsNode.get("award")),
-                        fsNode.get("multiplier").asInt(),
-                        fsNode.path("retrigger").asBoolean(false));
-            }
+    /** Optional wild substitution rules; null when the game has none. */
+    private WildSpec mapWild(final JsonNode bonus) {
+        if (bonus == null || !bonus.isObject()) {
+            return null;
         }
+        final JsonNode wildNode = bonus.get("wild");
+        if (wildNode == null || !wildNode.isObject()) {
+            return null;
+        }
+        return new WildSpec(readSubstitutes(wildNode.get("substitutes")));
+    }
 
-        return new GameConfigSpec(cols, rows, symbols, reels, paylines, paytable, scatterPays, wild, freeSpins);
+    /** Optional free-spins feature; null when the game has none. */
+    private FreeSpinsSpec mapFreeSpins(final JsonNode bonus) {
+        if (bonus == null || !bonus.isObject()) {
+            return null;
+        }
+        final JsonNode fsNode = bonus.get("freeSpins");
+        if (fsNode == null || !fsNode.isObject()) {
+            return null;
+        }
+        return new FreeSpinsSpec(
+                fsNode.get("triggerSymbol").asText(),
+                fsNode.get("minTriggerCount").asInt(),
+                readIntCounts(fsNode.get("award")),
+                fsNode.get("multiplier").asInt(),
+                fsNode.path("retrigger").asBoolean(false));
     }
 
     /** Reads a {@code {"<count>": multiplier}} map into {@code count -> long}. */

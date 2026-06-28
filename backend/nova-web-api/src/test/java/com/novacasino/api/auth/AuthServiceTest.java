@@ -10,6 +10,7 @@ import com.novacasino.application.auth.exception.InvalidRefreshTokenException;
 import com.novacasino.application.auth.RefreshTokenUseCase;
 import com.novacasino.api.security.JwtService;
 import com.novacasino.domain.user.UserRole;
+import com.novacasino.api.auth.exception.OperatorInactiveException;
 import com.novacasino.infrastructure.persistence.entity.OperatorEntity;
 import com.novacasino.infrastructure.persistence.entity.UserEntity;
 import com.novacasino.infrastructure.persistence.entity.WalletEntity;
@@ -161,6 +162,20 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(new LoginRequest("user@test.com", "wrong")))
                 .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    // --- HU-25: login is blocked when the user's operator is deactivated ---
+
+    @Test
+    void login_inactiveOperator_throws() {
+        final UserEntity user = stubUser(1L, "user@test.com", passwordEncoder.encode("pass123"));
+        when(userRepo.findByEmail(eq("user@test.com"))).thenReturn(Optional.of(user));
+        final OperatorEntity inactive = stubOperator(1L);
+        inactive.setActive(false);
+        when(operatorRepo.findById(1L)).thenReturn(Optional.of(inactive));
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("user@test.com", "pass123")))
+                .isInstanceOf(OperatorInactiveException.class);
     }
 
     // --- AC6: the stored hash is NOT the plaintext password ---

@@ -73,6 +73,24 @@ class ResponsibleGamingUseCaseTest {
     }
 
     @Test
+    void assertCanSpin_promotesDueRelaxation_andUsesNewLimit() {
+        // A LOSS limit of 1000 with a staged relaxation to 5000 whose cooldown already elapsed.
+        final OffsetDateTime past = OffsetDateTime.now().minusSeconds(1);
+        final PlayerLimit staged = new PlayerLimit(1L, USER, "LOSS", "DAILY", 1000L,
+                OffsetDateTime.now().minusSeconds(COOLDOWN), 5000L, past);
+        when(store.isSelfExcluded(eq(USER), any())).thenReturn(false);
+        when(store.findLimitsByUser(USER)).thenReturn(List.of(staged));
+        // Promotion persists the pending amount as the new effective limit (no more pending).
+        when(store.updateLimit(eq(1L), eq(5000L), any(), isNull(), isNull()))
+                .thenReturn(new PlayerLimit(1L, USER, "LOSS", "DAILY", 5000L, past, null, null));
+        // A loss of 3000 trips the OLD 1000 limit but NOT the promoted 5000 one.
+        when(store.netLossSince(eq(USER), any())).thenReturn(3000L);
+
+        assertThatCode(() -> useCase.assertCanSpin(USER)).doesNotThrowAnyException();
+        verify(store).updateLimit(eq(1L), eq(5000L), any(), isNull(), isNull());
+    }
+
+    @Test
     void assertCanSpin_lossLimitReached_throws() {
         when(store.isSelfExcluded(eq(USER), any())).thenReturn(false);
         when(store.findLimitsByUser(USER)).thenReturn(List.of(limit(1000L, null)));

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -62,6 +63,43 @@ class AuditIT extends AbstractIntegrationTest {
 
         // A game id that the operator does not own → no rows, but a valid 200 page.
         mockMvc.perform(get("/api/v1/operator/rounds?gameId=999999")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    // --- AC3: playerId filter (match / non-match) and the created_at date window ---
+
+    @Test
+    void rounds_filterByPlayerAndDateWindow() throws Exception {
+        produceRound();
+        final String token = loginAndGetToken(OPERATOR_EMAIL, OPERATOR_PASS);
+
+        // Discover the player id of an existing round.
+        final String page = mockMvc.perform(get("/api/v1/operator/rounds?page=0&size=1")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        final long playerId = objectMapper.readTree(page).get("content").get(0).get("playerId").asLong();
+
+        // Matching player → at least one row.
+        mockMvc.perform(get("/api/v1/operator/rounds?playerId=" + playerId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements", greaterThanOrEqualTo(1)));
+
+        // Non-matching player → empty page.
+        mockMvc.perform(get("/api/v1/operator/rounds?playerId=999999")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        // A future lower bound (from) and an ancient upper bound (to) each exclude every round.
+        mockMvc.perform(get("/api/v1/operator/rounds?from=2999-01-01T00:00:00Z")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+        mockMvc.perform(get("/api/v1/operator/rounds?to=2000-01-01T00:00:00Z")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(0));

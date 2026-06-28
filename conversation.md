@@ -1678,3 +1678,29 @@ Tras la auditoría, corregidas:
 - **Limpieza**: eliminada la dependencia **no usada** `jakarta.validation-api` de `nova-common` (ningún DTO la importa); así la afirmación de §2.2.5 ("única dependencia de terceros: jackson-databind") es exacta.
 
 Los 40 endpoints quedan documentados en catálogo §4.2 y ficha §4.3. Build unit verde (web-api 32) tras la limpieza del pom.
+
+### Prompt 98 — Cierre de lagunas de QA (G1–G7)
+
+Tras la auditoría de QA, implementadas todas las recomendaciones:
+- **G1**: test de `ResponsibleGamingUseCase.promoteIfDue` (relajación diferida ya vencida → se promueve y persiste).
+- **G2**: tests de `RateLimitFilter` para la clave **por usuario autenticado** del spin (independiente de IP) y para `X-Forwarded-For` en login.
+- **G3 (correctness)**: `FilterRegistrationBean(setEnabled=false)` para `JwtAuthFilter` y `RateLimitFilter` → evita que Spring Boot los auto-registre como filtros de servlet y se ejecuten dos veces (doble consumo de tokens) en Tomcat real. Solo corren dentro de la cadena de seguridad.
+- **G4**: ITs de ramas defensivas de adaptadores — juego activo sin config → 404 (`PlayerCatalogIT`), jugador sin wallet → 404 (`OperatorRechargeIT`), juego sin config → se omite la regla de múltiplo de líneas (`GameCommercialIT`, con `@Transactional` rollback porque el audit comercial es inmutable y tiene FK a `games`).
+- **G5**: `RateLimitIT` end-to-end del spin (429 por usuario, capacidad 2) además del login; IPs aisladas por test.
+- **G6**: `AuditIT` reforzado con filtros `playerId` (match/no-match) y ventana `from`/`to`.
+- **G7**: happy path de `AdminUseCase.setActive`, test unitario de `OperatorInactiveException` en login, y aserción del cuerpo 429 localizado (en) en `RateLimitIT`.
+
+Validado: unit verde (domain 15, application 64, simulator 8, web-api 35) + ITs nuevos/modificados verdes (RateLimit login+spin, PlayerCatalog, OperatorRecharge, GameCommercial, Audit) + regresión de auth/authorization/spin con el cambio de G3.
+
+### Prompt 99 — Clean code: trocear métodos demasiado largos
+
+Auditados con un analizador de llaves los métodos ≥35 líneas del backend y refactorizados los que lo merecían (comportamiento idéntico, solo extracción de helpers con nombre):
+- **`SpinService.doSpin`** (94→49): orquestación plana sobre `activeGame`, `fundedWallet`, `runEngine`, `computeJackpot`/`settleJackpot` (+ record `JackpotOutcome`), `persistFreeSpins`, `recordLedger`.
+- **`ConfigValidator.validate`** (144→16): dividido en `validateGrid`/`validateSymbols`/`validateReels`/`validatePaylines`/`validatePaytable`/`validateScatterPays`/`validateBonus`.
+- **`GameConfigMapper.toSpec`** (62→13): `mapSymbols`/`mapReels`/`mapPaylines`/`mapPaytable`/`mapScatterPays`/`mapWild`/`mapFreeSpins`.
+- **`GameCompiler.build`** (119→23): `buildSymbols`/`buildReels`/`buildPaylines`/`buildLineWins`/`buildScatterTables`/`buildFreeSpins` con records portadores (`Symbols`/`LineWins`/`ScatterTables`/`FreeSpins`).
+- **`SecurityConfig.filterChain`** (43→22): handlers 401/403 extraídos a `writeUnauthorized`/`writeForbidden`/`writeProblem` (elimina duplicación).
+
+Dejados intactos a propósito: `SpinKernel.evaluateLine` (núcleo del motor en caliente, cero-alloc + golden-master) y `SeedDataLoader.run` (seeding de arranque ya factorizado en helpers, secuencia plana sin anidamiento).
+
+Validado: unit completo verde (domain 15 incl. golden-master que protege `build`, application 64, simulator 8, web-api 35) + 46 ITs sensibles (spin/jackpot/validación/motor/401-403/replay) verdes.

@@ -71,4 +71,13 @@ class AdminUseCaseTest {
         assertThatThrownBy(() -> useCase.setActive(9L, false))
                 .isInstanceOf(OperatorNotFoundException.class);
     }
+
+    @Test
+    void setActive_present_returnsUpdatedOperator() {
+        final OperatorDto deactivated = new OperatorDto(1L, "acme", "Acme", false, OffsetDateTime.now());
+        when(port.setActive(1L, false)).thenReturn(Optional.of(deactivated));
+
+        assertThat(useCase.setActive(1L, false).active()).isFalse();
+        verify(port).setActive(1L, false);
+    }
 }

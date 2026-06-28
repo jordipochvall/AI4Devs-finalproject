@@ -35,13 +35,34 @@ public final class GameCompiler {
         return cache.computeIfAbsent(configId, id -> build(id, spec));
     }
 
-    /** Performs the actual spec → primitives translation. */
+    /** Performs the actual spec → primitives translation, one cohesive table at a time. */
     private CompiledGame build(final long configId, final GameConfigSpec spec) {
         final int cols = spec.cols();
         final int rows = spec.rows();
         final int maxSymbolCount = cols * rows;
+        final int symbolCount = spec.symbols().size();
 
-        // --- symbols → dense int ids, in spec order ---
+        final Symbols symbols = buildSymbols(spec);
+        final int[][] reels = buildReels(spec, cols, symbols.index());
+        final int[][] paylines = buildPaylines(spec, cols);
+        final LineWins lineWins = buildLineWins(spec, cols, symbolCount, symbols.kinds(), symbols.index());
+        final ScatterTables scatter = buildScatterTables(spec, symbolCount, maxSymbolCount, symbols.index());
+        final FreeSpins fs = buildFreeSpins(spec, maxSymbolCount, symbols.index());
+        final boolean wildSubstitutesRegular =
+                spec.wild() != null && spec.wild().substitutes().contains(SymbolKind.REGULAR);
+
+        return new CompiledGame(
+                configId, cols, rows,
+                symbols.ids(), symbols.kinds(), symbols.wild(), symbols.scatter(),
+                reels, paylines,
+                lineWins.linePayouts(), lineWins.bestRegularByCount(), lineWins.bestRegularSymbolByCount(),
+                scatter.scatterPayouts(), scatter.scatterPaySymbols(),
+                wildSubstitutesRegular,
+                fs.has(), fs.triggerSymbol(), fs.minTriggerCount(), fs.award(), fs.multiplier(), fs.retrigger());
+    }
+
+    /** Symbols → dense int ids (spec order) with WILD/SCATTER flags and an id→index map. */
+    private Symbols buildSymbols(final GameConfigSpec spec) {
         final List<SymbolSpec> symbolSpecs = spec.symbols();
         final int symbolCount = symbolSpecs.size();
         final String[] symbolIds = new String[symbolCount];
@@ -57,8 +78,11 @@ public final class GameCompiler {
             scatter[i] = s.kind() == SymbolKind.SCATTER;
             index.put(s.id(), i);
         }
+        return new Symbols(symbolIds, kinds, wild, scatter, index);
+    }
 
-        // --- reels → int[col][pos] ---
+    /** Reels → {@code int[col][pos]} of symbol indices. */
+    private int[][] buildReels(final GameConfigSpec spec, final int cols, final Map<String, Integer> index) {
         final List<List<String>> reelSpec = spec.reels();
         final int[][] reels = new int[cols][];
         for (int c = 0; c < cols; c++) {
@@ -69,8 +93,11 @@ public final class GameCompiler {
             }
             reels[c] = compiledStrip;
         }
+        return reels;
+    }
 
-        // --- paylines → int[line][col] = row ---
+    /** Paylines → {@code int[line][col] = row}. */
+    private int[][] buildPaylines(final GameConfigSpec spec, final int cols) {
         final List<List<Integer>> paylineSpec = spec.paylines();
         final int[][] paylines = new int[paylineSpec.size()][cols];
         for (int l = 0; l < paylines.length; l++) {
@@ -79,8 +106,12 @@ public final class GameCompiler {
                 paylines[l][c] = line.get(c);
             }
         }
+        return paylines;
+    }
 
-        // --- line payouts (REGULAR) + best-regular-by-count ---
+    /** Line payouts (REGULAR) plus the best regular symbol/payout for each match count. */
+    private LineWins buildLineWins(final GameConfigSpec spec, final int cols, final int symbolCount,
+                                   final SymbolKind[] kinds, final Map<String, Integer> index) {
         final long[][] linePayouts = new long[symbolCount][cols + 1];
         for (final PaytableEntry entry : spec.paytable()) {
             final int sym = index.get(entry.symbol());
@@ -105,8 +136,12 @@ public final class GameCompiler {
             bestRegularByCount[count] = best;
             bestRegularSymbolByCount[count] = bestSym;
         }
+        return new LineWins(linePayouts, bestRegularByCount, bestRegularSymbolByCount);
+    }
 
-        // --- scatter payouts (anywhere, by total count) ---
+    /** Scatter payouts (anywhere, by total count) plus the list of paying scatter symbols. */
+    private ScatterTables buildScatterTables(final GameConfigSpec spec, final int symbolCount,
+                                             final int maxSymbolCount, final Map<String, Integer> index) {
         final long[][] scatterPayouts = new long[symbolCount][maxSymbolCount + 1];
         final List<Integer> scatterPaySymbolList = new ArrayList<>();
         final Map<String, Map<Integer, Long>> scatterPays = spec.scatterPays();
@@ -123,8 +158,12 @@ public final class GameCompiler {
             }
         }
         final int[] scatterPaySymbols = scatterPaySymbolList.stream().mapToInt(Integer::intValue).toArray();
+        return new ScatterTables(scatterPayouts, scatterPaySymbols);
+    }
 
-        // --- free spins ---
+    /** Free-spins trigger/award tables (an inactive feature when the spec has none). */
+    private FreeSpins buildFreeSpins(final GameConfigSpec spec, final int maxSymbolCount,
+                                     final Map<String, Integer> index) {
         final GameConfigSpec.FreeSpinsSpec fs = spec.freeSpins();
         final boolean hasFreeSpins = fs != null;
         final int fsTriggerSymbol = hasFreeSpins ? index.get(fs.triggerSymbol()) : -1;
@@ -142,18 +181,17 @@ public final class GameCompiler {
             fsMultiplier = fs.multiplier();
             fsRetrigger = fs.retrigger();
         }
-
-        // --- wild rule ---
-        final boolean wildSubstitutesRegular =
-                spec.wild() != null && spec.wild().substitutes().contains(SymbolKind.REGULAR);
-
-        return new CompiledGame(
-                configId, cols, rows,
-                symbolIds, kinds, wild, scatter,
-                reels, paylines,
-                linePayouts, bestRegularByCount, bestRegularSymbolByCount,
-                scatterPayouts, scatterPaySymbols,
-                wildSubstitutesRegular,
-                hasFreeSpins, fsTriggerSymbol, fsMinTriggerCount, fsAward, fsMultiplier, fsRetrigger);
+        return new FreeSpins(hasFreeSpins, fsTriggerSymbol, fsMinTriggerCount, fsAward, fsMultiplier, fsRetrigger);
     }
+
+    // Cohesive groups of compiled tables, kept together so build() reads as an assembly of sections.
+    private record Symbols(String[] ids, SymbolKind[] kinds, boolean[] wild, boolean[] scatter,
+                           Map<String, Integer> index) { }
+
+    private record LineWins(long[][] linePayouts, long[] bestRegularByCount, int[] bestRegularSymbolByCount) { }
+
+    private record ScatterTables(long[][] scatterPayouts, int[] scatterPaySymbols) { }
+
+    private record FreeSpins(boolean has, int triggerSymbol, int minTriggerCount, int[] award,
+                             int multiplier, boolean retrigger) { }
 }

@@ -196,6 +196,31 @@ class OperatorRechargeIT extends AbstractIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    // --- AC3 (edge): a player that exists but has no wallet row → 404 ---
+
+    @Test
+    void recharge_playerWithoutWallet_returns404() throws Exception {
+        String op = loginAndGetToken(OPERATOR_EMAIL, OPERATOR_PASS);
+
+        // Insert a PLAYER in the default operator without creating a wallet for them.
+        jdbc.update("""
+                INSERT INTO users (operator_id, email, password_hash, role, birth_date, locale, active)
+                SELECT id, 'it-nowallet@nova.test', 'x', 'PLAYER', DATE '1990-01-01', 'es', TRUE
+                FROM operators WHERE code = 'novacasino-default'
+                """);
+        Long playerId = jdbc.queryForObject(
+                "SELECT id FROM users WHERE email = 'it-nowallet@nova.test'", Long.class);
+        try {
+            mockMvc.perform(post("/api/v1/operator/players/" + playerId + "/wallet/recharge")
+                            .header("Authorization", "Bearer " + op)
+                            .header("Idempotency-Key", UUID.randomUUID().toString())
+                            .contentType(APPLICATION_JSON).content(body(5_000)))
+                    .andExpect(status().isNotFound());
+        } finally {
+            jdbc.update("DELETE FROM users WHERE id = ?", playerId);
+        }
+    }
+
     // --- missing Idempotency-Key → 400 ---
 
     @Test

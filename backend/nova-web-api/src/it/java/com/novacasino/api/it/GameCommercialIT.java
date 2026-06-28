@@ -39,6 +39,38 @@ class GameCommercialIT extends AbstractIntegrationTest {
 
     // --- AC1 + AC2: a valid update persists, returns the new config and writes an audit entry ---
 
+    // --- AC3 (edge): a game without an active config has no payline count, so the bet/step
+    //     multiple rule is skipped (only max>=min is enforced) ---
+
+    // Transactional + rollback: the update writes an immutable game_commercial_audits row (with a FK
+    // to games) that cannot be deleted afterwards, so we let the test transaction roll the inserts back.
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    void update_gameWithoutActiveConfig_skipsPaylineMultipleRule() throws Exception {
+        final String token = loginAndGetToken(OPERATOR_EMAIL, OPERATOR_PASS);
+
+        // Active game owned by the default operator, but with no active_config_id.
+        jdbc.update("""
+                INSERT INTO games (operator_id, code, name, theme, cover_image_url,
+                                   min_bet_cents, max_bet_cents, bet_step_cents, active)
+                SELECT id, 'it-noconfig-comm', 'Sin Config Comm IT', 'SPACE', '/x.jpg', 100, 20000, 100, TRUE
+                FROM operators WHERE code = 'novacasino-default'
+                """);
+        final Long gameId = jdbc.queryForObject(
+                "SELECT id FROM games WHERE code = 'it-noconfig-comm'", Long.class);
+
+        // 101 is not a multiple of any payline count, but with no active config there is nothing
+        // to validate against → the update is accepted (200), not rejected as a 422.
+        final String body = """
+                {"minBetCents":101,"maxBetCents":20000,"betStepCents":101,"active":true,
+                 "allowedCurrencies":["EUR"]}""";
+        mockMvc.perform(put("/api/v1/operator/games/" + gameId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.minBetCents").value(101));
+    }
+
     @Test
     void update_persistsChange_andWritesAudit() throws Exception {
         final String token = loginAndGetToken(OPERATOR_EMAIL, OPERATOR_PASS);
