@@ -164,6 +164,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(InvalidCredentialsException.class)
     ResponseEntity<ProblemDetail> handleInvalidCredentials(final InvalidCredentialsException ex) {
+        log.warn("Login failed: invalid credentials");
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
         body.setType(ABOUT_BLANK);
@@ -174,6 +175,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(InvalidRefreshTokenException.class)
     ResponseEntity<ProblemDetail> handleInvalidRefreshToken(final InvalidRefreshTokenException ex) {
+        log.warn("Refresh rejected: invalid or expired refresh token");
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
         body.setType(ABOUT_BLANK);
@@ -232,6 +234,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(LimitReachedException.class)
     ResponseEntity<ProblemDetail> handleLimitReached(final LimitReachedException ex) {
+        log.info("Play blocked: responsible-gaming loss limit reached");
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
         body.setType(ABOUT_BLANK);
@@ -242,6 +245,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(OperatorInactiveException.class)
     ResponseEntity<ProblemDetail> handleOperatorInactive(final OperatorInactiveException ex) {
+        log.warn("Login blocked: operator or user is inactive");
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
         body.setType(ABOUT_BLANK);
@@ -252,6 +256,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(SelfExcludedException.class)
     ResponseEntity<ProblemDetail> handleSelfExcluded(final SelfExcludedException ex) {
+        log.warn("Play blocked: player is within a self-exclusion period");
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
         body.setType(ABOUT_BLANK);
@@ -262,6 +267,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ReportIntegrityException.class)
     ResponseEntity<ProblemDetail> handleReportIntegrity(final ReportIntegrityException ex) {
+        log.error("RFJ report blocked: audit integrity chain broken (first broken round={})",
+                ex.getFirstBrokenRoundId());
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
         body.setType(ABOUT_BLANK);
@@ -350,6 +357,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(IdempotencyConflictException.class)
     ResponseEntity<ProblemDetail> handleIdempotencyConflict(final IdempotencyConflictException ex) {
+        log.warn("Idempotency conflict: key reused with a different payload");
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         body.setType(ABOUT_BLANK);
@@ -364,6 +372,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ConcurrentSpinException.class)
     ResponseEntity<ProblemDetail> handleConcurrentSpin(final ConcurrentSpinException ex) {
+        log.warn("Spin abandoned after repeated optimistic-lock conflicts (concurrent wallet updates)");
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         body.setType(ABOUT_BLANK);

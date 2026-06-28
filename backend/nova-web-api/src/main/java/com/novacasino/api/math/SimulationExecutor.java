@@ -83,6 +83,8 @@ public class SimulationExecutor {
         run.setCompletedAt(OffsetDateTime.now());
         run.setStatus(SimulationRunEntity.COMPLETED);
         simRepo.save(run);
+        log.info("Simulation completed: id={}, spins={}, rtpEmpirical={}, durationMs={}",
+                simulationId, run.getNumSpins(), run.getRtpEmpirical(), run.getDurationMs());
     }
 
     void fail(final Long simulationId, final String message) {

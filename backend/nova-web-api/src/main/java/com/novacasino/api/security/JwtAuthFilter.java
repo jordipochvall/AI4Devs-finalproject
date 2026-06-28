@@ -1,9 +1,13 @@
 package com.novacasino.api.security;
 
+import com.novacasino.api.logging.RequestLoggingFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,6 +25,8 @@ import java.io.IOException;
  */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
 
     private final JwtService jwtService;
     private final UserDetailsServiceImpl userDetailsService;
@@ -50,10 +56,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
+                    // Correlate every subsequent log line with the authenticated user (id only, never email).
+                    MDC.put(RequestLoggingFilter.USER_ID, String.valueOf(((NovaUserDetails) details).getUser().getId()));
                 }
+            } else {
+                log.debug("JWT rejected: token invalid or expired");
             }
-        } catch (final UsernameNotFoundException | IllegalArgumentException ignored) {
-            // Valid token but user not found — leave unauthenticated.
+        } catch (final UsernameNotFoundException | IllegalArgumentException ex) {
+            // Valid token but user not found / malformed — leave unauthenticated.
+            log.debug("JWT accepted but principal could not be loaded: {}", ex.getMessage());
         }
 
         chain.doFilter(request, response);

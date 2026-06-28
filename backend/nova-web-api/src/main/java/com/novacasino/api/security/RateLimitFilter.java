@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,6 +45,8 @@ import java.util.concurrent.TimeUnit;
  */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
 
     private static final String LOGIN_PATH = "/api/v1/auth/login";
     private static final String PLAYER_GAMES_PREFIX = "/api/v1/player/games/";
@@ -88,6 +92,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
+        // Anti-abuse forensics: the key carries IP or userId (never the email).
+        log.warn("Rate limit exceeded: key={}, path={}", target.key(), request.getRequestURI());
         writeTooManyRequests(request, response, probe);
     }
 

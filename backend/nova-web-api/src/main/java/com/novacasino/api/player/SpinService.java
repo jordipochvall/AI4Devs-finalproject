@@ -29,6 +29,8 @@ import com.novacasino.infrastructure.persistence.repository.GameJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.GameRoundJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.WalletJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.WalletTransactionJpaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
@@ -47,6 +49,8 @@ import java.util.UUID;
  */
 @Service
 public class SpinService {
+
+    private static final Logger log = LoggerFactory.getLogger(SpinService.class);
 
     /** Wallet optimistic-lock retries before giving up with a 409 (AC8). */
     private static final int MAX_ATTEMPTS = 3;
@@ -165,6 +169,8 @@ public class SpinService {
         // Top-level result: base spin view/lines, but the round's TOTAL win and final balance.
         final int awarded = compiled.freeSpinsAwardedFor(base.scatterCount());
         final FreeSpinsDto freeSpins = new FreeSpinsDto(awarded > 0, awarded, freeSpinRounds);
+        log.debug("Spin executed: round={}, userId={}, gameId={}, bet={}, totalWin={}, balancePost={}, freeSpins={}",
+                baseRound.getId(), userId, gameId, betCents, totalWin, balancePost, freeSpinRounds.size());
         return new SpinResultDto(baseRound.getId(), betCents, lineBet, totalWin, balancePre, balancePost,
                 base.view(), base.winningPaylines(), base.scatterCount(), freeSpins);
     }

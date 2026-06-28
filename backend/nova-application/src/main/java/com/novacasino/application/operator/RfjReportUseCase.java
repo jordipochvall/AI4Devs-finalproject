@@ -6,6 +6,8 @@ import com.novacasino.application.operator.exception.ReportIntegrityException;
 import com.novacasino.common.dto.IntegrityReportDto;
 import com.novacasino.common.dto.RfjReportDto;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -16,6 +18,8 @@ import java.time.ZoneOffset;
  * auditable {@code game_rounds} and stamps the integrity status into the document (AC2).
  */
 public class RfjReportUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(RfjReportUseCase.class);
 
     private final VerifyIntegrityUseCase integrity;
     private final RfjAggregatesPort port;
@@ -38,6 +42,9 @@ public class RfjReportUseCase {
         }
 
         final RfjAggregates agg = port.aggregate(operatorId, from, to);
+        log.info("RFJ report generated: operatorId={}, period={}-{}, rounds={}, ggr={} cents",
+                operatorId, year, month, agg.totalRounds(),
+                agg.totalWageredCents() - agg.totalWonCents());
         return new RfjReportDto(
                 operatorId, from, to,
                 agg.totalRounds(), agg.activePlayers(),

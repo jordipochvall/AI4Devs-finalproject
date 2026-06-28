@@ -75,6 +75,12 @@ springdoc:
     path: /swagger-ui.html
 
 logging:
+  level:
+    com.novacasino: ${LOG_LEVEL_APP:INFO}
+    # Set to DEBUG to trace the high-volume happy path: per-spin/recharge detail and every access line
+    # (problems — HTTP >= 400 — are already visible at INFO via WARN access logs).
+    com.novacasino.api.player: ${LOG_LEVEL_PLAYER:INFO}
+    http.access: ${LOG_LEVEL_ACCESS:INFO}
   structured:
     format:
       console: logstash

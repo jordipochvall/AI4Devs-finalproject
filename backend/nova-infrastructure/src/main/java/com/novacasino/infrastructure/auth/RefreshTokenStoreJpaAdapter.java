@@ -4,6 +4,8 @@ import com.novacasino.application.auth.RefreshTokenStorePort;
 import com.novacasino.application.auth.StoredRefreshToken;
 import com.novacasino.infrastructure.persistence.entity.RefreshTokenEntity;
 import com.novacasino.infrastructure.persistence.repository.RefreshTokenJpaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
@@ -12,6 +14,8 @@ import java.util.Optional;
 /** JPA adapter for {@link RefreshTokenStorePort} (HU-13). */
 @Component
 public class RefreshTokenStoreJpaAdapter implements RefreshTokenStorePort {
+
+    private static final Logger log = LoggerFactory.getLogger(RefreshTokenStoreJpaAdapter.class);
 
     private final RefreshTokenJpaRepository repo;
 
@@ -22,6 +26,7 @@ public class RefreshTokenStoreJpaAdapter implements RefreshTokenStorePort {
     @Override
     public void save(final Long userId, final String tokenHash, final OffsetDateTime expiresAt) {
         repo.save(new RefreshTokenEntity(userId, tokenHash, expiresAt));
+        log.debug("Refresh token stored: userId={}, expiresAt={}", userId, expiresAt);
     }
 
     @Override
@@ -32,6 +37,10 @@ public class RefreshTokenStoreJpaAdapter implements RefreshTokenStorePort {
 
     @Override
     public void markRevoked(final Long id) {
-        repo.findById(id).ifPresent(e -> { e.setRevoked(true); repo.save(e); });
+        repo.findById(id).ifPresent(e -> {
+            e.setRevoked(true);
+            repo.save(e);
+            log.debug("Refresh token revoked: tokenId={}, userId={}", id, e.getUserId());
+        });
     }
 }

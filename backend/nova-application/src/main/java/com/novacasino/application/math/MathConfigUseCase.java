@@ -13,6 +13,8 @@ import com.novacasino.common.dto.ConfigVersionDto;
 import com.novacasino.common.dto.MathGameDto;
 import com.novacasino.common.dto.PublishResultDto;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -23,6 +25,8 @@ import java.util.List;
  * are enforced here; persistence and JSON live in the adapter.
  */
 public class MathConfigUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(MathConfigUseCase.class);
 
     private final MathConfigPort port;
     private final ConfigValidator validator;
@@ -58,7 +62,10 @@ public class MathConfigUseCase {
         if (configId.equals(game.activeConfigId())) {
             throw new ConfigAlreadyActiveException(configId);
         }
-        return port.applyPublish(gameId, config.id(), operatorId, mathUserId);
+        final PublishResultDto result = port.applyPublish(gameId, config.id(), operatorId, mathUserId);
+        log.info("Math version published: gameId={}, configId={}, version={}, operatorId={}, by userId={}",
+                gameId, result.activeConfigId(), result.version(), operatorId, mathUserId);
+        return result;
     }
 
     @Transactional
@@ -72,7 +79,10 @@ public class MathConfigUseCase {
             throw new ConfigValidationException(List.of(
                     new ConfigValidationException.FieldError("rtpTarget", "must be between 0 and 1")));
         }
-        return port.createConfig(gameId, mathUserId, cmd);
+        final ConfigCreatedDto created = port.createConfig(gameId, mathUserId, cmd);
+        log.info("Math version created: gameId={}, configId={}, version={}, by userId={}",
+                gameId, created.id(), created.version(), mathUserId);
+        return created;
     }
 
     private OwnedGame ownedGame(final Long gameId, final Long operatorId) {

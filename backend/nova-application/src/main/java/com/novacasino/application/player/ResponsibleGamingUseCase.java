@@ -5,6 +5,8 @@ import com.novacasino.application.player.exception.SelfExcludedException;
 import com.novacasino.common.dto.LimitDto;
 import com.novacasino.common.dto.SelfExclusionDto;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -16,6 +18,7 @@ import java.time.OffsetDateTime;
  */
 public class ResponsibleGamingUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger(ResponsibleGamingUseCase.class);
     private static final String LOSS = "LOSS";
 
     private final ResponsibleGamingPort store;
@@ -31,6 +34,8 @@ public class ResponsibleGamingUseCase {
     public LimitDto setLimit(final Long userId, final String limitType, final String period,
                              final long amountCents) {
         final OffsetDateTime now = OffsetDateTime.now();
+        log.info("Responsible-gaming limit set: userId={}, type={}, period={}, amount={}",
+                userId, limitType, period, amountCents);
         final PlayerLimit existing = store.findLimit(userId, limitType, period)
                 .map(this::promoteIfDue)
                 .orElse(null);
@@ -51,6 +56,7 @@ public class ResponsibleGamingUseCase {
     @Transactional
     public SelfExclusionDto setSelfExclusion(final Long userId, final int days) {
         final OffsetDateTime start = OffsetDateTime.now();
+        log.info("Self-exclusion registered: userId={}, days={}", userId, days);
         return store.createSelfExclusion(userId, start, start.plusDays(days));
     }
 

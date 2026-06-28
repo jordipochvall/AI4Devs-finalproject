@@ -18,6 +18,8 @@ import com.novacasino.infrastructure.persistence.entity.WalletEntity;
 import com.novacasino.infrastructure.persistence.repository.OperatorJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.UserJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.WalletJpaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,7 @@ import java.time.Period;
 @Service
 public class AuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private static final String DEFAULT_OPERATOR_CODE = "novacasino-default";
 
     private final UserJpaRepository     userRepo;
@@ -87,6 +90,7 @@ public class AuthService {
         wallet.setBalanceCents(0L);
         walletRepo.save(wallet);
 
+        log.info("Player registered: userId={}, operatorId={}", user.getId(), operatorId);
         return issueSession(user);
     }
 
@@ -110,6 +114,8 @@ public class AuthService {
             throw new OperatorInactiveException();
         }
 
+        log.info("Login successful: userId={}, role={}, operatorId={}",
+                user.getId(), user.getRole().name(), user.getOperatorId());
         return issueSession(user);
     }
 
@@ -122,6 +128,7 @@ public class AuthService {
         final Long userId = refreshTokenService.consume(refreshToken);
         final UserEntity user = userRepo.findById(userId)
                 .orElseThrow(InvalidRefreshTokenException::new);
+        log.debug("Session refreshed (token rotated): userId={}", user.getId());
         return issueSession(user);
     }
 
@@ -129,6 +136,7 @@ public class AuthService {
     @Transactional
     public void logout(final String refreshToken) {
         refreshTokenService.revoke(refreshToken);
+        log.debug("Logout: refresh token revoked");
     }
 
     // -------------------------------------------------------------------------

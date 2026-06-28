@@ -2,6 +2,8 @@ package com.novacasino.application.audit;
 
 import com.novacasino.common.dto.IntegrityReportDto;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -18,6 +20,7 @@ import java.util.List;
  */
 public class VerifyIntegrityUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger(VerifyIntegrityUseCase.class);
     private static final OffsetDateTime MIN_INSTANT = OffsetDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
 
     private final AuditChainPort auditChain;
@@ -43,6 +46,8 @@ public class VerifyIntegrityUseCase {
             checked++;
             final String expected = sha256hex(canonical(prev, r));
             if (!expected.equals(r.rowHash())) {
+                log.warn("Audit integrity check FAILED: operatorId={}, first broken round={} (after {} rounds verified)",
+                        operatorId, r.id(), checked);
                 return new IntegrityReportDto(effFrom, effTo, checked, false, r.id());
             }
             prev = r.rowHash(); // advance with the stored link (pinpoints a single tamper)

@@ -4,6 +4,8 @@ import com.novacasino.infrastructure.persistence.entity.JackpotGrantEntity;
 import com.novacasino.infrastructure.persistence.entity.JackpotPoolEntity;
 import com.novacasino.infrastructure.persistence.repository.JackpotGrantJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.JackpotPoolJpaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -18,6 +20,8 @@ import java.util.Random;
  */
 @Service
 public class JackpotService {
+
+    private static final Logger log = LoggerFactory.getLogger(JackpotService.class);
 
     /** Mixed into the seed so the jackpot draw is independent of the reel RNG stream. */
     private static final long SEED_SALT = 0x9E3779B97F4A7C15L;
@@ -58,5 +62,7 @@ public class JackpotService {
     public void recordGrant(final Long operatorId, final Long gameId, final Long roundId,
                             final Long playerId, final long amountCents) {
         grantRepo.save(new JackpotGrantEntity(operatorId, gameId, roundId, playerId, amountCents));
+        log.info("Jackpot awarded: gameId={}, round={}, userId={}, amount={} cents",
+                gameId, roundId, playerId, amountCents);
     }
 }

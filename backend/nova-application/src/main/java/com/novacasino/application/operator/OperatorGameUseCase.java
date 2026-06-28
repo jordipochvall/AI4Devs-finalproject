@@ -4,6 +4,8 @@ import com.novacasino.application.exception.GameNotFoundException;
 import com.novacasino.application.operator.exception.InvalidCommercialConfigException;
 import com.novacasino.common.dto.OperatorGameDto;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +16,8 @@ import java.util.Optional;
  * enforced here; persistence and the append-only before/after audit live in the adapter.
  */
 public class OperatorGameUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(OperatorGameUseCase.class);
 
     private final OperatorGamePort port;
 
@@ -35,7 +39,10 @@ public class OperatorGameUseCase {
             throw new GameNotFoundException(gameId);
         }
         validate(update, paylineCount.get());
-        return port.applyUpdate(operatorId, gameId, performedByUserId, update);
+        final OperatorGameDto updated = port.applyUpdate(operatorId, gameId, performedByUserId, update);
+        log.info("Commercial config updated: gameId={}, operatorId={}, active={}, by userId={}",
+                gameId, operatorId, updated.active(), performedByUserId);
+        return updated;
     }
 
     /** Coherence checks (AC3): ordered positive bounds and bet/step multiples of the payline count. */

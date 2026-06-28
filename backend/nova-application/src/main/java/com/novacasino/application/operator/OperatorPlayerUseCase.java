@@ -7,12 +7,16 @@ import com.novacasino.common.dto.PageResponse;
 import com.novacasino.common.dto.PlayerSummaryDto;
 import com.novacasino.common.dto.WalletDto;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Operator player management (HU-6): paginated search and wallet recharge. Recharge idempotency is
  * provided by the web layer (it wraps this in the idempotency transaction); the amount rule lives here.
  */
 public class OperatorPlayerUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(OperatorPlayerUseCase.class);
 
     private final OperatorPlayerPort port;
 
@@ -32,7 +36,10 @@ public class OperatorPlayerUseCase {
         if (amountCents == null || amountCents <= 0) {
             throw new InvalidAmountException();
         }
-        return port.recharge(operatorUserId, operatorId, playerId, amountCents)
+        final WalletDto wallet = port.recharge(operatorUserId, operatorId, playerId, amountCents)
                 .orElseThrow(() -> new PlayerNotFoundException(playerId));
+        log.debug("Wallet recharged: targetUserId={}, amount={}, newBalance={}, by operatorUserId={}",
+                playerId, amountCents, wallet.balanceCents(), operatorUserId);
+        return wallet;
     }
 }
