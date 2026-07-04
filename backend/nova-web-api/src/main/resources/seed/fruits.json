@@ -26,8 +26,8 @@
     { "symbol": "SEVEN",  "payouts": { "3": 280 } },
     { "symbol": "BAR3",   "payouts": { "3": 140 } },
     { "symbol": "BAR2",   "payouts": { "3": 70  } },
-    { "symbol": "BAR",    "payouts": { "2": 3,  "3": 28 } },
-    { "symbol": "CHERRY", "payouts": { "2": 6,  "3": 14 } },
+    { "symbol": "BAR",    "payouts": { "2": 3,  "3": 25 } },
+    { "symbol": "CHERRY", "payouts": { "2": 6,  "3": 13 } },
     { "symbol": "LEMON",  "payouts": { "2": 3,  "3": 8  } },
     { "symbol": "ORANGE", "payouts": { "2": 3,  "3": 8  } },
     { "symbol": "PLUM",   "payouts": { "2": 3,  "3": 8  } }

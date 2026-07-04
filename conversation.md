@@ -1848,3 +1848,11 @@ Tras el incidente del Prompt 115 (v1 de space re-publicada), se elige la opción
 ### Prompt 118 — Ajuste fino RTP "Tesoro del Nilo" (egipcio 98,5% → ~95,5%)
 
 El usuario reportó egipcio a 98,54% (10M giros), por encima de objetivo. Ajuste: **SCARAB 4-de-una 6→4** en `egyptian.json` (contribuidor de frecuencia media), sin tocar estética ni free spins. Arnés (semilla fija, 1M): 95,53% (base 58,9% + free 36,6%). Migración **V13** inserta la v3 calibrada de egipcio y la activa (append-only; no-op en BBDD nuevas). Verificado en la app: V13 aplicada, activeVersion=3, simulación 1M = 96,07% (~95,5–96%). Nota: el objetivo declarado de Tesoro del Nilo es 95% (96,5% es Nova Cósmica). Pendiente opcional: Nova Cósmica quedó ~93,6% (−2,9pp bajo su 96,5%).
+
+### Prompt 119 — Calibración fina de los 3 RTP a su objetivo
+
+El usuario pidió afinar egipcio a 95% y luego space (96,5%) y fruits (92%). Clave metodológica: el arnés a 1M tenía ~±0,4pp de ruido de muestreo y engañaba; se midió a **10M** (convergido) para calibrar.
+- Ajustes (sobre payouts de frecuencia media, sin tocar estética/free spins): egipcio SCARAB {4:4,5:19} + ANUBIS 5:70; fruits BAR 3:25, CHERRY 3:13; space A 4:3, STAR 5:48.
+- Resultado convergido (10M): **egyptian 95,0% · fruits 92,2% · space 96,3%** (±0,3pp del objetivo).
+- Migraciones append-only para la BBDD existente: **V14** (los 3 a target: egipcio v4, fruits/space v3) y **V15** (ajuste final egipcio v5=95,0%). Fresh installs: SeedDataLoader inserta la v1 ya calibrada desde /seed/*.json (fuente única). Guard `SeedConfigRtpTest` vuelve a 1M (banda ±5pp).
+- Verificado en la app: activeVersion egyptian=5/fruits=3/space=3; simulación 10M egipcio = 0,9504.
