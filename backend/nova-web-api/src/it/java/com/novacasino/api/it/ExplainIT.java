@@ -9,9 +9,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * HU-8-BE-01 — the AI explain endpoint over a real DB, with the AI <strong>disabled</strong> (no
- * ANTHROPIC_API_KEY in the test env): a completed simulation's explain returns 503 while the rest of
- * the platform works (AC4); unknown simulation → 404 (AC3); non-MATH role → 403 (AC5).
+ * HU-8-BE-01 / HU-32 — the AI explain endpoint over a real DB, with Claude <strong>disabled</strong>
+ * (no ANTHROPIC_ENABLED in the test env): a completed simulation's explain now returns 200 with a
+ * local heuristic explanation from the {@code OfflineExplainer} (functional without a key); unknown
+ * simulation → 404 (AC3); non-MATH role → 403 (AC5).
  */
 class ExplainIT extends AbstractIntegrationTest {
 
@@ -43,10 +44,10 @@ class ExplainIT extends AbstractIntegrationTest {
         return id;
     }
 
-    // --- AC4: AI disabled → completed simulation explain returns 503 ---
+    // --- HU-32: Claude disabled → completed simulation explain returns 200 (offline heuristic) ---
 
     @Test
-    void explain_aiDisabled_serviceUnavailable() throws Exception {
+    void explain_aiDisabled_returnsOfflineExplanation() throws Exception {
         final String token = loginAndGetToken(MATH_EMAIL, MATH_PASS);
         final long simId = launchAndComplete(token, fruitsConfigId(token));
 
@@ -55,7 +56,10 @@ class ExplainIT extends AbstractIntegrationTest {
                         .contentType(APPLICATION_JSON)
                         .content("""
                                 {"question": "Is the RTP healthy?"}"""))
-                .andExpect(status().isServiceUnavailable());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.answer").exists())
+                .andExpect(jsonPath("$.model").value("offline-heuristic"))
+                .andExpect(jsonPath("$.askedAt").exists());
     }
 
     // --- AC3: unknown simulation → 404 ---

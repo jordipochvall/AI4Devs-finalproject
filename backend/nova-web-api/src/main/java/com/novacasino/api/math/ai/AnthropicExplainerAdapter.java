@@ -1,7 +1,10 @@
 package com.novacasino.api.math.ai;
 
+import com.novacasino.application.math.exception.ExplainerUnavailableException;
 import com.novacasino.domain.ai.Explainer;
 import com.novacasino.domain.ai.Explanation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -21,6 +24,8 @@ import java.util.Map;
 @ConditionalOnProperty(name = "anthropic.enabled", havingValue = "true")
 public class AnthropicExplainerAdapter implements Explainer {
 
+    private static final Logger log = LoggerFactory.getLogger(AnthropicExplainerAdapter.class);
+
     private final RestClient client;
     private final String apiKey;
     private final String model;
@@ -28,7 +33,7 @@ public class AnthropicExplainerAdapter implements Explainer {
     public AnthropicExplainerAdapter(
             @Value("${anthropic.base-url:https://api.anthropic.com}") final String baseUrl,
             @Value("${anthropic.api-key:}") final String apiKey,
-            @Value("${anthropic.model:claude-haiku-4-5}") final String model,
+            @Value("${anthropic.model:claude-haiku-4-5-20251001}") final String model,
             @Value("${anthropic.version:2023-06-01}") final String version) {
         this.apiKey = apiKey;
         this.model = model;
@@ -46,17 +51,24 @@ public class AnthropicExplainerAdapter implements Explainer {
                 "max_tokens", 1024,
                 "messages", List.of(Map.of("role", "user", "content", prompt)));
 
-        final AnthropicResponse response = client.post()
-                .uri("/v1/messages")
-                .header("x-api-key", apiKey)
-                .body(body)
-                .retrieve()
-                .body(AnthropicResponse.class);
+        try {
+            final AnthropicResponse response = client.post()
+                    .uri("/v1/messages")
+                    .header("x-api-key", apiKey)
+                    .body(body)
+                    .retrieve()
+                    .body(AnthropicResponse.class);
 
-        final String answer = (response != null && response.content() != null && !response.content().isEmpty())
-                ? response.content().get(0).text()
-                : "";
-        return new Explanation(answer, model);
+            final String answer = (response != null && response.content() != null && !response.content().isEmpty())
+                    ? response.content().get(0).text()
+                    : "";
+            return new Explanation(answer, model);
+        } catch (final RuntimeException e) {
+            // Any provider failure (bad key, rate limit, network) degrades to 503 (HU-32 AC3) instead
+            // of a 500, so the rest of the dashboard keeps working.
+            log.warn("Anthropic explain failed ({}): {}", model, e.getMessage());
+            throw new ExplainerUnavailableException();
+        }
     }
 
     /** Minimal projection of the Messages API response. */

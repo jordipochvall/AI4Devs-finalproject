@@ -60,13 +60,14 @@ app:
       capacity: ${RATE_LIMIT_SPIN_CAPACITY:60}
       refill-period-seconds: ${RATE_LIMIT_SPIN_REFILL_SECONDS:60}
 
-# AI explainability (HU-8). Disabled by default: with no key the explain endpoint returns 503 and
-# the rest of the platform works. Set ANTHROPIC_ENABLED=true (and ANTHROPIC_API_KEY) to activate.
+# AI explainability (HU-8 / HU-32). Disabled by default: without a key the explain endpoint answers
+# with a local, deterministic OfflineExplainer (heuristic summary of the metrics) instead of a 503.
+# Set ANTHROPIC_ENABLED=true (and ANTHROPIC_API_KEY) to route "ask the AI" through Claude instead.
 anthropic:
   enabled: ${ANTHROPIC_ENABLED:false}
   base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com}
   api-key: ${ANTHROPIC_API_KEY:}
-  model: ${ANTHROPIC_MODEL:claude-haiku-4-5}
+  model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
 
 springdoc:
   api-docs:
