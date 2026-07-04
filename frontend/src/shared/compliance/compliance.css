@@ -9,17 +9,17 @@
   gap: 1rem;
   padding: 0.5rem 1rem;
   background: #0b0b14;
-  border-top: 1px solid #2a2a4a;
+  border-top: 1px solid var(--border);
   font-size: 0.8rem;
-  color: #888;
+  color: var(--text-faint);
   z-index: 50;
 }
 
-.compliance-seal { color: #aaa; }
+.compliance-seal { color: var(--text-muted); }
 
 .compliance-plus18 {
-  border: 1px solid #c9a227;
-  color: #c9a227;
+  border: 1px solid var(--gold);
+  color: var(--gold);
   border-radius: 4px;
   padding: 0 0.35rem;
   font-weight: 700;
@@ -28,7 +28,7 @@
 .compliance-link {
   background: none;
   border: none;
-  color: #c9a227;
+  color: var(--gold);
   text-decoration: underline;
   cursor: pointer;
   font-size: 0.8rem;
@@ -40,8 +40,8 @@
   bottom: 2.75rem;
   transform: translateX(-50%);
   background: rgba(201, 162, 39, 0.15);
-  border: 1px solid #c9a227;
-  color: #e0c45a;
+  border: 1px solid var(--gold);
+  color: var(--gold-strong);
   border-radius: 8px;
   padding: 0.6rem 1rem;
   font-size: 0.85rem;
@@ -61,24 +61,33 @@
 }
 
 .rg-dialog {
-  background: #1a1a2e;
-  border: 1px solid #2a2a4a;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.5rem;
   max-width: 420px;
-  color: #e0e0e0;
+  color: var(--text);
 }
 
-.rg-dialog h2 { margin: 0 0 0.75rem; color: #c9a227; font-size: 1.2rem; }
-.rg-dialog p { color: #bbb; line-height: 1.5; font-size: 0.9rem; }
+.rg-dialog h2 { margin: 0 0 0.75rem; color: var(--gold); font-size: 1.2rem; }
+.rg-dialog p { color: var(--text-muted); line-height: 1.5; font-size: 0.9rem; }
 
 .rg-close {
   margin-top: 1rem;
-  background: #c9a227;
-  color: #0f0f1a;
+  background: var(--gold);
+  color: var(--gold-ink);
   border: none;
   border-radius: 6px;
   padding: 0.5rem 1rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* Compact banner on short landscape screens (e.g. mobile landscape) to save height. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .compliance-banner {
+    padding: 0.2rem 1rem;
+    font-size: 0.72rem;
+    gap: 0.6rem;
+  }
 }

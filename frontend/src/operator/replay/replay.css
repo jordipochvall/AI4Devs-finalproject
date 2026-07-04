@@ -13,14 +13,14 @@
 
 .replay-meta dt {
   font-size: 0.75rem;
-  color: #aaa;
+  color: var(--text-muted);
   margin: 0;
 }
 
 .replay-meta dd {
   margin: 0.2rem 0 0;
   font-weight: 700;
-  color: #e0e0e0;
+  color: var(--text);
 }
 
 .replay-again {

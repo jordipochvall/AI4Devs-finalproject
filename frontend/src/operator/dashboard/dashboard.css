@@ -4,7 +4,7 @@
 .kpi-cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
 .kpi-card { flex: 1 1 160px; padding: 1rem; border: 1px solid #2a2a3a; border-radius: 6px; display: flex; flex-direction: column; gap: 0.25rem; }
 .kpi-value { font-size: 1.6rem; font-weight: 700; }
-.kpi-label { color: #8a8a9a; font-size: 0.85em; }
+.kpi-label { color: var(--text-faint); font-size: 0.85em; }
 .top-games { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .top-game { display: grid; grid-template-columns: 10rem 1fr 3rem; align-items: center; gap: 0.5rem; }
 .top-game-bar { height: 0.9rem; background: rgba(80, 200, 120, 0.55); border-radius: 3px; min-width: 2px; }

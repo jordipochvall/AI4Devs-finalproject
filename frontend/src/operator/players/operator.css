@@ -1,8 +1,7 @@
 .operator {
   min-height: 100vh;
-  background: #0f0f1a;
-  color: #e0e0e0;
-  font-family: system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .operator-header {
@@ -10,7 +9,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid #2a2a4a;
+  border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
   gap: 0.75rem;
 }
@@ -18,7 +17,7 @@
 .operator-header h1 {
   margin: 0;
   font-size: 1.4rem;
-  color: #c9a227;
+  color: var(--gold);
 }
 
 .operator-header-right {
@@ -35,17 +34,17 @@
   width: 100%;
   max-width: 360px;
   padding: 0.55rem 0.75rem;
-  background: #1a1a2e;
-  border: 1px solid #3a3a5a;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  color: #e0e0e0;
+  color: var(--text);
   font-size: 1rem;
   margin-bottom: 1.25rem;
   box-sizing: border-box;
 }
 
-.operator-msg { color: #888; margin-top: 2rem; }
-.operator-error { color: #ff6b6b; }
+.operator-msg { color: var(--text-faint); margin-top: 2rem; }
+.operator-error { color: var(--danger); }
 
 .players-table {
   width: 100%;
@@ -56,11 +55,11 @@
 .players-table td {
   text-align: left;
   padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid #2a2a4a;
+  border-bottom: 1px solid var(--border);
 }
 
 .players-table th {
-  color: #aaa;
+  color: var(--text-muted);
   font-size: 0.85rem;
   font-weight: 600;
 }
@@ -75,8 +74,8 @@
 }
 
 .btn-primary {
-  background: #c9a227;
-  color: #0f0f1a;
+  background: var(--gold);
+  color: var(--bg);
   border: none;
   border-radius: 6px;
   padding: 0.5rem 1rem;
@@ -87,8 +86,8 @@
 
 .btn-secondary {
   background: none;
-  border: 1px solid #3a3a5a;
-  color: #aaa;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
   border-radius: 6px;
   padding: 0.45rem 0.9rem;
   cursor: pointer;
@@ -98,7 +97,7 @@
 .btn-link {
   background: none;
   border: none;
-  color: #c9a227;
+  color: var(--gold);
   cursor: pointer;
   font-size: 0.9rem;
   text-decoration: underline;
@@ -116,27 +115,27 @@
 }
 
 .dialog {
-  background: #1a1a2e;
-  border: 1px solid #2a2a4a;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.5rem;
   width: 100%;
   max-width: 380px;
 }
 
-.dialog h2 { margin: 0 0 0.75rem; color: #c9a227; font-size: 1.2rem; }
-.dialog-player { color: #aaa; font-size: 0.9rem; margin-bottom: 1rem; }
-.dialog-player strong { color: #e0e0e0; }
+.dialog h2 { margin: 0 0 0.75rem; color: var(--gold); font-size: 1.2rem; }
+.dialog-player { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
+.dialog-player strong { color: var(--text); }
 
 .dialog .field { margin-bottom: 1rem; }
-.dialog .field label { display: block; margin-bottom: 0.3rem; font-size: 0.85rem; color: #aaa; }
+.dialog .field label { display: block; margin-bottom: 0.3rem; font-size: 0.85rem; color: var(--text-muted); }
 .dialog .field input {
   width: 100%;
   padding: 0.6rem 0.75rem;
-  background: #0f0f1a;
-  border: 1px solid #3a3a5a;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  color: #e0e0e0;
+  color: var(--text);
   font-size: 1rem;
   box-sizing: border-box;
 }
@@ -150,20 +149,20 @@
 
 .server-error {
   background: rgba(255, 107, 107, 0.1);
-  border: 1px solid #ff6b6b;
+  border: 1px solid var(--danger);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
-  color: #ff6b6b;
+  color: var(--danger);
   margin-bottom: 1rem;
 }
 
 /* HU-15 — commercial config editing */
 .cell-input { width: 7rem; padding: 0.25rem 0.4rem; }
-.muted { color: #8a8a9a; font-size: 0.85em; }
+.muted { color: var(--text-faint); font-size: 0.85em; }
 
 /* HU-20 — integrity indicator */
 .integrity-check { display: inline-flex; gap: 0.5rem; align-items: center; }
-.integrity-ok { color: #50c878; }
-.integrity-broken { color: #e06c75; font-weight: 600; }
-.integrity-msg { color: #8a8a9a; }
+.integrity-ok { color: var(--win); }
+.integrity-broken { color: var(--danger); font-weight: 600; }
+.integrity-msg { color: var(--text-faint); }

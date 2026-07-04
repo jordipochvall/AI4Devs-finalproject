@@ -2,20 +2,47 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: var(--sp-3);
   width: 100%;
-  max-width: 720px;
+  max-width: min(720px, 92vw);
   margin: 0 auto;
+}
+
+.slot-stage {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .slot-grid {
   display: grid;
   gap: 6px;
   width: 100%;
+  /* Cap the width so the (square-celled) grid also fits the viewport height → no scroll.
+     --cols/--rows are set inline; ~13rem reserves header + status + controls + banner. */
+  max-width: min(100%, calc((100dvh - 13rem) * var(--cols) / var(--rows)));
+  margin: 0 auto;
   padding: 12px;
-  background: #15152a;
-  border: 1px solid #2a2a45;
-  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(10, 12, 26, 0.75), rgba(4, 5, 12, 0.9));
+  border: 2px solid var(--theme-frame, var(--border-strong));
+  border-radius: var(--r-lg);
+  box-shadow: inset 0 0 34px rgba(0, 0, 0, 0.55), 0 10px 34px rgba(0, 0, 0, 0.45);
+}
+
+/* Each column is a reel: an overflow window with a vertical strip of cells. */
+.slot-reel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.reel-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .slot-cell {
@@ -25,7 +52,7 @@
   align-items: center;
   justify-content: center;
   background: #1f1f38;
-  border: 1px solid #2f2f50;
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
   transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
@@ -37,123 +64,225 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  /* Sits above the text label: when the symbol image loads it covers the label;
+     if it fails, onError hides the image and the label shows through (fallback). */
+  z-index: 1;
 }
 
 .slot-cell-label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #cfd2ff;
+  color: var(--text-muted);
   text-align: center;
-  z-index: 1;
+  z-index: 0;
   padding: 2px;
   word-break: break-word;
 }
 
+/* Winning cells: themed glow that gently pulses. */
 .slot-cell-win {
-  border-color: #f5c542;
-  box-shadow: 0 0 12px rgba(245, 197, 66, 0.7);
+  border-color: var(--theme-win, var(--gold));
   transform: scale(1.04);
+  animation: slot-winpulse 0.9s ease-in-out infinite alternate;
 }
 
-.slot-grid-spinning .slot-cell {
-  animation: slot-pulse 0.4s ease-in-out infinite alternate;
+@keyframes slot-winpulse {
+  from { box-shadow: 0 0 8px var(--theme-win, var(--gold)); }
+  to   { box-shadow: 0 0 20px 3px var(--theme-win, var(--gold)); }
 }
 
-@keyframes slot-pulse {
-  from { opacity: 1; }
-  to   { opacity: 0.55; }
+/* --- Reel roll overlay (mounted only while spinning) --- */
+.reel-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #181830;
+}
+
+.reel-fx-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  filter: blur(1.5px);
+  animation: reel-roll 0.26s linear infinite;
+  will-change: transform;
+}
+
+/* The strip holds rows*3 cells, so a third of its height equals one visible window. */
+@keyframes reel-roll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-33.34%); }
+}
+
+.reel-fx-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f1f38;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* On stop, each reel's overlay slides up (staggered left→right), revealing the result. */
+.reel-fx-stop {
+  transform: translateY(-112%);
+  transition: transform 0.34s cubic-bezier(0.16, 0.84, 0.3, 1);
+  transition-delay: calc(var(--reel, 0) * 0.11s);
+}
+.reel-fx-stop .reel-fx-strip {
+  animation-play-state: paused;
+}
+
+/* --- Reserved status area (never reflows the controls) --- */
+.slot-status {
+  min-height: 2.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
 }
 
 .slot-freespin {
+  font-family: var(--font-display);
   font-weight: 700;
-  color: #f5c542;
+  color: var(--gold);
   letter-spacing: 0.04em;
 }
 
 .slot-win {
   font-weight: 700;
-  color: #5ad17f;
+  color: var(--win);
 }
 
 .slot-error {
-  color: #ff6b6b;
+  color: var(--danger);
   font-weight: 600;
 }
 
+/* --- Stable action bar: bet | spin (centered, fixed) | auto --- */
 .slot-controls {
-  display: flex;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
+  gap: var(--sp-3);
+  min-height: 3.4rem;
 }
 
 .slot-bet {
+  justify-self: start;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: #e0e0e0;
+  color: var(--text);
 }
 
 .slot-bet-btn {
-  width: 2rem;
-  height: 2rem;
+  width: 2.1rem;
+  height: 2.1rem;
   border-radius: 50%;
-  border: 1px solid #3a3a5a;
-  background: #1f1f38;
-  color: #e0e0e0;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
   font-size: 1.1rem;
   cursor: pointer;
 }
+.slot-bet-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.slot-bet-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+.slot-bet-value { color: var(--text); font-weight: 600; white-space: nowrap; }
 
 .slot-spin {
-  padding: 0.7rem 2.4rem;
+  justify-self: center;
+  padding: 0.8rem 2.6rem;
   border: none;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #6c5ce7, #a55eea);
-  color: #fff;
-  font-size: 1.1rem;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, var(--gold-strong), var(--gold) 45%, var(--gold-deep));
+  color: var(--gold-ink);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: filter 0.12s, transform 0.05s;
 }
-
-.slot-spin:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+.slot-spin:hover:not(:disabled) { filter: brightness(1.06); }
+.slot-spin:active:not(:disabled) { transform: translateY(1px); }
+.slot-spin:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .slot-auto {
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.slot-auto-count { width: 4.5rem; }
-.slot-auto-stop { width: 7rem; }
+.slot-auto-count { width: 4.2rem; }
+.slot-auto-stop { width: 6.5rem; }
 
 .slot-auto-count,
 .slot-auto-stop {
-  background: #1f1f38;
-  border: 1px solid #3a3a5a;
-  color: #e0e0e0;
-  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: var(--r-sm);
   padding: 0.4rem 0.5rem;
 }
 
 .slot-auto-btn {
-  padding: 0.6rem 1.2rem;
-  border: 1px solid #3a3a5a;
-  border-radius: 8px;
-  background: #1f1f38;
-  color: #e0e0e0;
+  justify-self: end;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
   font-weight: 600;
   cursor: pointer;
 }
-
 .slot-auto-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.slot-auto-stopbtn { border-color: #ff6b6b; color: #ff9b9b; }
+.slot-auto-stopbtn { border-color: var(--danger); color: #ff9b9b; }
+
+/* Narrow screens: stack the action bar but keep Spin centered. */
+@media (max-width: 560px) {
+  .slot-controls {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 0.6rem;
+  }
+  .slot-bet, .slot-spin, .slot-auto, .slot-auto-btn { justify-self: center; }
+}
+
+/* Wide / landscape (laptop, mobile landscape): reels + side panel, fit to viewport. */
+@media (min-width: 900px) and (min-aspect-ratio: 1 / 1) {
+  .slot-game {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: var(--sp-4);
+    row-gap: var(--sp-2);
+    max-width: min(1080px, 96vw);
+  }
+  .slot-stage { grid-column: 1; grid-row: 1 / span 2; min-width: 0; }
+  .slot-status { grid-column: 2; grid-row: 1; }
+  /* Side panel: bet / spin / auto stacked full-width. */
+  .slot-controls {
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+    gap: var(--sp-3);
+  }
+  .slot-bet { justify-self: center; }
+  .slot-spin { justify-self: stretch; width: 100%; }
+  .slot-auto { justify-self: center; }
+  /* Less vertical chrome to reserve since controls are now beside the reels. */
+  .slot-grid { max-width: min(100%, calc((100dvh - 6.5rem) * var(--cols) / var(--rows))); }
+}

@@ -2,7 +2,7 @@
 
 /* Visible focus indicator for keyboard users on every interactive control. */
 :focus-visible {
-  outline: 3px solid #4da3ff;
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 

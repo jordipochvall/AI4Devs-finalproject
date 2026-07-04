@@ -2,7 +2,7 @@
 .limits { max-width: 700px; margin: 0 auto; padding: 1rem; }
 .limits-header { display: flex; align-items: center; justify-content: space-between; }
 .limits-header-right { display: flex; gap: 0.5rem; align-items: center; }
-.limits-intro { color: #8a8a9a; }
+.limits-intro { color: var(--text-faint); }
 .limits-card { border: 1px solid #2a2a3a; border-radius: 6px; padding: 1rem; margin: 1rem 0; display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start; }
 .limits-card label { display: flex; flex-direction: column; gap: 0.25rem; }
 .limits-msg { margin: 0; }

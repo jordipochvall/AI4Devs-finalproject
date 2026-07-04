@@ -109,7 +109,7 @@ export default function GamePage() {
   const logout = () => { logoutSession(); navigate('/login', { replace: true }) }
 
   return (
-    <div className="game-page">
+    <div className="game-page" data-theme={game.data?.theme?.toLowerCase()}>
       <header className="game-header">
         <button type="button" className="game-back" onClick={() => navigate('/')}>
           ← {t('player:game.back')}
@@ -118,7 +118,7 @@ export default function GamePage() {
         <div className="game-header-right">
           <span className="game-balance">
             {t('player:lobby.balance')}:{' '}
-            <strong>
+            <strong className="num">
               {wallet.data
                 ? formatMoney(wallet.data.balanceCents, wallet.data.currency, i18n.language)
                 : '—'}

@@ -1,15 +1,15 @@
 .lang-switcher {
   display: inline-flex;
   gap: 2px;
-  border: 1px solid #3a3a5a;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   overflow: hidden;
 }
 
 .lang-btn {
   padding: 0.3rem 0.6rem;
-  background: #1a1a2e;
-  color: #aaa;
+  background: var(--surface);
+  color: var(--text-muted);
   border: none;
   font-size: 0.8rem;
   font-weight: 600;
@@ -17,11 +17,11 @@
 }
 
 .lang-btn:hover {
-  background: #2a2a4a;
-  color: #e0e0e0;
+  background: var(--border);
+  color: var(--text);
 }
 
 .lang-btn.active {
-  background: #c9a227;
-  color: #0f0f1a;
+  background: var(--gold);
+  color: var(--bg);
 }

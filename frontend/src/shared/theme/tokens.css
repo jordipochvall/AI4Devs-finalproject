@@ -1,0 +1,79 @@
+/* Design tokens — single source of truth for color, type, spacing and per-theme skins.
+   Consumed via var(--token) across the app so surfaces stay consistent. */
+
+:root {
+  /* Surfaces */
+  --bg: #0f0f1a;
+  --surface: #1a1a2e;
+  --surface-2: #20203a;
+  --border: #2a2a4a;
+  --border-strong: #3a3a5a;
+
+  /* Text (contrast-checked for WCAG AA on --bg) */
+  --text: #e6e6ee;
+  --text-muted: #b6b6c6;
+  --text-faint: #9a9aac;
+
+  /* Brand */
+  --gold: #e8c24a;
+  --gold-strong: #f6de8b;
+  --gold-deep: #b8862a;
+  --gold-ink: #1c1206;
+  --accent: #6c5ce7;
+  --accent-2: #a55eea;
+  --win: #5ad17f;
+  --danger: #ff6b6b;
+  --danger-bg: rgba(255, 107, 107, 0.1);
+  --focus: #4da3ff;
+
+  /* Typography */
+  --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 0.78rem;
+  --fs-sm: 0.88rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.15rem;
+  --fs-xl: 1.4rem;
+  --fs-2xl: 1.9rem;
+
+  /* Shape / spacing / elevation */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --sp-1: 0.35rem;
+  --sp-2: 0.6rem;
+  --sp-3: 1rem;
+  --sp-4: 1.5rem;
+  --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 8px 32px rgba(0, 0, 0, 0.45);
+
+  /* Per-theme skin (neutral default; overridden by [data-theme]) */
+  --theme-a: #141428;
+  --theme-b: #0b0b16;
+  --theme-frame: var(--border-strong);
+  --theme-win: var(--gold);
+  --theme-cover: none;
+}
+
+/* Game skins — background gradient stops, reel frame tint, win glow and cover backdrop. */
+[data-theme="egyptian"] {
+  --theme-a: #1e2f63;
+  --theme-b: #070c1c;
+  --theme-frame: #3a5a9a;
+  --theme-win: #f4d35e;
+  --theme-cover: url('/assets/egyptian/cover.jpg');
+}
+[data-theme="fruits"] {
+  --theme-a: #5a1f52;
+  --theme-b: #17081f;
+  --theme-frame: #b0459a;
+  --theme-win: #ffd84a;
+  --theme-cover: url('/assets/fruits/cover.jpg');
+}
+[data-theme="space"] {
+  --theme-a: #16204e;
+  --theme-b: #04040f;
+  --theme-frame: #3a6a9a;
+  --theme-win: #6ad0ff;
+  --theme-cover: url('/assets/space/cover.jpg');
+}
