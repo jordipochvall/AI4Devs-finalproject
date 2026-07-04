@@ -7,8 +7,8 @@ const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }))
 vi.mock('../api/mathApi', () => ({
   useConfigVersions: () => ({
     data: [
-      { id: 22, version: 2, rtpTarget: 0.96, volatilityTarget: 0.5, active: true,  createdAt: '2026-06-01T00:00:00Z' },
-      { id: 11, version: 1, rtpTarget: 0.94, volatilityTarget: 0.5, active: false, createdAt: '2026-05-01T00:00:00Z' },
+      { id: 22, version: 2, rtpTarget: 0.96, volatilityTarget: 0.5, active: true,  createdAt: '2026-06-01T00:00:00Z', notes: 'Recalibrated RTP (HU-31)' },
+      { id: 11, version: 1, rtpTarget: 0.94, volatilityTarget: 0.5, active: false, createdAt: '2026-05-01T00:00:00Z', notes: null },
     ],
     isLoading: false,
   }),
@@ -26,6 +26,11 @@ describe('VersionsPanel (HU-17)', () => {
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getByText('1')).toBeInTheDocument()
     expect(screen.getByText('Activa')).toBeInTheDocument()
+  })
+
+  it('shows the version notes so the recalibrated version is identifiable (HU-31)', () => {
+    render(<VersionsPanel gameId={10} />)
+    expect(screen.getByText('Recalibrated RTP (HU-31)')).toBeInTheDocument()
   })
 
   it('AC2: publishing a non-active version calls the API with its configId', () => {

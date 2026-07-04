@@ -13,7 +13,7 @@ interface Props {
  * Publishing the already-active version surfaces the backend 409 without breaking the UI.
  */
 export default function VersionsPanel({ gameId }: Props) {
-  const { t } = useTranslation('math')
+  const { t, i18n } = useTranslation('math')
   const versions = useConfigVersions(gameId)
   const publish = usePublishConfig()
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
@@ -48,6 +48,8 @@ export default function VersionsPanel({ gameId }: Props) {
             <tr>
               <th>{t('versions.colVersion')}</th>
               <th>{t('versions.colRtp')}</th>
+              <th>{t('versions.colDate')}</th>
+              <th>{t('versions.colNotes')}</th>
               <th>{t('versions.colStatus')}</th>
               <th aria-hidden="true" />
             </tr>
@@ -59,6 +61,8 @@ export default function VersionsPanel({ gameId }: Props) {
                 <tr key={v.id} className={v.active ? 'version-active' : ''}>
                   <td>{v.version}</td>
                   <td>{v.rtpTarget}</td>
+                  <td className="num">{new Date(v.createdAt).toLocaleDateString(i18n.language)}</td>
+                  <td className="version-notes">{v.notes || '—'}</td>
                   <td>{v.active ? <span className="badge-active">{t('versions.active')}</span> : '—'}</td>
                   <td>
                     <button type="button" className="btn-secondary"

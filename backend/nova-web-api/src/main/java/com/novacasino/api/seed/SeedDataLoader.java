@@ -10,10 +10,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
+
 /**
  * Inserts dynamic seed data that requires application-level processing (BCrypt password hashing).
  * Runs once at startup; skips gracefully if users already exist.
  * Static seed (operator + games) is handled by V3__seed.sql (Flyway).
+ *
+ * <p>The three game math configs are calibrated so their empirical RTP is close to the declared
+ * target (HU-31); they live as JSON resources under {@code /seed/*.json} (single source of truth,
+ * also read by the RTP regression guard). Free-spins retrigger is disabled so the demo can never
+ * hang (the engine supports it; convergence is the mathematician's responsibility, readme §3.3.3).
  */
 @Component
 public class SeedDataLoader implements ApplicationRunner {
@@ -55,14 +64,14 @@ public class SeedDataLoader implements ApplicationRunner {
         insertWallet(operatorId, p2, 100_000L);
         insertWallet(operatorId, p3, 100_000L);
 
-        // --- Game configs ---
+        // --- Game configs (calibrated, loaded from /seed/*.json) ---
         final Long egyptId  = gameId("egyptian-5x3");
         final Long fruitsId = gameId("fruits-3x3");
         final Long spaceId  = gameId("space-5x3");
 
-        final Long egyptCfg  = insertConfig(egyptId,  mathUserId, 1, EGYPTIAN_CONFIG, 0.9500, 8.50,  "Initial Egyptian 5x3 config");
-        final Long fruitsCfg = insertConfig(fruitsId, mathUserId, 1, FRUITS_CONFIG,   0.9200, 3.00,  "Initial Fruits 3x3 config");
-        final Long spaceCfg  = insertConfig(spaceId,  mathUserId, 1, SPACE_CONFIG,    0.9650, 12.00, "Initial Space 5x3 config");
+        final Long egyptCfg  = insertConfig(egyptId,  mathUserId, 1, readConfig("egyptian"), 0.9500, 8.50,  "Initial Egyptian 5x3 config");
+        final Long fruitsCfg = insertConfig(fruitsId, mathUserId, 1, readConfig("fruits"),   0.9200, 3.00,  "Initial Fruits 3x3 config");
+        final Long spaceCfg  = insertConfig(spaceId,  mathUserId, 1, readConfig("space"),    0.9650, 12.00, "Initial Space 5x3 config");
 
         // --- Activate configs ---
         activateConfig(egyptId,  egyptCfg);
@@ -119,149 +128,13 @@ public class SeedDataLoader implements ApplicationRunner {
         jdbc.update("UPDATE games SET active_config_id = ? WHERE id = ?", configId, gameId);
     }
 
-    // =========================================================================
-    // JSON configs of the three seed games.
-    // Note: free-spins retrigger is disabled in the seed configs so the demo can never hang.
-    // The engine supports unbounded retrigger (HU-1-BE-01, AC6b), but whether a config converges
-    // is the mathematician's responsibility (readme §3.3.3); these illustrative seeds are kept
-    // bounded on purpose. Enabling retrigger requires a config whose cascade actually terminates.
-    // =========================================================================
-
-    private static final String EGYPTIAN_CONFIG = """
-            {
-              "grid": { "cols": 5, "rows": 3 },
-              "symbols": [
-                { "id": "WILD",    "kind": "WILD" },
-                { "id": "SCATTER", "kind": "SCATTER" },
-                { "id": "ANUBIS",  "kind": "REGULAR" },
-                { "id": "SCARAB",  "kind": "REGULAR" },
-                { "id": "A",       "kind": "REGULAR" }
-              ],
-              "reels": [
-                ["ANUBIS","A","SCARAB","WILD","A","SCATTER","SCARAB","A","ANUBIS","SCARAB","A","WILD"],
-                ["A","SCARAB","ANUBIS","A","WILD","SCARAB","A","SCATTER","ANUBIS","A","SCARAB","WILD"],
-                ["SCARAB","A","ANUBIS","SCATTER","A","WILD","SCARAB","A","ANUBIS","A","SCARAB","SCATTER"],
-                ["A","ANUBIS","SCARAB","A","WILD","A","SCATTER","SCARAB","A","ANUBIS","WILD","SCARAB"],
-                ["SCARAB","A","SCATTER","ANUBIS","A","SCARAB","WILD","A","ANUBIS","SCATTER","A","SCARAB"]
-              ],
-              "paylines": [
-                [1,1,1,1,1],
-                [0,0,0,0,0],
-                [2,2,2,2,2],
-                [0,1,2,1,0],
-                [2,1,0,1,2]
-              ],
-              "paytable": [
-                { "symbol": "ANUBIS", "payouts": { "3": 10, "4": 50,  "5": 250 } },
-                { "symbol": "SCARAB", "payouts": { "3": 5,  "4": 20,  "5": 100 } },
-                { "symbol": "A",      "payouts": { "3": 2,  "4": 10,  "5": 40  } }
-              ],
-              "scatterPays": {
-                "SCATTER": { "2": 1, "3": 5, "4": 20, "5": 100 }
-              },
-              "bonus": {
-                "wild": { "substitutes": ["REGULAR"] },
-                "freeSpins": {
-                  "triggerSymbol": "SCATTER",
-                  "minTriggerCount": 3,
-                  "award": { "3": 8, "4": 12, "5": 20 },
-                  "multiplier": 2,
-                  "retrigger": false
-                }
-              }
-            }
-            """;
-
-    private static final String FRUITS_CONFIG = """
-            {
-              "grid": { "cols": 3, "rows": 3 },
-              "symbols": [
-                { "id": "SEVEN",  "kind": "REGULAR" },
-                { "id": "BAR3",   "kind": "REGULAR" },
-                { "id": "BAR2",   "kind": "REGULAR" },
-                { "id": "BAR",    "kind": "REGULAR" },
-                { "id": "CHERRY", "kind": "REGULAR" },
-                { "id": "LEMON",  "kind": "REGULAR" },
-                { "id": "ORANGE", "kind": "REGULAR" },
-                { "id": "PLUM",   "kind": "REGULAR" }
-              ],
-              "reels": [
-                ["SEVEN","BAR3","BAR2","CHERRY","BAR","LEMON","ORANGE","PLUM","BAR2","CHERRY","BAR","LEMON","ORANGE","PLUM","BAR2"],
-                ["CHERRY","PLUM","LEMON","ORANGE","BAR","BAR2","BAR3","SEVEN","CHERRY","PLUM","LEMON","ORANGE","BAR","BAR2","BAR3"],
-                ["LEMON","ORANGE","CHERRY","PLUM","BAR","BAR2","BAR3","SEVEN","LEMON","ORANGE","CHERRY","PLUM","BAR","BAR2","SEVEN"]
-              ],
-              "paylines": [
-                [1,1,1],
-                [0,0,0],
-                [2,2,2],
-                [0,1,2],
-                [2,1,0]
-              ],
-              "paytable": [
-                { "symbol": "SEVEN",  "payouts": { "3": 100 } },
-                { "symbol": "BAR3",   "payouts": { "3": 50  } },
-                { "symbol": "BAR2",   "payouts": { "3": 25  } },
-                { "symbol": "BAR",    "payouts": { "2": 1,  "3": 10 } },
-                { "symbol": "CHERRY", "payouts": { "2": 2,  "3": 5  } },
-                { "symbol": "LEMON",  "payouts": { "2": 1,  "3": 3  } },
-                { "symbol": "ORANGE", "payouts": { "2": 1,  "3": 3  } },
-                { "symbol": "PLUM",   "payouts": { "2": 1,  "3": 3  } }
-              ],
-              "bonus": {}
-            }
-            """;
-
-    private static final String SPACE_CONFIG = """
-            {
-              "grid": { "cols": 5, "rows": 3 },
-              "symbols": [
-                { "id": "WILD",    "kind": "WILD" },
-                { "id": "SCATTER", "kind": "SCATTER" },
-                { "id": "PLANET",  "kind": "REGULAR" },
-                { "id": "COMET",   "kind": "REGULAR" },
-                { "id": "STAR",    "kind": "REGULAR" },
-                { "id": "K",       "kind": "REGULAR" },
-                { "id": "A",       "kind": "REGULAR" }
-              ],
-              "reels": [
-                ["PLANET","A","COMET","WILD","A","SCATTER","COMET","A","STAR","K","PLANET","A"],
-                ["A","COMET","PLANET","A","WILD","COMET","A","SCATTER","K","STAR","A","PLANET"],
-                ["COMET","A","PLANET","SCATTER","A","WILD","COMET","A","STAR","K","COMET","SCATTER"],
-                ["A","PLANET","COMET","A","WILD","A","SCATTER","COMET","K","STAR","PLANET","A"],
-                ["COMET","A","SCATTER","PLANET","A","COMET","WILD","A","K","STAR","COMET","SCATTER"]
-              ],
-              "paylines": [
-                [1,1,1,1,1],
-                [0,0,0,0,0],
-                [2,2,2,2,2],
-                [0,1,2,1,0],
-                [2,1,0,1,2],
-                [0,0,1,2,2],
-                [2,2,1,0,0],
-                [1,0,0,0,1],
-                [1,2,2,2,1],
-                [0,1,0,1,0]
-              ],
-              "paytable": [
-                { "symbol": "PLANET", "payouts": { "3": 12, "4": 60,  "5": 300 } },
-                { "symbol": "COMET",  "payouts": { "3": 8,  "4": 40,  "5": 200 } },
-                { "symbol": "STAR",   "payouts": { "3": 5,  "4": 25,  "5": 125 } },
-                { "symbol": "K",      "payouts": { "3": 3,  "4": 15,  "5": 60  } },
-                { "symbol": "A",      "payouts": { "3": 2,  "4": 10,  "5": 40  } }
-              ],
-              "scatterPays": {
-                "SCATTER": { "2": 1, "3": 5, "4": 20, "5": 100 }
-              },
-              "bonus": {
-                "wild": { "substitutes": ["REGULAR"] },
-                "freeSpins": {
-                  "triggerSymbol": "SCATTER",
-                  "minTriggerCount": 3,
-                  "award": { "3": 10, "4": 15, "5": 25 },
-                  "multiplier": 3,
-                  "retrigger": false
-                }
-              }
-            }
-            """;
+    /** Loads a calibrated game config JSON from the classpath ({@code /seed/<name>.json}). */
+    static String readConfig(final String name) {
+        try (var in = SeedDataLoader.class.getResourceAsStream("/seed/" + name + ".json")) {
+            return new String(Objects.requireNonNull(in, "seed config not found: " + name).readAllBytes(),
+                    StandardCharsets.UTF_8);
+        } catch (final IOException e) {
+            throw new IllegalStateException("Cannot read seed config: " + name, e);
+        }
+    }
 }

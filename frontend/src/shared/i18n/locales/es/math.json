@@ -25,6 +25,8 @@
     "title": "Versiones de matemática",
     "colVersion": "Versión",
     "colRtp": "RTP objetivo",
+    "colDate": "Fecha",
+    "colNotes": "Notas",
     "colStatus": "Estado",
     "active": "Activa",
     "publish": "Publicar",

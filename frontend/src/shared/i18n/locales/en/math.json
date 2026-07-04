@@ -25,6 +25,8 @@
     "title": "Math versions",
     "colVersion": "Version",
     "colRtp": "Target RTP",
+    "colDate": "Date",
+    "colNotes": "Notes",
     "colStatus": "Status",
     "active": "Active",
     "publish": "Publish",

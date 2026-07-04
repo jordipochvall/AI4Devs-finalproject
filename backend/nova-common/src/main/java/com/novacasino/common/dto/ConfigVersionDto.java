@@ -10,6 +10,7 @@ public record ConfigVersionDto(
         BigDecimal rtpTarget,
         BigDecimal volatilityTarget,
         boolean active,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        String notes
 ) {
 }

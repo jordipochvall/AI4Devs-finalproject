@@ -176,6 +176,7 @@ export interface ConfigVersion {
   volatilityTarget: number | null
   active: boolean
   createdAt: string
+  notes: string | null
 }
 
 /** Result of publishing (activating) a math version. */

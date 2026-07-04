@@ -1,0 +1,42 @@
+{
+  "grid": { "cols": 5, "rows": 3 },
+  "symbols": [
+    { "id": "WILD",    "kind": "WILD" },
+    { "id": "SCATTER", "kind": "SCATTER" },
+    { "id": "ANUBIS",  "kind": "REGULAR" },
+    { "id": "SCARAB",  "kind": "REGULAR" },
+    { "id": "A",       "kind": "REGULAR" }
+  ],
+  "reels": [
+    ["A","SCARAB","A","ANUBIS","A","SCARAB","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","A","A"],
+    ["A","SCARAB","A","ANUBIS","A","SCARAB","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","A","A"],
+    ["A","SCARAB","A","ANUBIS","A","SCARAB","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","A","A"],
+    ["A","SCARAB","A","ANUBIS","A","SCARAB","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","A","A"],
+    ["A","SCARAB","A","ANUBIS","A","SCARAB","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","WILD","A","SCARAB","A","SCATTER","A","SCARAB","ANUBIS","A","SCARAB","A","A","A"]
+  ],
+  "paylines": [
+    [1,1,1,1,1],
+    [0,0,0,0,0],
+    [2,2,2,2,2],
+    [0,1,2,1,0],
+    [2,1,0,1,2]
+  ],
+  "paytable": [
+    { "symbol": "ANUBIS", "payouts": { "3": 5, "4": 20, "5": 80 } },
+    { "symbol": "SCARAB", "payouts": { "3": 2, "4": 6,  "5": 20 } },
+    { "symbol": "A",      "payouts": { "4": 1, "5": 3 } }
+  ],
+  "scatterPays": {
+    "SCATTER": { "3": 2, "4": 8, "5": 40 }
+  },
+  "bonus": {
+    "wild": { "substitutes": ["REGULAR"] },
+    "freeSpins": {
+      "triggerSymbol": "SCATTER",
+      "minTriggerCount": 3,
+      "award": { "3": 5, "4": 8, "5": 12 },
+      "multiplier": 2,
+      "retrigger": false
+    }
+  }
+}

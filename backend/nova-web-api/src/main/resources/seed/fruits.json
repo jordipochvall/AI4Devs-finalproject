@@ -1,0 +1,36 @@
+{
+  "grid": { "cols": 3, "rows": 3 },
+  "symbols": [
+    { "id": "SEVEN",  "kind": "REGULAR" },
+    { "id": "BAR3",   "kind": "REGULAR" },
+    { "id": "BAR2",   "kind": "REGULAR" },
+    { "id": "BAR",    "kind": "REGULAR" },
+    { "id": "CHERRY", "kind": "REGULAR" },
+    { "id": "LEMON",  "kind": "REGULAR" },
+    { "id": "ORANGE", "kind": "REGULAR" },
+    { "id": "PLUM",   "kind": "REGULAR" }
+  ],
+  "reels": [
+    ["SEVEN","BAR3","BAR2","CHERRY","BAR","LEMON","ORANGE","PLUM","BAR2","CHERRY","BAR","LEMON","ORANGE","PLUM","BAR2"],
+    ["CHERRY","PLUM","LEMON","ORANGE","BAR","BAR2","BAR3","SEVEN","CHERRY","PLUM","LEMON","ORANGE","BAR","BAR2","BAR3"],
+    ["LEMON","ORANGE","CHERRY","PLUM","BAR","BAR2","BAR3","SEVEN","LEMON","ORANGE","CHERRY","PLUM","BAR","BAR2","SEVEN"]
+  ],
+  "paylines": [
+    [1,1,1],
+    [0,0,0],
+    [2,2,2],
+    [0,1,2],
+    [2,1,0]
+  ],
+  "paytable": [
+    { "symbol": "SEVEN",  "payouts": { "3": 280 } },
+    { "symbol": "BAR3",   "payouts": { "3": 140 } },
+    { "symbol": "BAR2",   "payouts": { "3": 70  } },
+    { "symbol": "BAR",    "payouts": { "2": 3,  "3": 28 } },
+    { "symbol": "CHERRY", "payouts": { "2": 6,  "3": 14 } },
+    { "symbol": "LEMON",  "payouts": { "2": 3,  "3": 8  } },
+    { "symbol": "ORANGE", "payouts": { "2": 3,  "3": 8  } },
+    { "symbol": "PLUM",   "payouts": { "2": 3,  "3": 8  } }
+  ],
+  "bonus": {}
+}

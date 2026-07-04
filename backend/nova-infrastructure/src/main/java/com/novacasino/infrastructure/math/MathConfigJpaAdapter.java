@@ -16,6 +16,7 @@ import com.novacasino.infrastructure.persistence.repository.GameConfigJpaReposit
 import com.novacasino.infrastructure.persistence.repository.GameConfigPublicationJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.GameJpaRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -65,7 +66,7 @@ public class MathConfigJpaAdapter implements MathConfigPort {
     public List<ConfigVersionDto> listConfigs(final Long gameId, final Long activeConfigId) {
         return configRepo.findByGameIdOrderByVersionDesc(gameId).stream()
                 .map(c -> new ConfigVersionDto(c.getId(), c.getVersion(), c.getRtpTarget(),
-                        c.getVolatilityTarget(), c.getId().equals(activeConfigId), c.getCreatedAt()))
+                        c.getVolatilityTarget(), c.getId().equals(activeConfigId), c.getCreatedAt(), c.getNotes()))
                 .toList();
     }
 
@@ -76,6 +77,7 @@ public class MathConfigJpaAdapter implements MathConfigPort {
     }
 
     @Override
+    @Transactional
     public PublishResultDto applyPublish(final Long gameId, final Long configId,
                                          final Long operatorId, final Long mathUserId) {
         final GameEntity game = gameRepo.findById(gameId)
