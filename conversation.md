@@ -1715,3 +1715,132 @@ Decisiones del usuario: alcance **completo** (correlación + eventos), *hot path
 - **Config**: `application.yml` con niveles ajustables por entorno (`LOG_LEVEL_APP/PLAYER/ACCESS`). Doc §2.5.4 actualizada (política PII = tampoco email; solo IDs).
 
 Validado: unit completo verde (domain 15, application 64 incl. ArchUnit, simulator 8, web-api 35) + 28 ITs (auth/authorization/spin/rate-limit/admin/math) verdes con el filtro nuevo.
+
+### Prompt 102 — Robustez transaccional (T1–T3 de la auditoría)
+
+- **T1 (atomicidad de escrituras múltiples)**: `@Transactional` (Spring) local en `MathConfigJpaAdapter.applyPublish`, `OperatorGameJpaAdapter.applyUpdate` y `AdminJpaAdapter.createOperatorWithUser` — la atomicidad deja de depender solo del proxy del caso de uso y es explícita/local. Nuevo `TransactionalRollbackIT`: fuerza el fallo de la 2ª escritura (insert de usuario, vía `@MockitoBean`) y verifica que el operador NO queda persistido.
+- **T3 (concurrencia → 409 en vez de 500; recarga sin reintento)**: nuevo `@ExceptionHandler(OptimisticLockingFailureException)` → 409 (RFC 9457, i18n). La recarga (`OperatorController`) ahora reintenta hasta 3 veces ante conflicto de wallet (espejo del spin); agotados, propaga → 409. Datos ya eran consistentes; ahora la respuesta también.
+- **T2 (simulaciones RUNNING huérfanas)**: `SimulationReconciler` (`ApplicationRunner`) marca al arranque todo `RUNNING` como `FAILED` (single-node: tras un reinicio, el worker `@Async` no sobrevive). Bulk `@Modifying` `SimulationRunJpaRepository.failRunningSimulations`. Nuevo `SimulationReconcilerIT`.
+- **T4–T6** (menores, no afectan a coherencia): se documentan y NO se implementan por prioridad/coste — T4 (lecturas en TX read-write: la capa de aplicación usa `jakarta.transaction.@Transactional`, sin `readOnly`, y no puede usar el de Spring sin romper ArchUnit), T5 (motor dentro de la TX del spin: throughput, no correctitud), T6 (replay idempotente devuelve saldo "congelado": semántica esperada).
+
+Validado: unit completo verde (domain 15, application 64 incl. ArchUnit, simulator 8, web-api 35) + 29 ITs (rollback, reconciliación, publish/comercial/admin/recarga/simulación) verdes.
+
+### Prompt 103 — Robustez transaccional (T4–T6)
+
+- **T4 (lecturas en TX read-write → read-only)**: quitado `@Transactional` (jakarta, sin `readOnly`) de todos los métodos de solo lectura de los casos de uso (PlayerCatalog, PlayerHistory, Audit, Dashboard, Replay, VerifyIntegrity, RfjReport, SimulationHistory y las lecturas de Math/OperatorGame/OperatorPlayer/Admin). Sin TX ambiente, Spring Data ejecuta cada consulta como `readOnly`. En el camino caliente multi-consulta `PlayerCatalogJpaAdapter` (listActiveGames/activeGame) se movió el límite de TX al adaptador con `@Transactional(readOnly=true)` (una conexión + snapshot + mapeo en-TX, seguro frente a lazy).
+- **T5 (motor dentro de la TX del spin)**: `SpinService.spin` ahora hace la carga de juego/config, compilación, validación de apuesta y ejecución del motor **fuera** de la transacción idempotente y **una sola vez** (no por reintento); sólo wallet/rondas/ledger/jackpot/clave quedan dentro (`persistSpin(PreparedSpin)`). El resultado del motor se precomputa y se reutiliza en los reintentos (outcome estable). Ajustado `SpinServiceTest.givesUpWithConflict` (la carga ocurre antes del bucle).
+- **T6 (replay idempotente con saldo "congelado")**: documentado explícitamente en `IdempotencyService` (comentario) y readme §2.5.4 — el replay devuelve la respuesta original tal cual (snapshot), las cifras embebidas no se refrescan; el saldo en vivo se consulta aparte.
+
+Validado: unit completo verde (domain 15, application 64 incl. ArchUnit, simulator 8, web-api 35) + 62 ITs (SpinIT/Jackpot + todas las lecturas + recarga) verdes.
+
+### Prompt 104 — HU-27: detalle de partida en la auditoría (cierre del único endpoint sin UI)
+
+La auditoría doc↔frontend detectó que `GET /operator/rounds/{roundId}` (detalle de partida, construido en HU-16) era el único endpoint del §4 sin consumidor de UI. Implementada la opción (a) — darle uso — como **HU-27** (bloque 3):
+- **Frontend**: `RoundDetailDialog` (modal ligero: importes + rejilla de símbolos + líneas ganadoras, sin cargar config ni reproducir el giro), `useRoundDetail` en `operatorApi`, botón "Detalle" por fila en `AuditPage` (el "Replay" se mantiene), claves i18n es/en, CSS. Accesible (role=dialog, Escape, foco).
+- **Docs**: readme §4.2 y §4.3.3 anotan el consumidor de UI (HU-27). Nueva historia `stories/HU-27.md` + índice `stories/stories-3.md` (bloque 3) y `tickets/tickets-3.md` + `tickets/HU-27/` (FE-01, QA-01), siguiendo el formato de los bloques 1 y 2. Sin backend nuevo (reutiliza `HU-16-BE-01`).
+- Validado: frontend **111 tests** verde (+2: `RoundDetailDialog.test`) y `tsc --noEmit` limpio.
+
+### Prompt 105 — Levantar la aplicación (docker compose up)
+
+"Levanta la aplicación". Arranque local del stack completo con `docker-compose.yml`.
+- **Conflicto de puerto 5432**: lo ocupaba la BBDD de otro proyecto (`ai4devs-backend-202602-db-1`, contenedor huérfano). Consultado al usuario; elige pararla (reversible con `docker start`). `docker stop` → 5432 libre.
+- `docker compose up -d --build`: build OK (backend Maven + frontend Vite). Postgres `healthy`; la API murió con `UnknownHostException: postgres` (hipo de DNS de la red Docker en el arranque conjunto — no un "connection refused"). Relanzada sólo la API (`docker compose up -d api`) con la red y postgres ya estables: conectó, Flyway migró y **Started NovaCasinoApplication in 13.5s**. Sin cambios de código.
+- **Estado final**: postgres `healthy` (`:5432`), api `running` (`:8080`), web `running` (`:5173`). Verificado: front `HTTP 200`; `POST /api/v1/auth/login` con credenciales falsas → `401` (correcto); `/actuator/health` → `401` (protegido por Spring Security, no es fallo).
+
+### Prompt 106 — Sin música al activar el sonido (HU-10): faltaban los assets de audio
+
+"No oigo la música a pesar de haber marcado el icono". Diagnóstico: la capa de audio (HU-10, `shared/audio/`) es correcta y best-effort (falla en silencio si el asset no existe, AC5), pero **el repo nunca incluyó los ficheros de sonido**. `musicUrl/sfxUrl/voiceUrl` piden `/assets/<tema>/music.mp3`, `/assets/sfx/*.mp3`, `/assets/voice/<locale>/*.mp3`; al no existir `frontend/public/`, nginx devolvía el `index.html` (fallback SPA) y el navegador no podía decodificarlo.
+- **Solución (elegida por el usuario): generar placeholders libres de derechos.** `frontend/gen-audio.sh` sintetiza con ffmpeg (vía contenedor Alpine, sin instalar nada en host): 3 loops ambientales por tema (egyptian/fruits/space, pads de acordes con tremolo), 4 SFX (spin/win/bigWin/freeSpin) y 4 voces placeholder (freeSpins/bigWin en es/en). Salida en `frontend/public/assets/` → Vite los empaqueta a `dist/assets/`.
+- Rebuild del contenedor `web`; verificado: 11/11 assets en `HTTP 200` con `Content-Type: audio/mpeg`. Son sonidos de demostración, sustituibles por los definitivos con licencia (mismas rutas). Pendiente aparte: las portadas `/assets/<tema>/cover.jpg` tampoco existen.
+- Nota operativa: cada recreación del contenedor `api` sin reiniciar `web` reintroduce el `502` (nginx cachea la IP del upstream `api` al arrancar); esta vez se auto-resolvió porque el rebuild recreó ambos.
+
+### Prompt 107 — Assets con gancho: tema Egipcio (portada + símbolos + música temática)
+
+"La música no tiene gancho ni relación con el tema; faltan covers e imágenes de cada símbolo". Decisión (AskUserQuestion): estilo **flat moderno**, **un tema primero** (Egipcio) para iterar, música **temática por juego**. Método: arte vectorial SVG hecho a mano (`frontend/art-src/egyptian/`) rasterizado con ImageMagick (delegado RSVG) a los ficheros que el front ya espera; música sintetizada con ffmpeg.
+- **Símbolos** (`/assets/egyptian/*.png`, 256×256 transparentes): `wild` (Ojo de Horus + cinta WILD), `scatter` (ankh), `anubis` (cabeza de chacal), `scarab` (escarabajo turquesa), `a` (letra dorada sobre lapislázuli). Badge común dorado/lapis para coherencia.
+- **Portada** (`/assets/egyptian/cover.jpg`, 960×540): cielo degradado, sol, pirámides, dunas y título "EGIPCIO".
+- **Música** (`/assets/egyptian/music.mp3`): riff en escala frigia dominante (motivo reconocible) + drone grave + eco, loop ~24s.
+- **Fixes de render**: (1) el ankh usaba degradado en líneas de área cero → invisible bajo RSVG; rehecho con rectángulos. (2) el emblema del cover chocaba con el título → eliminado y título subido.
+- **CSS** `slotGame.css`: `.slot-cell-img` z-index por encima de `.slot-cell-label` para que la imagen tape el texto; el texto queda de fallback (y sigue en DOM para lectores de pantalla).
+- Script reproducible: `frontend/build-assets-egyptian.sh` (contenedor Alpine con librsvg+imagemagick+ffmpeg+font-dejavu). Verificado: 7 assets servidos con Content-Type correcto; login OK. **Pendiente:** validar con el usuario y replicar a Frutas y Espacial.
+
+### Prompt 108 — Iteración del tema Egipcio: más "chispa" visual + música con groove
+
+Feedback del usuario: "la música ha mejorado pero tiene margen; lo visual, un poco más llamativo sin ser estridente".
+- **Visual v2** (symbols): a cada SVG se le añadió halo cálido (radialGradient), reflejo especular superior, doble borde y **glow dorado** vía `feDropShadow` (verificado que librsvg 2.62 lo renderiza). Paletas más saturadas pero controladas; badge azul lapis (turquesa para el escarabajo, púrpura para el ankh). Cover v2: estrellas, rayos de sol, aristas de pirámide iluminadas, título con glow y doble marco.
+- **Música v2**: melodía frigia dominante **alineada a compás** (0.25s), **línea de bajo con movimiento armónico E–E–C–D** y **percusión estilo darbuka** (kick en 1&3, tek en 2&4 + ghost), sobre drone y con eco; loop ~24s.
+- **Bug corregido**: el filtro `sine` de ffmpeg no acepta duraciones sin cero inicial (`.5`) → cambiadas a `0.5/0.25/0.75`.
+- Rebuild `web`; assets servidos OK. Pendiente: validación del usuario (música por oído) antes de replicar a Frutas y Espacial.
+
+### Prompt 109 — Tema Egipcio v3: salto de calidad en visual y música
+
+Feedback: "falta más en ambos aspectos". Subida de nivel notable:
+- **Visual v3** (5 símbolos): marco ornamentado de doble línea con **gemas** en esquinas + gema superior, fondo de **rayos sunburst** (12 radios), **relieve/bisel** (copia oscura desplazada bajo el dorado), reflejo especular, glow `feDropShadow` y gradiente dorado con veta. Portada v3: **cartucho** para el título, **columnas de templo con paneles de jeroglíficos** y capiteles, palmera, rayos de sol, estrellas y marco con gemas de esquina.
+- **Música v3**: timbre de **cuerda pulsada (oud/santoor)** vía `aevalsrc` (fundamental + 3 armónicos × decaimiento exponencial), **arpegio shimmer** agudo, **bajo pulsado** E–E–C–D, **percusión darbuka** (doum en 1&3, tek en contratiempos, **shaker** por corcheas) y **pad**, con eco y limitador. Loop ~24s (CBR 128k → 385 KB por duración).
+- Rebuild `web` OK (cover/music/login 200). Pendiente: validación del usuario antes de replicar a Frutas y Espacial.
+
+### Prompt 110 — Nombres comerciales + revamp de la carátula egipcia
+
+Feedback: símbolos y música OK; la carátula seguía "descafeinada"; y petición de nombres comerciales con gancho (candidatos a elegir).
+- **Nombres elegidos** (AskUserQuestion, 3 preguntas con 4 candidatos cada una): Egipcio → **Tesoro del Nilo**; Frutas → **Fruti Fiesta**; Espacial → **Nova Cósmica**.
+- **Aplicación a datos**: nueva migración **V11__commercial_game_names.sql** con `UPDATE games SET name=... WHERE code=...`. No se edita `V3__seed.sql` (ya aplicada → editarla rompería el checksum de Flyway). `games` no tiene trigger de inmutabilidad (sólo lo tienen tablas append-only/auditoría), así que el UPDATE es seguro; V11 corre tras V3, válido para BBDD existente y nuevas.
+- **Carátula egipcia revamp** (menos sosa): cofre del tesoro con monedas de oro y gemas (elemento héroe que rellena el primer plano vacío, y encaja con "Tesoro del Nilo"), franja del **Nilo** con reflejos, paleta más vibrante, destellos y el título en cartucho.
+- **Bug de toolchain resuelto**: `convert rsvg:` de ImageMagick fallaba al renderizar el cover nuevo (caía al delegado `potrace`), pese a XML válido. Solución: rasterizar con **`rsvg-convert`** (paquete apk propio) y usar ImageMagick sólo para PNG→JPG. Script `build-assets-egyptian.sh` actualizado.
+- Rebuild `api` (para hornear V11) + `web` (carátula). Pendiente: verificar V11 aplicada y nombres en el lobby; y aplicar el mismo nivel a Frutas y Espacial.
+
+### Prompt 111 — Temas completos: Fruti Fiesta y Nova Cósmica (portada + símbolos + música)
+
+Confirmado el nivel visual/musical del egipcio, se replicó a los dos temas restantes con el mismo sistema (marco ornamentado con gemas, rayos, glow `feDropShadow`, bisel/relieve, especular) y música sintetizada temática. Assets en `frontend/art-src/{fruits,space}/` y scripts `build-assets-{fruits,space}.sh` (rsvg-convert + ImageMagick + ffmpeg).
+- **Fruits (Fruti Fiesta)** — 8 símbolos: `seven` (7 rojo brillante), `bar`/`bar2`/`bar3` (barras doradas apiladas), `cherry`, `lemon`, `orange`, `plum`. Paleta festiva (badge uva/magenta, gemas verdes). Portada: cartucho + racimo de frutas + 7 + confeti + foco. Música: alegre en Do mayor (lead pulsado brillante + bajo oom-pah I-vi-IV-V + bombo four-on-floor + palmas + shaker).
+- **Space (Nova Cósmica)** — 7 símbolos: `wild` (nova de 4 puntas + placa WILD), `scatter` (galaxia espiral), `planet` (planeta anillado), `comet` (cometa con cola), `star` (estrella 5 puntas), `k`, `a` (letras cromadas). Identidad sci-fi: marco **cromado**, fondo estelar, glow cian, gemas magenta. Portada: nebulosa + planeta + cometa + nova central. Música: electrónica (arpegio sintético i-VI-III-VII + bajo pulsante + four-on-floor + hats + pad, reverb amplia).
+- Rebuild `web` para publicar. Total nuevo: 15 símbolos + 2 portadas + 2 pistas. Pendiente: verificar servidos.
+
+### Prompt 112 — Auditoría UX/UI + Design System (HU-28..30)
+
+"Actúa como experto en usabilidad y diseño; detecta puntos de mejora" (fondos temáticos, tipografía coherente, botón Spin que se mueve; + responsive portátil/móvil landscape sin scroll; + giro de rodillos natural). Aprobado plan y ampliado con documentación. Implementado (frontend, sin backend nuevo):
+- **Base de diseño** en `frontend/src/shared/theme/`: `fonts.css` (Cinzel display + Inter cuerpo, **auto‑alojadas** en `/fonts/*.woff2` same‑origin por la CSP, con preload), `tokens.css` (`:root` + skins `[data-theme]` por juego), `base.css` (reset, tipografía body/h1-h3, `.num` tabular), `components.css` (botones/campos/diálogos canónicos). Importadas en `main.tsx`.
+- **Tokenización transversal:** pasada `sed` sobre todo el CSS (player/operator/math/shared) migrando literales a `var(--…)`, unificando el dorado y subiendo contraste de grises (WCAG AA); eliminados los `font-family: system-ui` que rompían la coherencia (ahora heredan Inter).
+- **Pantalla de juego:** refactor de `SlotGame` a **rodillos por columna** con capa de giro (desplazamiento + desenfoque) y **parada escalonada** (ease-out) respetando `prefers-reduced-motion`; **región de estado de altura reservada** y **barra de acción con Spin centrado fijo** (fin del reflujo); `100dvh` sin scroll y **dos columnas** (rodillos + panel lateral) en ancho/landscape (`min-width:900px` + `min-aspect-ratio:1/1`); **fondos temáticos** (degradado + carátula difuminada `::before`) con marco/brillo teñidos vía `data-theme`; estilado el banner de jackpot que faltaba; cifras tabulares.
+- **index.html:** `theme-color`, `description`, favicon SVG, preload de fuentes.
+- **Verificado:** `vitest` **111/111** verde y `tsc --noEmit` limpio (se conservaron `data-testid`/roles/`data-symbol` de la rejilla → tests intactos).
+- **Documentación:** readme **nueva §5 "Especificaciones de frontend"** y renumerado §6 Historias / §7 Tickets / §8 Pull requests (+ referencia cruzada); historias **HU-28/29/30** en `stories/` + índice `stories-3.md`; tickets (DEV/FE/QA) en `tickets/HU-28..30/` + índice `tickets-3.md` (11 tickets, 24 SP en el bloque 3).
+
+### Prompt 113 — Dos historias nuevas del bloque 3: HU-31 (bug RTP) y HU-32 (ask-the-AI funcional)
+
+Petición: añadir y elaborar dos historias en stories-3.md/tickets-3.md (alcance: **sólo documentación**, sin implementar). Investigación read-only (modo plan):
+- **HU-31 (bug RTP ~3000%).** Diagnóstico: el **motor es correcto** (`EngineRtpPropertyTest` verifica convergencia al RTP teórico; premio línea=`mult·lineBet`, scatter=`mult·betCents`, `lineBet=betCents/nºlíneas`) y el frontend formatea bien (`SimulationPanel.pct`=fracción×100). Causa raíz: **las 3 configs semilla no están calibradas** (`SeedDataLoader`, marcadas como "ilustrativas"). Enfoque (elegido): **recalibrar** las 3 configs al target (±3–5 pp, verificado con el simulador; SeedDataLoader como fuente de verdad + migración V12 para la BBDD existente) **+ guard de regresión**. Tickets: BE-01 (recalibrar, 3 SP), QA-01 (guard, 2 SP).
+- **HU-32 (ask-the-AI funcional).** Diagnóstico: `AnthropicExplainerAdapter` es `@ConditionalOnProperty(anthropic.enabled=true)` pero `docker-compose` **no pasa `ANTHROPIC_ENABLED`** → desactivado → 503 → `ExplainBox` "no disponible". El usuario **no tiene API key** (Anthropic sólo da crédito de prueba variable; alta en console.anthropic.com, usar Haiku). Enfoque (elegido): **explainer local offline determinista** (funciona sin key, reutiliza el patrón `FakeExplainer`) + **activación real de Claude** (compose pasa `ANTHROPIC_ENABLED`, `.env.example`, modelo válido, errores→503). Tickets: BE-01 (offline, 3 SP), DEV-01 (activación, 1 SP), QA-01 (tests, 2 SP).
+- **Docs:** `stories/HU-31.md`, `stories/HU-32.md`; `tickets/HU-31/*`, `tickets/HU-32/*`; índices `stories-3.md` (6 historias, HU-31/32 en backlog) y `tickets-3.md` (16 tickets, 35 SP). Ambas quedan **especificadas y pendientes de implementar**.
+
+### Prompt 114 — HU-31 implementada: recalibración del RTP de los juegos semilla (bug ~3000%)
+
+"Empieza por la 31". Implementado el bug de RTP fuera de rango.
+- **Diagnóstico confirmado con arnés de medición** (`SeedConfigRtpTest`, mide vía mapper→compiler→`SimulationRunner`): motor correcto; el problema era la math semilla. RTP originales: **egyptian 3108%** (free 2494%), **fruits 32,7%** (¡corto!), **space 3517%**. Las tiradas gratis y el scatter sobre `betCents` con tiras cortas disparaban el RTP; frutas al revés (pagos bajos).
+- **Recalibración**: extraídas las 3 configs a **recursos JSON** (`nova-web-api/src/main/resources/seed/{egyptian,fruits,space}.json`) como fuente única; `SeedDataLoader` ahora las **lee del classpath** (`readConfig`) en vez de constantes. 5×3 rediseñados (tiras de 30, símbolos altos raros, scatter/free acotados, pagos moderados); frutas con pagos ×~2,8. Iterando con el arnés: **egyptian 98,2%, fruits 93,1%, space 93,6%** (target 95/92/96,5; ±5pp).
+- **Guard de regresión**: `SeedConfigRtpTest` simula 1M giros por config y falla si el RTP se sale de banda del target. Verde. Suite nova-web-api **36/36**.
+- **BBDD existente**: migración **V12** — `game_configs` es append-only (trigger de inmutabilidad), así que inserta una **versión 2 calibrada y la activa**; condicionada a que exista v1 → **no-op en instalaciones nuevas** (donde el seeder ya inserta v1 calibrada).
+- **Verificado en la app** (rebuild `api`, V12 aplicada, activeVersion=2 en los 3 juegos): simulación real de 200k giros → egyptian **0,986**, fruits **0,920**, space **0,953**. Fin del 3000%.
+- Docs: HU-31 marcada ✅ Implementada en stories-3.md/tickets-3.md (5/6 del bloque; HU-32 sigue en backlog).
+
+### Prompt 115 — Nova Cósmica seguía en 3000%: v1 antigua re-publicada
+
+El usuario reportó Nova Cósmica con RTP 3516% pese a HU-31. Diagnóstico: la V12 activó la v2 calibrada en los 3 juegos (verificado tras el rebuild), pero **space había vuelto a la v1 rota**: el historial `game_config_publications` mostró una **publicación de la v1 de space a las 20:13** (sesión de matemático) → revirtió `active_config_id` a la v1. Egyptian/fruits seguían en v2. Reactivada la v2 de space (`POST /math/games/3/publish {configId:6}`). Estado final: los 3 con `active_config_id` = v2; simulación en vivo (300k): egyptian 0,986, fruits 0,938, space 0,935.
+- **Nota de robustez:** las v1 rotas persisten como historial (game_configs es append-only, no se pueden borrar/editar); son re-publicables y en la lista de versiones (VersionsPanel) no se distinguen de la v2 (mismo `rtpTarget`, sin notas/fecha visibles). Riesgo de re-introducir el bug al publicar la v1. Mitigación pendiente (opcional): mostrar `notes`/`createdAt` en la lista de versiones, o BBDD limpia (re-seed) que dejaría una única versión calibrada.
+- Posible factor adicional para "no es la única": frontend con lista de juegos cacheada apuntando a las v1 (activeConfigId 1/2/3 previos) → recarga forzada lo corrige para egyptian/fruits.
+
+### Prompt 116 — Robustez HU-31: etiquetar versiones (notas + fecha) para no re-publicar la v1 rota
+
+Tras el incidente del Prompt 115 (v1 de space re-publicada), se elige la opción A: hacer distinguible la versión calibrada en el panel de versiones.
+- **Backend**: `ConfigVersionDto` gana campo `notes`; el mapeo en `MathConfigJpaAdapter.listConfigs` pasa `c.getNotes()`. (Único constructor del DTO; sin más cambios.)
+- **Frontend**: `mathApi.ConfigVersion` gana `notes`; `VersionsPanel` añade columnas **Fecha** (`createdAt`, `toLocaleDateString`) y **Notas**; claves i18n `versions.colDate`/`colNotes` (es/en). Test de `VersionsPanel` amplía el mock con `notes` y asserta que se muestra "Recalibrated RTP (HU-31)".
+- **Verificado**: vitest (VersionsPanel 4/4 + paridad i18n) y `tsc` en verde; backend compila; rebuild api+web. La lista de space muestra v2 "Recalibrated RTP (HU-31)" (2026-07-02, Activa) frente a v1 "Initial Space 5x3 config" (2026-06-08). Los 3 juegos con active=v2. Así la v2 calibrada es inconfundible y no se re-publica la v1 por error.
+
+### Prompt 117 — HU-32 implementada: "ask the AI" funcional (modo offline sin key + activación Claude)
+
+"Sí" a HU-32. Implementado.
+- **Modo offline (sin key)**: nuevo `OfflineExplainer` (`api.math.ai`, `@ConditionalOnProperty(anthropic.enabled=false, matchIfMissing=true)`) que, en vez de 503, devuelve un **resumen heurístico determinista** de las métricas (parseadas del prompt: RTP y su reparto base/free, frecuencia de aciertos, volatilidad con etiqueta baja/media/alta, máx. premio, disparo de free spins), con `model="offline-heuristic"`. Así "ask the AI" funciona out-of-the-box.
+- **Activación real de Claude**: `AnthropicExplainerAdapter` sigue `@ConditionalOnProperty(anthropic.enabled=true)`; ahora envuelve la llamada y **degrada a 503** (`ExplainerUnavailableException`) ante cualquier fallo del proveedor (key inválida, rate limit, red) en vez de 500. `docker-compose` pasa **`ANTHROPIC_ENABLED`**; `application.yml`/`.env.example`/compose fijan un **modelo válido** (`claude-haiku-4-5-20251001`); `.env.example` documenta el alta de key (console.anthropic.com, crédito de prueba, usar Haiku).
+- **Wiring**: `FakeExplainerConfig` marcado `@Primary` para ganar al offline en el IT del fake.
+- **Tests**: `OfflineExplainerTest` (contenido heurístico) y `AnthropicExplainerAdapterTest` (fallo del proveedor → `ExplainerUnavailableException`); `ExplainIT` actualizado (sin key ahora **200 offline**, ya no 503); `ExplainFakeIT` con fake `@Primary`. nova-web-api **38/38** unit + ITs de explain (4) en verde.
+- **Verificado en la app**: simulación → `POST /explain` sin key → **200** con respuesta offline y `model=offline-heuristic`. Frontend `ExplainBox` sin cambios (ya maneja 200/503).
+- Docs: HU-32 ✅ en stories-3.md/tickets-3.md (bloque 3 completo: 6/6).

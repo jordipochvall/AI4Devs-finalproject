@@ -723,7 +723,7 @@ Conceptualmente es un **"núcleo *data-oriented* + cáscara DDD"**: el dominio c
 |---|---|---|
 | **nova-domain** | Java 21 puro (sin Spring) | Núcleo de negocio: agregados ricos (`Game`, `Round`, `Reels`, `Paytable`, `Symbol`, `Payline`, `BonusFeature`, `Wallet`, `Money`, `Bet`, `GameRound`) y el **núcleo de cálculo data-oriented** (`SpinKernel`, `GameCompiler`→`CompiledGame`, puertos `RngEngine` y `RoundSink`). Cero dependencias externas más allá de la JDK. Ver 2.1.7. |
 | **nova-application** | Java 21 + `jakarta.transaction` | Casos de uso framework-agnósticos (POJOs con `@jakarta.transaction.Transactional`) que orquestan dominio + **puertos de salida** que ellos mismos definen: `PlayerCatalogUseCase`, `PlayerHistoryUseCase`, `ResponsibleGamingUseCase`, `MathConfigUseCase`, `SimulationUseCase`, `SimulationHistoryUseCase`, `ExplainUseCase`, `AuditUseCase`, `ReplayUseCase`, `OperatorGameUseCase`, `OperatorPlayerUseCase`, `OperatorDashboardUseCase`, `RfjReportUseCase`, `VerifyIntegrityUseCase`, `RefreshTokenUseCase`, `AdminUseCase`. Sin Spring, sin JPA, sin web (regla forzada por ArchUnit, ver 2.2.5). Los `@Bean` se ensamblan en `nova-web-api` (`UseCaseConfig`). |
-| **nova-infrastructure** | Spring Data JPA · Flyway · Anthropic SDK · BCrypt | Adaptadores `@Component` que implementan los puertos de `nova-application` (`*JpaAdapter`), el **motor** Flyway, cliente Anthropic, implementación `SecureRandom` del RNG. (Los **scripts** de migración `V*.sql` viven en `nova-web-api/src/main/resources/db/migration` y se aplican al arrancar la app; ver [§6](#6-tickets-de-trabajo).) |
+| **nova-infrastructure** | Spring Data JPA · Flyway · Anthropic SDK · BCrypt | Adaptadores `@Component` que implementan los puertos de `nova-application` (`*JpaAdapter`), el **motor** Flyway, cliente Anthropic, implementación `SecureRandom` del RNG. (Los **scripts** de migración `V*.sql` viven en `nova-web-api/src/main/resources/db/migration` y se aplican al arrancar la app; ver [§7](#7-tickets-de-trabajo).) |
 | **nova-simulator** | Java 21 + `ForkJoinPool` + `LongAdder` | Ejecuta el **mismo `SpinKernel`** sobre un `CompiledGame` (vía un `CountingSink` cero-alloc) — sin wallet, sin auditoría y sin BBDD. Cada worker tiene su `RngEngine` y sus buffers; agrega métricas con `LongAdder` (lock-free) y devuelve `SimulationResult`. Ver 2.1.7. |
 | **nova-web-api** | Spring Boot 3.4 · Spring Security 6 · springdoc-openapi | Punto de entrada HTTP. Controllers por perfil (`/api/v1/player/*`, `/api/v1/operator/*`, `/api/v1/math/*`). Filtro JWT, CORS, manejo de errores i18n. |
 | **nova-common** | Java 21 + `jackson-databind` | DTOs compartidos entre capas (respuestas de API: `SpinResultDto`, `ReplayDto`, `GameDetailDto`, `OperatorGameDto`, `DashboardDto`, `ConfigDetailDto`, `SimulationStatusDto`, `PageResponse`/`PageRequestDto`…), utilidades y constantes. Depende de `jackson-databind` porque algunos DTOs transportan JSON (`JsonNode`: config de juego, métricas). Sin lógica de negocio. |
@@ -955,7 +955,7 @@ Cada giro registra su `seed`; con él, el motor es **completamente determinista*
 | **CORS** | Lista blanca de orígenes en `CorsConfig`. |
 | **CSRF** | Desactivado por ser API stateless con JWT (Spring Security recomendación). |
 | **Rate limiting** | `RateLimitFilter` (Bucket4j, *token bucket* en memoria single-node) en la cadena de seguridad sobre `POST /api/v1/auth/login` (clave por IP, anti fuerza-bruta) y `POST /api/v1/player/games/*/spin` (clave por usuario autenticado, o IP si no lo está). Al agotar el cupo responde `429` (RFC 9457) con cabecera `Retry-After`. Cupos configurables en `app.rate-limit.*` (por defecto login 10/min, spin 60/min). |
-| **Idempotencia** | Cada `POST .../spin` lleva una *idempotency key* (cabecera `Idempotency-Key`). El backend deduplica: un doble-submit o un reintento de red devuelve el resultado del giro ya ejecutado, sin generar un segundo giro ni un segundo movimiento de saldo. |
+| **Idempotencia** | Cada `POST .../spin` y `POST .../recharge` lleva una *idempotency key* (cabecera `Idempotency-Key`); la unicidad `(user_id, endpoint, idem_key)` la garantiza el índice de BBDD. El backend deduplica: un doble-submit o un reintento de red **devuelve la respuesta original tal cual** (un *snapshot* del momento en que se ejecutó), sin generar un segundo giro/recarga ni un segundo movimiento de saldo. Por contrato, las cifras embebidas en ese replay (p. ej. `balancePost`) son las del instante original y **no se refrescan**; el saldo en vivo se consulta aparte (`GET /player/wallet`). |
 | **Validación de entrada** | `jakarta.validation` (`@Valid`, `@Min`, `@Max`) en DTOs. |
 | **SQL injection** | Imposible vía JPA/PreparedStatement; cero string concatenation en queries. |
 | **XSS** | React escapa por defecto; CSP `default-src 'self'` servido por nginx. |
@@ -1701,7 +1701,7 @@ La columna *Fase* indica el **origen** de cada endpoint:
 | post-MVP | `GET` | `/operator/games` | Listar juegos con su configuración comercial. |
 | post-MVP | `PUT` | `/operator/games/{gameId}` | Actualizar configuración comercial (apuestas, monedas, activo). |
 | MVP | `GET` | `/operator/rounds` | Auditoría: listar/filtrar partidas (paginado). |
-| post-MVP | `GET` | `/operator/rounds/{roundId}` | Detalle de una partida auditada. |
+| post-MVP | `GET` | `/operator/rounds/{roundId}` | Detalle de una partida auditada (modal de detalle en la UI de auditoría, HU-27). |
 | ★ MVP | `GET` | `/operator/rounds/{roundId}/replay` | Datos completos para el *replay* visual determinista. |
 | post-MVP | `GET` | `/operator/dashboard` | Métricas de actividad: jugadores activos, GGR, juegos más jugados. |
 | Fase 2 | `GET` | `/operator/audit/integrity` | Verificar la integridad *tamper-evident* de la auditoría (cadena de hashes) (HU-20). |
@@ -1771,7 +1771,7 @@ En las columnas *Petición* y *Respuestas*, cada elemento ocupa su propia línea
 | `GET /operator/games` | Juegos con su configuración comercial. | — | `200` — Lista de juegos |
 | `PUT /operator/games/{gameId}` | Actualiza la configuración comercial. | Path — `gameId`<br>Body — `minBetCents`, `maxBetCents`<br>Body — `betStepCents`<br>Body — `allowedCurrencies`<br>Body — `active` | `200` — Juego actualizado<br>`422` — Rango de apuestas inconsistente |
 | `GET /operator/rounds` | Auditoría de partidas (paginado). | Query — `page`, `size`<br>Query — `playerId`, `gameId` *(opcional)*<br>Query — `from`, `to` *(opcional)* | `200` — Página de partidas |
-| `GET /operator/rounds/{roundId}` | Detalle de una partida. | Path — `roundId` | `200` — Partida completa<br>`404` — Inexistente |
+| `GET /operator/rounds/{roundId}` | Detalle de una partida (importes + rejilla + líneas, sin el replay completo); consumido por el **modal de detalle** de la auditoría (HU-27). | Path — `roundId` | `200` — Partida completa<br>`404` — Inexistente |
 | `GET /operator/rounds/{roundId}/replay` ★ | Datos para el *replay* determinista. | Path — `roundId` | `200` — Seed + result + config + free spins<br>`404` — Inexistente |
 | `GET /operator/dashboard` | Métricas de actividad. | Query — `from`, `to` *(opcional)* | `200` — `activePlayers`, `ggrCents`, `topGames` |
 | `GET /operator/audit/integrity` | Verifica la cadena de hashes *tamper-evident* (HU-20). | Query — `from`, `to` *(opcional)* | `200` — Informe de integridad (consistente + primera fila alterada) |
@@ -2177,7 +2177,56 @@ paths:
 
 ---
 
-## 5. Historias de usuario
+## 5. Especificaciones de frontend
+
+Esta sección documenta el **sistema de diseño** del cliente web (React 18 + TypeScript + Vite) y las convenciones de interfaz. Nace de una auditoría de usabilidad (bloque 3, historias **HU-28 … HU-30**) que detectó tipografía incoherente, colores hardcodeados, componentes duplicados, una pantalla de juego que reflujaba los controles y sin identidad temática. La solución es una capa de diseño única en `frontend/src/shared/theme/`.
+
+### 5.1. Stack y estructura
+
+- **React 18 + TypeScript + Vite**; enrutado con React Router; datos con TanStack Query; i18n con i18next (es/en).
+- **Base de diseño** en `frontend/src/shared/theme/`, importada una sola vez en `main.tsx` (orden: `fonts → tokens → base → components`) y seguida de `shared/a11y/a11y.css`:
+  - `fonts.css` — `@font-face` de las fuentes **auto‑alojadas**.
+  - `tokens.css` — variables CSS (`:root`) de color, tipografía, espaciado y **skins por tema**.
+  - `base.css` — reset (`box-sizing`), tipografía de `body`/encabezados y utilidades.
+  - `components.css` — componentes canónicos (`.btn-primary/.btn-secondary/.btn-link`, `.field`, `.dialog`, `.card`, `.server-error`).
+
+### 5.2. Tipografía (fuentes auto‑alojadas)
+
+- **Cinzel** (serif display) para títulos/encabezados —coherente con el grabado dorado de las carátulas— e **Inter** (sans) para el cuerpo. Ambas OFL, subset latino, servidas en `/fonts/*.woff2` **same‑origin** (la CSP `default-src 'self'` de nginx impide usar Google Fonts por CDN), con `font-display: swap` y `preload` de las variantes principales.
+- Variables: `--font-display`, `--font-body`. `body` fija `--font-body`; `h1–h3` usan `--font-display`. Cifras monetarias con `.num` (`font-variant-numeric: tabular-nums`).
+
+### 5.3. Tokens de diseño
+
+- **Color:** `--bg`, `--surface`, `--surface-2`, `--border`, `--border-strong`; texto `--text`/`--text-muted`/`--text-faint` (contraste ≥ WCAG AA sobre `--bg`); marca `--gold`/`--gold-strong`/`--gold-deep`/`--gold-ink`, `--accent`, `--win`, `--danger`, `--focus`.
+- **Forma/espaciado:** `--r-sm|md|lg`, `--sp-1..4`, sombras `--shadow-1|2`.
+- Todo el CSS de la app consume estos tokens (los literales previos se migraron), de modo que un cambio de token se propaga a todas las superficies.
+
+### 5.4. Tematización por juego
+
+Cada juego aplica un **skin** vía `data-theme="egyptian|fruits|space"` en `.game-page` (a partir de `game.theme`). Los bloques `[data-theme]` de `tokens.css` definen:
+
+- `--theme-a`/`--theme-b`: degradado de fondo.
+- `--theme-cover`: la carátula del juego, usada como **telón difuminado** (`::before` con `blur`), combinada con el degradado.
+- `--theme-frame`: tinte del marco de los rodillos; `--theme-win`: color del brillo de las líneas premiadas.
+
+### 5.5. Responsive y layout sin scroll
+
+- La pantalla de juego se ajusta a `100dvh` sin scroll: los rodillos se dimensionan por el **espacio disponible** (celdas cuadradas; el ancho de la rejilla se acota por alto con `min()` y las variables `--cols`/`--rows`).
+- **Breakpoints:** en pantallas **anchas/horizontales** (`min-width: 900px` y `min-aspect-ratio: 1/1` — portátil y móvil landscape) el juego pasa a **dos columnas**: rodillos + **panel lateral** (apuesta, Spin, auto y estado). En vertical/estrecho se **apila** con barra de acción inferior. El banner de juego responsable adopta una variante compacta en landscape bajo.
+
+### 5.6. Animación de los rodillos
+
+- El componente `SlotGame` renderiza la rejilla por **columnas (reels)**: cada rodillo es una ventana `overflow:hidden` con una tira de símbolos. Al pulsar Spin, una capa superpuesta gira verticalmente con **desenfoque de movimiento** y **para de forma escalonada** columna a columna (ease‑out), asentando el resultado y resaltando las líneas ganadoras.
+- Los mensajes transitorios (tirada gratis, premio, error) viven en una **región de altura reservada**, y el botón **Spin** queda **centrado y fijo** (barra de acción con rejilla de 3 columnas) para que no "salte".
+
+### 5.7. Accesibilidad
+
+- Foco visible (`:focus-visible` con `--focus`), nombres accesibles en todos los controles, rejilla con `role="grid"`/`gridcell` y `aria-busy`, y regiones vivas (`role="status"`/`alert`) para premios y errores.
+- Con `prefers-reduced-motion` se neutralizan las animaciones (giro y pulsos) y el resultado se muestra al instante.
+
+---
+
+## 6. Historias de usuario
 
 Se documentan las **tres historias de usuario principales** del MVP (`HU-1`, `HU-2`, `HU-3`), una por perfil, cada una asociada a uno de los tres endpoints prioritarios (★): el jugador **gira** (`spin`), el matemático **valida con el simulador** (`simulations`) y el operador **reproduce una partida** (`replay`). Cada historia se redacta con narrativa estándar, criterios de aceptación en formato **BDD (Gherkin)** y una verificación explícita de los criterios **INVEST**.
 
@@ -2377,7 +2426,7 @@ Característica: Auditoría y replay de una partida
 
 ---
 
-## 6. Tickets de trabajo
+## 7. Tickets de trabajo
 
 Se documentan **3 tickets principales** —uno de backend, uno de frontend y uno de base de datos—, los tres pertenecientes a **HU-1** (el flujo del giro), que es la historia que concentra el núcleo del producto. El **backlog completo** (40 tickets en 12 historias) vive en [`tickets/`](tickets/) con su índice y árboles de dependencias en [`tickets/tickets.md`](tickets/tickets.md); aquí se reproduce el detalle íntegro de los tres seleccionados.
 
@@ -2442,7 +2491,7 @@ Fichero canónico: [`tickets/HU-1/HU-1-DB-01-...`](tickets/HU-1/HU-1-DB-01-esque
 
 ---
 
-## 7. Pull requests
+## 8. Pull requests
 
 > Documenta 3 de las Pull Requests realizadas durante la ejecución del proyecto
 
