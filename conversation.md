@@ -1844,3 +1844,7 @@ Tras el incidente del Prompt 115 (v1 de space re-publicada), se elige la opción
 - **Tests**: `OfflineExplainerTest` (contenido heurístico) y `AnthropicExplainerAdapterTest` (fallo del proveedor → `ExplainerUnavailableException`); `ExplainIT` actualizado (sin key ahora **200 offline**, ya no 503); `ExplainFakeIT` con fake `@Primary`. nova-web-api **38/38** unit + ITs de explain (4) en verde.
 - **Verificado en la app**: simulación → `POST /explain` sin key → **200** con respuesta offline y `model=offline-heuristic`. Frontend `ExplainBox` sin cambios (ya maneja 200/503).
 - Docs: HU-32 ✅ en stories-3.md/tickets-3.md (bloque 3 completo: 6/6).
+
+### Prompt 118 — Ajuste fino RTP "Tesoro del Nilo" (egipcio 98,5% → ~95,5%)
+
+El usuario reportó egipcio a 98,54% (10M giros), por encima de objetivo. Ajuste: **SCARAB 4-de-una 6→4** en `egyptian.json` (contribuidor de frecuencia media), sin tocar estética ni free spins. Arnés (semilla fija, 1M): 95,53% (base 58,9% + free 36,6%). Migración **V13** inserta la v3 calibrada de egipcio y la activa (append-only; no-op en BBDD nuevas). Verificado en la app: V13 aplicada, activeVersion=3, simulación 1M = 96,07% (~95,5–96%). Nota: el objetivo declarado de Tesoro del Nilo es 95% (96,5% es Nova Cósmica). Pendiente opcional: Nova Cósmica quedó ~93,6% (−2,9pp bajo su 96,5%).
