@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="32%" r="80%">
+      <stop offset="0%" stop-color="#9a2e78"/><stop offset="62%" stop-color="#3a1140"/><stop offset="100%" stop-color="#180820"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0.15" y2="1">
+      <stop offset="0%" stop-color="#fff6d8"/><stop offset="28%" stop-color="#f7dc73"/><stop offset="55%" stop-color="#e2ad33"/><stop offset="100%" stop-color="#8a5f16"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="46%" r="55%">
+      <stop offset="0%" stop-color="#ffd0e6" stop-opacity="0.5"/><stop offset="55%" stop-color="#ff8ac0" stop-opacity="0.13"/><stop offset="100%" stop-color="#ff8ac0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="spec" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="gem" cx="40%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#c9ff9a"/><stop offset="55%" stop-color="#4db32e"/><stop offset="100%" stop-color="#1c5e14"/>
+    </radialGradient>
+    <radialGradient id="cherry" cx="38%" cy="30%" r="72%">
+      <stop offset="0%" stop-color="#ff8a97"/><stop offset="52%" stop-color="#e21f3a"/><stop offset="100%" stop-color="#8a0f20"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8be35a"/><stop offset="100%" stop-color="#2f9e2f"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3.6" flood-color="#ff6a8a" flood-opacity="0.75"/>
+    </filter>
+  </defs>
+
+  <rect x="14" y="14" width="228" height="228" rx="48" fill="url(#bg)" stroke="url(#gold)" stroke-width="8"/>
+  <g opacity="0.1" fill="url(#gold)">
+    <path d="M122 128 L128 8 L134 128 Z"/>
+    <path d="M122 128 L128 8 L134 128 Z" transform="rotate(45 128 128)"/>
+    <path d="M122 128 L128 8 L134 128 Z" transform="rotate(90 128 128)"/>
+    <path d="M122 128 L128 8 L134 128 Z" transform="rotate(135 128 128)"/>
+    <path d="M122 128 L128 8 L134 128 Z" transform="rotate(180 128 128)"/>
+    <path d="M122 128 L128 8 L134 128 Z" transform="rotate(225 128 128)"/>
+    <path d="M122 128 L128 8 L134 128 Z" transform="rotate(270 128 128)"/>
+    <path d="M122 128 L128 8 L134 128 Z" transform="rotate(315 128 128)"/>
+  </g>
+  <rect x="26" y="26" width="204" height="204" rx="40" fill="none" stroke="url(#gold)" stroke-width="3.5"/>
+  <rect x="33" y="33" width="190" height="190" rx="34" fill="none" stroke="#ffe9a8" stroke-width="1.4" opacity="0.4"/>
+  <rect x="34" y="30" width="188" height="80" rx="30" fill="url(#spec)"/>
+  <ellipse cx="128" cy="150" rx="94" ry="90" fill="url(#halo)"/>
+
+  <path d="M140 92 Q116 132 100 152" stroke="#7a4a1e" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M140 92 Q154 140 156 162" stroke="#7a4a1e" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M140 92 Q172 74 202 90 Q172 104 140 98 Z" fill="url(#leaf)" stroke="#256b1e" stroke-width="2"/>
+  <g filter="url(#glow)">
+    <circle cx="100" cy="170" r="37" fill="url(#cherry)" stroke="#6a0f1e" stroke-width="3"/>
+    <circle cx="158" cy="184" r="41" fill="url(#cherry)" stroke="#6a0f1e" stroke-width="3"/>
+  </g>
+  <ellipse cx="90" cy="160" rx="10" ry="7" fill="#ffffff" opacity="0.6"/>
+  <ellipse cx="147" cy="172" rx="12" ry="8" fill="#ffffff" opacity="0.6"/>
+
+  <g stroke="url(#gold)" stroke-width="2">
+    <circle cx="128" cy="30" r="8" fill="url(#gem)"/>
+    <circle cx="40" cy="128" r="6" fill="url(#gem)"/>
+    <circle cx="216" cy="128" r="6" fill="url(#gem)"/>
+  </g>
+</svg>

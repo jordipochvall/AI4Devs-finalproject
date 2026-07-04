@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="34%" r="82%">
+      <stop offset="0%" stop-color="#2b3a86"/><stop offset="60%" stop-color="#121a4a"/><stop offset="100%" stop-color="#05040f"/>
+    </radialGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0.15" y2="1">
+      <stop offset="0%" stop-color="#eaf6ff"/><stop offset="35%" stop-color="#a9d4ef"/><stop offset="62%" stop-color="#5f8fc0"/><stop offset="100%" stop-color="#26456e"/>
+    </linearGradient>
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/><stop offset="40%" stop-color="#ffd6ff"/><stop offset="100%" stop-color="#a03ad0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="arm" gradientUnits="userSpaceOnUse" x1="40" y1="128" x2="216" y2="128">
+      <stop offset="0%" stop-color="#6ad0ff"/><stop offset="50%" stop-color="#ffffff"/><stop offset="100%" stop-color="#d06aff"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="46%" r="55%">
+      <stop offset="0%" stop-color="#e6b0ff" stop-opacity="0.5"/><stop offset="55%" stop-color="#a03ad0" stop-opacity="0.14"/><stop offset="100%" stop-color="#a03ad0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="spec" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="gem" cx="40%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#b0f0ff"/><stop offset="55%" stop-color="#2b9fd6"/><stop offset="100%" stop-color="#154a66"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#c86aff" flood-opacity="0.85"/>
+    </filter>
+  </defs>
+
+  <rect x="14" y="14" width="228" height="228" rx="48" fill="url(#bg)" stroke="url(#chrome)" stroke-width="8"/>
+  <g fill="#ffffff">
+    <circle cx="52" cy="60" r="2"/><circle cx="200" cy="72" r="1.6"/><circle cx="70" cy="188" r="1.8"/>
+    <circle cx="200" cy="184" r="1.5"/><circle cx="150" cy="46" r="1.5"/>
+  </g>
+  <rect x="26" y="26" width="204" height="204" rx="40" fill="none" stroke="url(#chrome)" stroke-width="3.5"/>
+  <rect x="33" y="33" width="190" height="190" rx="34" fill="none" stroke="#d8ecff" stroke-width="1.4" opacity="0.4"/>
+  <rect x="34" y="30" width="188" height="80" rx="30" fill="url(#spec)"/>
+  <ellipse cx="128" cy="128" rx="94" ry="90" fill="url(#halo)"/>
+
+  <!-- spiral arms -->
+  <g filter="url(#glow)" fill="none" stroke="url(#arm)" stroke-width="9" stroke-linecap="round" opacity="0.92">
+    <path d="M128 128 C 176 96, 208 150, 168 196 C 148 218, 112 214, 96 196"/>
+    <path d="M128 128 C 80 160, 48 106, 88 60 C 108 38, 144 42, 160 60"/>
+  </g>
+  <ellipse cx="128" cy="128" rx="60" ry="40" fill="url(#core)"/>
+  <circle cx="128" cy="128" r="16" fill="#ffffff"/>
+  <!-- scattered stars along arms -->
+  <g fill="#ffffff">
+    <circle cx="176" cy="150" r="3"/><circle cx="150" cy="196" r="2.5"/>
+    <circle cx="80" cy="106" r="3"/><circle cx="104" cy="60" r="2.5"/>
+  </g>
+
+  <g stroke="url(#chrome)" stroke-width="2">
+    <circle cx="128" cy="30" r="8" fill="url(#gem)"/>
+    <circle cx="40" cy="128" r="6" fill="url(#gem)"/>
+    <circle cx="216" cy="128" r="6" fill="url(#gem)"/>
+  </g>
+</svg>
