@@ -15,7 +15,7 @@
 
 .audit-field label {
   font-size: 0.75rem;
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .audit-small { width: 160px; }
@@ -24,7 +24,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: #cfd2ff;
+  color: var(--text-muted);
 }
 
 .audit-suggestions {
@@ -37,7 +37,7 @@
   padding: 0;
   list-style: none;
   background: #1f1f38;
-  border: 1px solid #3a3a5a;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   max-height: 220px;
   overflow-y: auto;
@@ -49,11 +49,61 @@
   text-align: left;
   background: none;
   border: none;
-  color: #e0e0e0;
+  color: var(--text);
   padding: 0.5rem 0.75rem;
   cursor: pointer;
 }
 
 .audit-suggestions li button:hover {
-  background: #2a2a45;
+  background: var(--border);
+}
+
+/* Round-detail modal (HU-27): lightweight amounts + symbol grid + winning lines. */
+.dialog.round-detail {
+  max-width: 32rem;
+}
+
+.round-detail-amounts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem 1.5rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.round-detail-amounts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.15rem 0;
+}
+
+.round-detail-amounts dt {
+  color: var(--muted, #657b83);
+}
+
+.round-detail-amounts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.round-detail-grid {
+  border-collapse: collapse;
+  margin: 0.25rem 0 1rem;
+}
+
+.round-detail-grid td {
+  border: 1px solid var(--border, #93a1a1);
+  width: 2.4rem;
+  height: 2.4rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.round-detail-lines {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.round-detail-lines li {
+  font-variant-numeric: tabular-nums;
 }

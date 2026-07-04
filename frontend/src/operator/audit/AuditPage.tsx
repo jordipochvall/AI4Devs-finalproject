@@ -6,6 +6,7 @@ import { logoutSession } from '../../shared/auth/session'
 import { formatMoney } from '../../shared/format/money'
 import LanguageSwitcher from '../../shared/i18n/LanguageSwitcher'
 import IntegrityCheck from './IntegrityCheck'
+import RoundDetailDialog from './RoundDetailDialog'
 import '../players/operator.css'
 import './audit.css'
 
@@ -35,6 +36,7 @@ export default function AuditPage() {
 
   const f = readFilters(params)
   const [emailSearch, setEmailSearch] = useState('')
+  const [detailRoundId, setDetailRoundId] = useState<number | null>(null)
 
   const suggestions = usePlayers(emailSearch, 0, 20)
   const rounds = useRounds({ playerId: f.playerId, gameId: f.gameId, from: f.from, to: f.to }, f.page)
@@ -147,6 +149,9 @@ export default function AuditPage() {
                     <td className="num">{formatMoney(r.winCents, 'EUR', i18n.language)}</td>
                     <td>{new Date(r.createdAt).toLocaleString(i18n.language)}</td>
                     <td>
+                      <button type="button" className="btn-link" onClick={() => setDetailRoundId(r.id)}>
+                        {t('operator:audit.detail')}
+                      </button>
                       <button type="button" className="btn-link"
                               onClick={() => navigate(`/operator/replay/${r.id}`,
                                   { state: { playerId: r.playerId, createdAt: r.createdAt } })}>
@@ -172,6 +177,10 @@ export default function AuditPage() {
           </>
         )}
       </main>
+
+      {detailRoundId != null && (
+        <RoundDetailDialog roundId={detailRoundId} onClose={() => setDetailRoundId(null)} />
+      )}
     </div>
   )
 }

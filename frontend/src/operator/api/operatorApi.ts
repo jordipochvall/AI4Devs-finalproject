@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../../shared/api/axiosClient'
-import type { GameConfig, SpinResult } from '../../player/api/playerApi'
+import type { GameConfig, SpinResult, WinningPayline } from '../../player/api/playerApi'
 
 /** Player with balance, as returned by the operator search. */
 export interface PlayerSummary {
@@ -98,6 +98,37 @@ export function useReplay(roundId: number) {
     queryKey: ['operator', 'replay', roundId],
     queryFn: () => api.get<ReplayResult>(`/operator/rounds/${roundId}/replay`).then(r => r.data),
     enabled: Number.isFinite(roundId) && roundId > 0,
+    retry: false, // a 404 is a final answer, not a transient error
+  })
+}
+
+/**
+ * Lightweight detail of a single audited round (HU-27): amounts plus the resulting symbol grid and
+ * winning paylines, read from the immutable {@code game_rounds} row. Cheaper than the full replay —
+ * no config, no engine, no free-spin reconstruction.
+ */
+export interface RoundDetail {
+  roundId: number
+  gameId: number
+  playerId: number
+  gameConfigId: number
+  betCents: number
+  winCents: number
+  balancePreCents: number
+  balancePostCents: number
+  freeSpin: boolean
+  createdAt: string
+  view: string[][]
+  winningPaylines: WinningPayline[]
+  scatterCount: number
+}
+
+/** Query hook for a round's lightweight detail. Disabled until a round id is selected. */
+export function useRoundDetail(roundId: number | null) {
+  return useQuery({
+    queryKey: ['operator', 'round-detail', roundId],
+    queryFn: () => api.get<RoundDetail>(`/operator/rounds/${roundId}`).then(r => r.data),
+    enabled: roundId != null && Number.isFinite(roundId) && roundId > 0,
     retry: false, // a 404 is a final answer, not a transient error
   })
 }
