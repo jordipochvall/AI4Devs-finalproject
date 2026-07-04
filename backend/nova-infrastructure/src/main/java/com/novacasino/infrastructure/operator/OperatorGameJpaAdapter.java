@@ -13,6 +13,7 @@ import com.novacasino.infrastructure.persistence.repository.GameCommercialAuditJ
 import com.novacasino.infrastructure.persistence.repository.GameCommercialJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.GameConfigJpaRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -57,6 +58,7 @@ public class OperatorGameJpaAdapter implements OperatorGamePort {
     }
 
     @Override
+    @Transactional
     public OperatorGameDto applyUpdate(final Long operatorId, final Long gameId,
                                        final Long performedByUserId, final GameCommercialUpdate update) {
         final GameCommercialEntity game = gamesRepo.findByIdAndOperatorId(gameId, operatorId)

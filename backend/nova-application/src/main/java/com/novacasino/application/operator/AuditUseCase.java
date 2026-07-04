@@ -3,7 +3,6 @@ package com.novacasino.application.operator;
 import com.novacasino.common.dto.PageRequestDto;
 import com.novacasino.common.dto.PageResponse;
 import com.novacasino.common.dto.RoundSummaryDto;
-import jakarta.transaction.Transactional;
 
 import java.time.OffsetDateTime;
 
@@ -16,7 +15,6 @@ public class AuditUseCase {
         this.port = port;
     }
 
-    @Transactional
     public PageResponse<RoundSummaryDto> searchRounds(final Long operatorId, final Long playerId,
                                                       final Long gameId, final OffsetDateTime from,
                                                       final OffsetDateTime to, final PageRequestDto page) {

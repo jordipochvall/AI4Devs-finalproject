@@ -56,7 +56,12 @@ public class IdempotencyService {
             if (!e.getRequestHash().equals(hash)) {
                 throw new IdempotencyConflictException();
             }
-            return fromJson(e.getResponseBody(), responseType); // replay the original response
+            // Replay the EXACT original response that was stored when the operation first ran — a
+            // point-in-time snapshot. Any embedded figures (e.g. a spin's balancePost) are those of the
+            // original execution; they are intentionally NOT refreshed, so a replay can show a balance
+            // that has since changed. This is the contract of idempotency: the same request returns the
+            // same response, never a second effect. Clients needing the live balance read it separately.
+            return fromJson(e.getResponseBody(), responseType);
         }
 
         final T response = operation.get();

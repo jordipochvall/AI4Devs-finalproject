@@ -8,6 +8,7 @@ import com.novacasino.infrastructure.persistence.entity.UserEntity;
 import com.novacasino.infrastructure.persistence.repository.OperatorJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.UserJpaRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -41,6 +42,7 @@ public class AdminJpaAdapter implements AdminPort {
     }
 
     @Override
+    @Transactional
     public OperatorDto createOperatorWithUser(final String code, final String name,
                                               final String operatorEmail, final String passwordHash) {
         final OperatorEntity operator = operatorRepo.save(new OperatorEntity(code, name));

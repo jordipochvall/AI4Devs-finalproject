@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -373,6 +374,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ConcurrentSpinException.class)
     ResponseEntity<ProblemDetail> handleConcurrentSpin(final ConcurrentSpinException ex) {
         log.warn("Spin abandoned after repeated optimistic-lock conflicts (concurrent wallet updates)");
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.conflict.title", locale));
+        body.setDetail(msg("error.idempotency.concurrentModification.detail", locale));
+        return ResponseEntity.status(409).body(body);
+    }
+
+    /**
+     * Any other optimistic-lock conflict that surfaced to the client (e.g. a recharge that lost the
+     * wallet race after exhausting its retries). The effect was rolled back; the client may retry.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ResponseEntity<ProblemDetail> handleOptimisticLock(final OptimisticLockingFailureException ex) {
+        log.warn("Concurrent modification conflict (optimistic lock): {}", ex.getMessage());
         final Locale locale = LocaleContextHolder.getLocale();
         final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         body.setType(ABOUT_BLANK);

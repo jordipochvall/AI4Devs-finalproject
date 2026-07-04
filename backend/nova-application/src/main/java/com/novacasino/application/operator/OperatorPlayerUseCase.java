@@ -24,7 +24,6 @@ public class OperatorPlayerUseCase {
         this.port = port;
     }
 
-    @Transactional
     public PageResponse<PlayerSummaryDto> searchPlayers(final Long operatorId, final String email,
                                                         final PageRequestDto page) {
         return port.searchPlayers(operatorId, email, page);

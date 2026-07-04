@@ -23,6 +23,7 @@ import com.novacasino.api.operator.dto.UpdateGameRequest;
 import com.novacasino.common.dto.WalletDto;
 import com.novacasino.api.security.NovaUserDetails;
 import jakarta.validation.Valid;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -37,6 +38,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/operator")
 public class OperatorController {
+
+    /** Wallet optimistic-lock retries before giving up with a 409 (mirrors the spin path). */
+    private static final int MAX_RECHARGE_ATTEMPTS = 3;
 
     private final OperatorPlayerUseCase players;
     private final IdempotencyService idempotency;
@@ -86,9 +90,18 @@ public class OperatorController {
 
         final RechargeKey payload = new RechargeKey(playerId, body.amountCents(), currency);
 
-        return idempotency.execute(
-                operatorUserId, "recharge", idempotencyKey, payload, WalletDto.class,
-                () -> players.recharge(operatorUserId, operatorId, playerId, body.amountCents()));
+        // Like the spin path, retry on a wallet optimistic-lock conflict; a persistent conflict surfaces
+        // as 409. A concurrent retry with the same key replays the original via the idempotency store.
+        for (int attempt = 0; attempt < MAX_RECHARGE_ATTEMPTS; attempt++) {
+            try {
+                return idempotency.execute(
+                        operatorUserId, "recharge", idempotencyKey, payload, WalletDto.class,
+                        () -> players.recharge(operatorUserId, operatorId, playerId, body.amountCents()));
+            } catch (final OptimisticLockingFailureException conflict) {
+                // Another wallet update committed first; retry with a fresh transaction.
+            }
+        }
+        throw new OptimisticLockingFailureException("Recharge abandoned after repeated wallet conflicts");
     }
 
     /**

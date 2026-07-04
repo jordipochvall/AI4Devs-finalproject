@@ -146,6 +146,7 @@ class SpinServiceTest {
 
     @Test
     void givesUpWithConflictAfterRepeatedOptimisticLockFailures() {
+        stubGameAndConfig(100L, 1000L, 100L); // the read-only setup runs before the retry loop now
         when(idempotency.execute(anyLong(), eq("spin"), any(), any(), any(), any()))
                 .thenThrow(new OptimisticLockingFailureException("conflict"));
 

@@ -5,7 +5,6 @@ import com.novacasino.common.dto.ExplanationDto;
 import com.novacasino.common.dto.PageRequestDto;
 import com.novacasino.common.dto.PageResponse;
 import com.novacasino.common.dto.SimulationSummaryDto;
-import jakarta.transaction.Transactional;
 
 import java.util.List;
 
@@ -18,13 +17,11 @@ public class SimulationHistoryUseCase {
         this.port = port;
     }
 
-    @Transactional
     public PageResponse<SimulationSummaryDto> listSimulations(final Long operatorId, final Long configId,
                                                               final Long gameId, final PageRequestDto page) {
         return port.listSimulations(operatorId, configId, gameId, page);
     }
 
-    @Transactional
     public List<ExplanationDto> listExplanations(final Long simulationId, final Long operatorId) {
         return port.listExplanations(simulationId, operatorId)
                 .orElseThrow(() -> new SimulationNotFoundException(simulationId));

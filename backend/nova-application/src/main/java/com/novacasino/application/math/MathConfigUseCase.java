@@ -36,17 +36,14 @@ public class MathConfigUseCase {
         this.validator = validator;
     }
 
-    @Transactional
     public List<MathGameDto> listGames(final Long operatorId) {
         return port.listGames(operatorId);
     }
 
-    @Transactional
     public ConfigDetailDto getConfig(final Long configId) {
         return port.getConfig(configId).orElseThrow(() -> new ConfigNotFoundException(configId));
     }
 
-    @Transactional
     public List<ConfigVersionDto> listConfigs(final Long gameId, final Long operatorId) {
         final OwnedGame game = ownedGame(gameId, operatorId);
         return port.listConfigs(gameId, game.activeConfigId());

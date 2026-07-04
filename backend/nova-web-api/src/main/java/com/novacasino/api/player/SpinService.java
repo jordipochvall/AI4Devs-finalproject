@@ -103,11 +103,25 @@ public class SpinService {
      */
     public SpinResultDto spin(final Long userId, final Long operatorId, final Long gameId,
                               final UUID idemKey, final long betCents, final String currency) {
+        // Read-only setup + the engine run happen OUTSIDE the write transaction (and once, not per
+        // retry): load the game/config, compile, validate the bet and run the kernel. Only the wallet,
+        // round, ledger and jackpot writes run inside the idempotent transaction below.
+        final GameEntity game = activeGame(gameId);
+        final GameConfigEntity config = configRepo.findById(game.getActiveConfigId())
+                .orElseThrow(() -> new GameNotFoundException(gameId));
+        final CompiledGame compiled = compiler.compile(config.getId(),
+                configMapper.toSpec(parse(config.getConfig())));
+        validateBet(game, compiled.paylineCount(), betCents);
+
+        final long seed = secureRandom.nextLong();
+        final PreparedSpin prepared = new PreparedSpin(config.getId(), compiled,
+                compiled.paylineCount(), seed, runEngine(compiled, betCents, seed));
+
         final SpinPayload payload = new SpinPayload(gameId, betCents, currency);
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             try {
                 return idempotency.execute(userId, "spin", idemKey, payload, SpinResultDto.class,
-                        () -> doSpin(userId, operatorId, gameId, betCents));
+                        () -> persistSpin(userId, operatorId, gameId, betCents, prepared));
             } catch (final OptimisticLockingFailureException conflict) {
                 // Another spin/recharge changed the balance first; retry with a fresh transaction.
             }
@@ -118,29 +132,24 @@ public class SpinService {
     // -------------------------------------------------------------------------
 
     /**
-     * The actual side-effecting spin. It runs inside the transaction opened by
-     * {@link IdempotencyService#execute} (a separate, proxied bean), so the whole spin + idempotency
-     * key insertion commit or roll back together; no own {@code @Transactional} is needed here.
+     * The side-effecting part of a spin: the responsible-gaming gate, wallet debit/credit, rounds,
+     * ledger and jackpot settlement. Runs inside the transaction opened by
+     * {@link IdempotencyService#execute} (a separate, proxied bean), so it and the idempotency key
+     * insertion commit or roll back together; no own {@code @Transactional} is needed here. The engine
+     * outcome was precomputed in {@link #spin} (outside this transaction) and is passed in via
+     * {@code prepared}; an optimistic-lock retry reuses the same outcome.
      */
-    SpinResultDto doSpin(final Long userId, final Long operatorId, final Long gameId, final long betCents) {
+    SpinResultDto persistSpin(final Long userId, final Long operatorId, final Long gameId,
+                              final long betCents, final PreparedSpin prepared) {
         // HU-19: server-side responsible-gaming gate — refuse before any wallet effect or round.
         responsibleGaming.assertCanSpin(userId);
-
-        final GameEntity game = activeGame(gameId);
-        final GameConfigEntity config = configRepo.findById(game.getActiveConfigId())
-                .orElseThrow(() -> new GameNotFoundException(gameId));
-        final CompiledGame compiled = compiler.compile(config.getId(),
-                configMapper.toSpec(parse(config.getConfig())));
-        final int paylineCount = compiled.paylineCount();
-        validateBet(game, paylineCount, betCents);
 
         final WalletEntity wallet = fundedWallet(userId, betCents);
         final long balancePre = wallet.getBalanceCents();
 
-        // Run the engine through the production sink (same kernel as the simulator).
-        final long seed = secureRandom.nextLong();
-        final List<MechSpin> spins = runEngine(compiled, betCents, seed);
+        final List<MechSpin> spins = prepared.spins();
         final MechSpin base = spins.get(0);
+        final long seed = prepared.seed();
 
         // Progressive jackpot (HU-26): deterministic in the seed; the win is attributed to the base round.
         final JackpotOutcome jackpot = computeJackpot(gameId, betCents, seed);
@@ -148,7 +157,7 @@ public class SpinService {
         final long baseWin = base.winCents() + jackpot.win();
         final long totalWin = spins.stream().mapToLong(MechSpin::winCents).sum() + jackpot.win();
         final long balancePost = balancePre - betCents + totalWin;
-        final long lineBet = betCents / paylineCount;
+        final long lineBet = betCents / prepared.paylineCount();
         final long balanceAfterBase = balancePre - betCents + baseWin;
 
         // Update the balance (optimistic lock via @Version).
@@ -157,22 +166,28 @@ public class SpinService {
 
         // Persist the base round (including any jackpot win), settle the pool, then the free-spin children.
         final GameRoundEntity baseRound = roundRepo.save(GameRoundEntity.baseRound(
-                operatorId, userId, gameId, config.getId(), seed, betCents, baseWin,
+                operatorId, userId, gameId, prepared.configId(), seed, betCents, baseWin,
                 balancePre, balanceAfterBase, toJson(resultOf(base))));
         settleJackpot(jackpot, operatorId, gameId, baseRound.getId(), userId);
 
         final List<SpinResultDto> freeSpinRounds = persistFreeSpins(
-                spins, balanceAfterBase, lineBet, operatorId, userId, gameId, config.getId(), seed, baseRound.getId());
+                spins, balanceAfterBase, lineBet, operatorId, userId, gameId,
+                prepared.configId(), seed, baseRound.getId());
 
         recordLedger(wallet, betCents, totalWin, balancePre, balancePost, baseRound.getId());
 
         // Top-level result: base spin view/lines, but the round's TOTAL win and final balance.
-        final int awarded = compiled.freeSpinsAwardedFor(base.scatterCount());
+        final int awarded = prepared.compiled().freeSpinsAwardedFor(base.scatterCount());
         final FreeSpinsDto freeSpins = new FreeSpinsDto(awarded > 0, awarded, freeSpinRounds);
         log.debug("Spin executed: round={}, userId={}, gameId={}, bet={}, totalWin={}, balancePost={}, freeSpins={}",
                 baseRound.getId(), userId, gameId, betCents, totalWin, balancePost, freeSpinRounds.size());
         return new SpinResultDto(baseRound.getId(), betCents, lineBet, totalWin, balancePre, balancePost,
                 base.view(), base.winningPaylines(), base.scatterCount(), freeSpins);
+    }
+
+    /** The read-only outcome of the engine, precomputed outside the write transaction (T5). */
+    private record PreparedSpin(Long configId, CompiledGame compiled, int paylineCount, long seed,
+                                List<MechSpin> spins) {
     }
 
     /** Loads an active, playable game (active flag + an active config) or fails with 404. */

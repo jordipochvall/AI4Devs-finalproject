@@ -1,7 +1,6 @@
 package com.novacasino.application.audit;
 
 import com.novacasino.common.dto.IntegrityReportDto;
-import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +29,6 @@ public class VerifyIntegrityUseCase {
     }
 
     /** Verifies the operator's chain over [from, to] (null bounds default to a wide window). */
-    @Transactional
     public IntegrityReportDto verify(final Long operatorId, final OffsetDateTime from, final OffsetDateTime to) {
         final OffsetDateTime effFrom = from != null ? from : MIN_INSTANT;
         final OffsetDateTime effTo   = to   != null ? to   : OffsetDateTime.now();

@@ -28,7 +28,6 @@ public class AdminUseCase {
         this.hasher = hasher;
     }
 
-    @Transactional
     public List<OperatorDto> listOperators() {
         return port.listOperators();
     }

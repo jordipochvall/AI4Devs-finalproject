@@ -12,6 +12,7 @@ import com.novacasino.infrastructure.persistence.repository.GameJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.JackpotPoolJpaRepository;
 import com.novacasino.infrastructure.persistence.repository.WalletJpaRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,7 @@ public class PlayerCatalogJpaAdapter implements PlayerCatalogPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<GameSummaryDto> listActiveGames() {
         return gameRepo.findByActiveTrueOrderByIdAsc().stream()
                 .map(g -> new GameSummaryDto(g.getId(), g.getName(), g.getTheme(),
@@ -45,6 +47,7 @@ public class PlayerCatalogJpaAdapter implements PlayerCatalogPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<GameDetailDto> activeGame(final Long gameId) {
         return gameRepo.findByIdAndActiveTrue(gameId).flatMap(game -> {
             if (game.getActiveConfigId() == null) {

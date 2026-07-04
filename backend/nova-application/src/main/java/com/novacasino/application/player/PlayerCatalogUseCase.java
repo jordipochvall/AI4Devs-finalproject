@@ -4,11 +4,14 @@ import com.novacasino.application.exception.GameNotFoundException;
 import com.novacasino.common.dto.GameDetailDto;
 import com.novacasino.common.dto.GameSummaryDto;
 import com.novacasino.common.dto.WalletDto;
-import jakarta.transaction.Transactional;
 
 import java.util.List;
 
-/** Player read use cases (HU-5): lobby catalogue, game detail (+ config) and balance. */
+/**
+ * Player read use cases (HU-5): lobby catalogue, game detail (+ config) and balance. Read-only — no
+ * {@code @Transactional} here so the read runs in the read-only transaction owned by the adapter
+ * (the writes that matter are guarded one layer down).
+ */
 public class PlayerCatalogUseCase {
 
     private final PlayerCatalogPort catalog;
@@ -17,17 +20,14 @@ public class PlayerCatalogUseCase {
         this.catalog = catalog;
     }
 
-    @Transactional
     public List<GameSummaryDto> listActiveGames() {
         return catalog.listActiveGames();
     }
 
-    @Transactional
     public GameDetailDto getActiveGame(final Long gameId) {
         return catalog.activeGame(gameId).orElseThrow(() -> new GameNotFoundException(gameId));
     }
 
-    @Transactional
     public WalletDto getWallet(final Long userId) {
         return catalog.walletOf(userId)
                 .orElseThrow(() -> new IllegalStateException("Wallet not found for user " + userId));

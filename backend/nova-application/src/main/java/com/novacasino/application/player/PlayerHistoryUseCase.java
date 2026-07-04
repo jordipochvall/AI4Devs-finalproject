@@ -4,7 +4,6 @@ import com.novacasino.common.dto.PageRequestDto;
 import com.novacasino.common.dto.PageResponse;
 import com.novacasino.common.dto.PlayerRoundDto;
 import com.novacasino.common.dto.WalletTransactionDto;
-import jakarta.transaction.Transactional;
 
 import java.util.List;
 
@@ -21,7 +20,6 @@ public class PlayerHistoryUseCase {
     }
 
     /** The player's wallet ledger movements (empty page if the player has no wallet). */
-    @Transactional
     public PageResponse<WalletTransactionDto> listTransactions(final Long userId, final PageRequestDto page) {
         return history.walletIdOf(userId)
                 .map(walletId -> history.transactionsByWallet(walletId, page))
@@ -29,7 +27,6 @@ public class PlayerHistoryUseCase {
     }
 
     /** The player's own rounds. */
-    @Transactional
     public PageResponse<PlayerRoundDto> listRounds(final Long userId, final PageRequestDto page) {
         return history.roundsByPlayer(userId, page);
     }

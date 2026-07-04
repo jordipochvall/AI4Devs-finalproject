@@ -5,7 +5,6 @@ import com.novacasino.application.operator.RfjAggregatesPort.RfjAggregates;
 import com.novacasino.application.operator.exception.ReportIntegrityException;
 import com.novacasino.common.dto.IntegrityReportDto;
 import com.novacasino.common.dto.RfjReportDto;
-import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +29,6 @@ public class RfjReportUseCase {
     }
 
     /** Builds the RFJ report for {@code year}/{@code month}, blocking on a broken integrity chain. */
-    @Transactional
     public RfjReportDto generate(final Long operatorId, final int year, final int month) {
         final OffsetDateTime from = OffsetDateTime.of(year, month, 1, 0, 0, 0, 0, ZoneOffset.UTC);
         final OffsetDateTime to = from.plusMonths(1);

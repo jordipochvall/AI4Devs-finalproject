@@ -25,7 +25,6 @@ public class OperatorGameUseCase {
         this.port = port;
     }
 
-    @Transactional
     public List<OperatorGameDto> listGames(final Long operatorId) {
         return port.listGames(operatorId);
     }
