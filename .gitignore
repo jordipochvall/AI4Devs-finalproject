@@ -1,0 +1,30 @@
+# Entorno local — nunca versionar
+.env
+
+# Maven
+backend/target/
+backend/**/target/
+backend/**/.mvn/
+!backend/.mvn/wrapper/maven-wrapper.properties
+
+# Node / pnpm
+frontend/node_modules/
+frontend/dist/
+e2e/node_modules/
+.pnpm-store/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.class
+
+# Logs
+*.log
+logs/
+
+# macOS
+.DS_Store
+
+# Docker
+.docker/
