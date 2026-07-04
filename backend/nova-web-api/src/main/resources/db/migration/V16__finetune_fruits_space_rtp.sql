@@ -1,0 +1,21 @@
+-- =============================================================================
+-- V16__finetune_fruits_space_rtp.sql — HU-31 (ajuste fino final): Fruti Fiesta -> 92,0% y
+-- Nova Cósmica -> 96,5% (medido a 10M). append-only: inserta la siguiente versión por juego y la
+-- activa. No-op en instalaciones nuevas (SeedDataLoader inserta la v1 ya calibrada).
+-- =============================================================================
+
+-- Fruits (target 0.92): v3 -> v4
+INSERT INTO game_configs (game_id, version, config, rtp_target, volatility_target, created_by_user_id, notes)
+SELECT g.id, 4, '{"grid":{"cols":3,"rows":3},"symbols":[{"id":"SEVEN","kind":"REGULAR"},{"id":"BAR3","kind":"REGULAR"},{"id":"BAR2","kind":"REGULAR"},{"id":"BAR","kind":"REGULAR"},{"id":"CHERRY","kind":"REGULAR"},{"id":"LEMON","kind":"REGULAR"},{"id":"ORANGE","kind":"REGULAR"},{"id":"PLUM","kind":"REGULAR"}],"reels":[["SEVEN","BAR3","BAR2","CHERRY","BAR","LEMON","ORANGE","PLUM","BAR2","CHERRY","BAR","LEMON","ORANGE","PLUM","BAR2"],["CHERRY","PLUM","LEMON","ORANGE","BAR","BAR2","BAR3","SEVEN","CHERRY","PLUM","LEMON","ORANGE","BAR","BAR2","BAR3"],["LEMON","ORANGE","CHERRY","PLUM","BAR","BAR2","BAR3","SEVEN","LEMON","ORANGE","CHERRY","PLUM","BAR","BAR2","SEVEN"]],"paylines":[[1,1,1],[0,0,0],[2,2,2],[0,1,2],[2,1,0]],"paytable":[{"symbol":"SEVEN","payouts":{"3":280}},{"symbol":"BAR3","payouts":{"3":140}},{"symbol":"BAR2","payouts":{"3":70}},{"symbol":"BAR","payouts":{"2":3,"3":25}},{"symbol":"CHERRY","payouts":{"2":6,"3":13}},{"symbol":"LEMON","payouts":{"2":3,"3":8}},{"symbol":"ORANGE","payouts":{"2":3,"3":8}},{"symbol":"PLUM","payouts":{"2":3,"3":7}}],"bonus":{}}'::jsonb, 0.9200, 3.00, c.created_by_user_id, 'Fine-tuned RTP to 92% (HU-31)'
+FROM   games g JOIN game_configs c ON c.game_id = g.id AND c.version = 3
+WHERE  g.code = 'fruits-3x3';
+UPDATE games SET active_config_id = (SELECT id FROM game_configs WHERE game_id = games.id AND version = 4)
+WHERE  code = 'fruits-3x3' AND EXISTS (SELECT 1 FROM game_configs WHERE game_id = games.id AND version = 4);
+
+-- Space (target 0.965): v3 -> v4
+INSERT INTO game_configs (game_id, version, config, rtp_target, volatility_target, created_by_user_id, notes)
+SELECT g.id, 4, '{"grid":{"cols":5,"rows":3},"symbols":[{"id":"WILD","kind":"WILD"},{"id":"SCATTER","kind":"SCATTER"},{"id":"PLANET","kind":"REGULAR"},{"id":"COMET","kind":"REGULAR"},{"id":"STAR","kind":"REGULAR"},{"id":"K","kind":"REGULAR"},{"id":"A","kind":"REGULAR"}],"reels":[["A","K","A","STAR","A","K","COMET","A","K","STAR","A","SCATTER","A","K","STAR","COMET","A","K","A","STAR","PLANET","A","K","STAR","A","COMET","A","K","SCATTER","WILD"],["A","K","A","STAR","A","K","COMET","A","K","STAR","A","SCATTER","A","K","STAR","COMET","A","K","A","STAR","PLANET","A","K","STAR","A","COMET","A","K","SCATTER","WILD"],["A","K","A","STAR","A","K","COMET","A","K","STAR","A","SCATTER","A","K","STAR","COMET","A","K","A","STAR","PLANET","A","K","STAR","A","COMET","A","K","SCATTER","WILD"],["A","K","A","STAR","A","K","COMET","A","K","STAR","A","SCATTER","A","K","STAR","COMET","A","K","A","STAR","PLANET","A","K","STAR","A","COMET","A","K","SCATTER","WILD"],["A","K","A","STAR","A","K","COMET","A","K","STAR","A","SCATTER","A","K","STAR","COMET","A","K","A","STAR","PLANET","A","K","STAR","A","COMET","A","K","SCATTER","WILD"]],"paylines":[[1,1,1,1,1],[0,0,0,0,0],[2,2,2,2,2],[0,1,2,1,0],[2,1,0,1,2],[0,0,1,2,2],[2,2,1,0,0],[1,0,0,0,1],[1,2,2,2,1],[0,1,0,1,0]],"paytable":[{"symbol":"PLANET","payouts":{"3":20,"4":62,"5":205}},{"symbol":"COMET","payouts":{"3":10,"4":31,"5":103}},{"symbol":"STAR","payouts":{"3":4,"4":13,"5":48}},{"symbol":"K","payouts":{"3":2,"4":6,"5":21}},{"symbol":"A","payouts":{"4":3,"5":4}}],"scatterPays":{"SCATTER":{"3":4,"4":16,"5":82}},"bonus":{"wild":{"substitutes":["REGULAR"]},"freeSpins":{"triggerSymbol":"SCATTER","minTriggerCount":3,"award":{"3":5,"4":8,"5":12},"multiplier":2,"retrigger":false}}}'::jsonb, 0.9650, 12.00, c.created_by_user_id, 'Fine-tuned RTP to 96.5% (HU-31)'
+FROM   games g JOIN game_configs c ON c.game_id = g.id AND c.version = 3
+WHERE  g.code = 'space-5x3';
+UPDATE games SET active_config_id = (SELECT id FROM game_configs WHERE game_id = games.id AND version = 4)
+WHERE  code = 'space-5x3' AND EXISTS (SELECT 1 FROM game_configs WHERE game_id = games.id AND version = 4);

@@ -1856,3 +1856,7 @@ El usuario pidió afinar egipcio a 95% y luego space (96,5%) y fruits (92%). Cla
 - Resultado convergido (10M): **egyptian 95,0% · fruits 92,2% · space 96,3%** (±0,3pp del objetivo).
 - Migraciones append-only para la BBDD existente: **V14** (los 3 a target: egipcio v4, fruits/space v3) y **V15** (ajuste final egipcio v5=95,0%). Fresh installs: SeedDataLoader inserta la v1 ya calibrada desde /seed/*.json (fuente única). Guard `SeedConfigRtpTest` vuelve a 1M (banda ±5pp).
 - Verificado en la app: activeVersion egyptian=5/fruits=3/space=3; simulación 10M egipcio = 0,9504.
+
+### Prompt 120 — Afinado extra de RTP (fruits→92%, space→96,5%)
+
+Segunda vuelta de ajuste fino (medido a 10M). fruits y space se centran aún más: fruits PLUM 3:7 (ORANGE se mantiene en 8 tras revertir un exceso); space K 5:21. Guard determinista 10M: egyptian 95,02% · fruits 91,97% · space 96,53% (±0,03pp). Migración **V16** (fruits v4, space v4). Verificado en la app (10M): egyptian 95,09 · fruits 91,83 · space 96,59 (±0,2pp; la diferencia con el guard es ruido de semilla). Guard `SeedConfigRtpTest` de vuelta a 1M.

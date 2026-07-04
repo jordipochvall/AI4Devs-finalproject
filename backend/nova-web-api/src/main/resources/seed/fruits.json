@@ -30,7 +30,7 @@
     { "symbol": "CHERRY", "payouts": { "2": 6,  "3": 13 } },
     { "symbol": "LEMON",  "payouts": { "2": 3,  "3": 8  } },
     { "symbol": "ORANGE", "payouts": { "2": 3,  "3": 8  } },
-    { "symbol": "PLUM",   "payouts": { "2": 3,  "3": 8  } }
+    { "symbol": "PLUM",   "payouts": { "2": 3,  "3": 7  } }
   ],
   "bonus": {}
 }

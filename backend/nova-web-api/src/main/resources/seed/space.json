@@ -32,7 +32,7 @@
     { "symbol": "PLANET", "payouts": { "3": 20, "4": 62, "5": 205 } },
     { "symbol": "COMET",  "payouts": { "3": 10, "4": 31, "5": 103 } },
     { "symbol": "STAR",   "payouts": { "3": 4,  "4": 13, "5": 48 } },
-    { "symbol": "K",      "payouts": { "3": 2,  "4": 6,  "5": 20 } },
+    { "symbol": "K",      "payouts": { "3": 2,  "4": 6,  "5": 21 } },
     { "symbol": "A",      "payouts": { "4": 3,  "5": 4 } }
   ],
   "scatterPays": {
