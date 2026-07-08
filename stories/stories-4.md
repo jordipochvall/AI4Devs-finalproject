@@ -12,7 +12,7 @@ Cuarto bloque del backlog, en continuidad con el MVP de [`stories.md`](stories.m
 
 > **Desglose en tickets:** [`../tickets/tickets-4.md`](../tickets/tickets-4.md).
 
-> **Estado: 1/8 implementadas.** HU-33 implementada y verificada en vivo. Detalle en [`../conversation.md`](../conversation.md).
+> **Estado: 1/8 implementadas.** HU-33 implementada y verificada en vivo. **HU-34 parcial** (`.github/workflows` versionado; falta el `Environment` de GitHub, bloqueado porque todavía no hay VPS/dominio real). **HU-35 bloqueada por el mismo motivo** (TLS necesita un dominio real). Se continúa con HU-36..40, que no dependen de tener un VPS. Detalle en [`../conversation.md`](../conversation.md).
 
 ## Unidades de estimación
 
@@ -29,8 +29,8 @@ Igual que en los bloques previos: las **historias** se estiman con **tallas** (S
 | Código | Título | Perfil | Prioridad | Talla | Origen | Estado |
 |---|---|---|---|---|---|---|
 | [HU-33](HU-33.md) | Bug: `/actuator/health` exige autenticación y rompe el propio despliegue | Plataforma/DevOps | Must | S | Auditoría de despliegue | ✅ Implementada |
-| [HU-34](HU-34.md) | Versionar y activar el pipeline de CI/CD para poder desplegar al VPS | Plataforma/DevOps | Should | S | Auditoría de despliegue | ⏳ Pendiente |
-| [HU-35](HU-35.md) | El demo público sólo se sirve por HTTPS y la API no queda expuesta directamente | Plataforma/DevOps | Must | S/M | Auditoría de despliegue | ⏳ Pendiente |
+| [HU-34](HU-34.md) | Versionar y activar el pipeline de CI/CD para poder desplegar al VPS | Plataforma/DevOps | Should | S | Auditoría de despliegue | 🟡 Parcial (falta VPS) |
+| [HU-35](HU-35.md) | El demo público sólo se sirve por HTTPS y la API no queda expuesta directamente | Plataforma/DevOps | Must | S/M | Auditoría de despliegue | ⏳ Bloqueada (falta VPS) |
 | [HU-36](HU-36.md) | La API rechaza arrancar con secretos de despliegue débiles o de ejemplo | Plataforma/DevOps | Should | S | Auditoría de despliegue | ⏳ Pendiente |
 | [HU-37](HU-37.md) | Acotar la concurrencia de simulaciones para proteger el VPS del demo | Matemático/Plataforma | Should | S/M | Auditoría de despliegue | ⏳ Pendiente |
 | [HU-38](HU-38.md) | Las contraseñas de las cuentas semilla del demo se configuran por entorno | Plataforma/DevOps | Should | S | Auditoría de despliegue | ⏳ Pendiente |

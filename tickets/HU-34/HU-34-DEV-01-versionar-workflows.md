@@ -7,12 +7,12 @@
 `git add`/commit de `.github/workflows/ci.yml` y `cd.yml`, verificar que corren
 
 ## Descripción
-`.github/` existe en disco (`ci.yml`, `cd.yml`) pero está sin *trackear* (`git status` lo marca `??`), por lo que GitHub Actions no lo ejecuta. Comprometer el directorio completo `.github/` al repositorio en la rama correspondiente y hacer un *push*/PR de prueba para confirmar que el *workflow* `CI` se dispara y termina en verde (build+test backend, frontend, JaCoCo, *perf job*).
+`.github/` existía en disco (`ci.yml`, `cd.yml`) pero sin *trackear* (`git status` lo marcaba `??`), por lo que GitHub Actions no lo ejecutaba. Comprometidos `ci.yml`/`cd.yml` sin cambios de contenido (commit `chore(ci): HU-34-DEV-01`). **Nota:** `.github/` también contenía `.github/modernize/java-upgrade/` (artefactos de una extensión de VS Code para modernización de Java, con rutas/IDs de sesión locales) — se ha dejado **fuera** del commit a propósito, no es código del proyecto.
 
 ## Criterios de aceptación
-- **AC1**: `.github/workflows/ci.yml` y `.github/workflows/cd.yml` quedan comprometidos y presentes en el remoto.
-- **AC2**: Un *push*/PR de prueba dispara el *workflow* `CI` y termina en verde.
-- **AC3**: No se modifica el contenido de los *workflows* (sólo se versionan; el diseño ya viene de HU-24).
+- **AC1**: `.github/workflows/ci.yml` y `.github/workflows/cd.yml` quedan comprometidos. ✅ (commit local; **pendiente el `push`**, no solicitado todavía.)
+- **AC2**: Un *push*/PR de prueba dispara el *workflow* `CI` y termina en verde. ⏳ Pendiente de `push` a `origin`.
+- **AC3**: No se modifica el contenido de los *workflows* (sólo se versionan; el diseño ya viene de HU-24). ✅
 
 ## Prioridad
 Should Have

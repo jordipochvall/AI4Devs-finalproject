@@ -28,8 +28,12 @@ DevOps
 `devops`, `ci-cd`, `secretos`, `despliegue`
 
 ## Comentarios
-- Requiere que **HU-33** esté resuelta antes de un intento real de despliegue (si no, el propio `deploy.sh`/*smoke test* fallarían por el healthcheck).
-- **Dependencias directas:** `HU-34-DEV-01`, `HU-33` (healthcheck).
+- Requiere que **HU-33** esté resuelta antes de un intento real de despliegue (si no, el propio `deploy.sh`/*smoke test* fallarían por el healthcheck). ✅ HU-33 ya implementada.
+- **Bloqueado**: aún no hay un VPS ni dominio reales sobre los que configurar el *Environment* (confirmado con el equipo). Sin esto no hay a qué apuntar `*_DB_URL`/`*_BASE_URL` ni sobre qué host desplegar. Se retoma en cuanto se disponga de esos datos.
+- **Dependencias directas:** `HU-34-DEV-01` (✅), `HU-33` (✅ healthcheck).
+
+## Estado
+⏳ **Bloqueado** — pendiente de disponer de un VPS/dominio real.
 
 ## Enlaces y referencias
 - Historia: [HU-34](../../stories/HU-34.md).

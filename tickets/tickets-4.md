@@ -4,7 +4,7 @@ Cuarto bloque de implementación, en continuidad con el MVP de [`tickets.md`](ti
 
 **Convenciones:** código `HU-N-EQUIPO-NN` · equipos **BE** (Backend), **FE** (Frontend), **QA**, **DEV** (DevOps/Plataforma) · estimación en **Story Points** Fibonacci (1, 2, 3, 5, 8, 13).
 
-> **Estado: 1/8 historias implementadas.** HU-33 implementada y verificada en vivo (rebuild del contenedor `api` de desarrollo + `curl`). Trazabilidad en [`../conversation.md`](../conversation.md).
+> **Estado: 1/8 historias implementadas.** HU-33 implementada y verificada en vivo (rebuild del contenedor `api` de desarrollo + `curl`). HU-34 parcial (`.github/workflows` versionado; el `Environment` de GitHub queda bloqueado sin un VPS/dominio real). HU-35 bloqueada por el mismo motivo. Trazabilidad en [`../conversation.md`](../conversation.md).
 
 ## HU-33 — Bug: `/actuator/health` exige autenticación y rompe el propio despliegue (3 SP) — ✅ Implementada
 
@@ -15,16 +15,16 @@ Cuarto bloque de implementación, en continuidad con el MVP de [`tickets.md`](ti
 
 > **Bloqueante nº 1.** Sin esto, `deploy/docker-compose.prod.yml` nunca marca `api` como *healthy* y ningún despliegue (manual o vía `cd.yml`) llega a completarse. **Causa raíz real, más profunda de lo esperado:** `spring-boot-starter-actuator` no era ni siquiera una dependencia del proyecto (el *endpoint* no existía en absoluto), además de que `SecurityConfig` lo habría bloqueado igualmente. Corrección: dependencia añadida + `management.endpoints.web.exposure.include=health` (+ `show-details: never`) + `permitAll` acotado a `/actuator/health/**`. Verificado: IT `ActuatorHealthIT` (2/2) y en vivo contra el contenedor `api` reconstruido (`200 {"status":"UP"}` sin token; `/actuator/env` y `/api/v1/player/games` siguen en `401`).
 
-## HU-34 — Versionar y activar el pipeline de CI/CD para poder desplegar al VPS (3 SP)
+## HU-34 — Versionar y activar el pipeline de CI/CD para poder desplegar al VPS (3 SP) — 🟡 Parcial
 
-| Código | Título | Equipo | SP |
-|---|---|---|---|
-| [HU-34-DEV-01](HU-34/HU-34-DEV-01-versionar-workflows.md) | Comprometer `.github/workflows` al repositorio | DevOps | 1 |
-| [HU-34-DEV-02](HU-34/HU-34-DEV-02-configurar-entorno-vps.md) | Configurar el Environment de GitHub apuntando al VPS | DevOps | 2 |
+| Código | Título | Equipo | SP | Estado |
+|---|---|---|---|---|
+| [HU-34-DEV-01](HU-34/HU-34-DEV-01-versionar-workflows.md) | Comprometer `.github/workflows` al repositorio | DevOps | 1 | ✅ |
+| [HU-34-DEV-02](HU-34/HU-34-DEV-02-configurar-entorno-vps.md) | Configurar el Environment de GitHub apuntando al VPS | DevOps | 2 | ⏳ Bloqueado (sin VPS) |
 
-> **Reutilización de diseño.** El pipeline ya está diseñado e implementado en disco desde `HU-24`; HU-34 sólo lo versiona y lo conecta con el VPS real.
+> **Reutilización de diseño.** El pipeline ya está diseñado e implementado en disco desde `HU-24`; HU-34 sólo lo versiona y lo conecta con el VPS real. `ci.yml`/`cd.yml` ya están comprometidos (sin `push` todavía); `.github/modernize/` (artefactos de una extensión de VS Code, no del proyecto) se deja fuera del control de versiones a propósito.
 
-## HU-35 — El demo público sólo se sirve por HTTPS y la API no queda expuesta directamente (4 SP)
+## HU-35 — El demo público sólo se sirve por HTTPS y la API no queda expuesta directamente (4 SP) — ⏳ Bloqueada (falta VPS/dominio)
 
 | Código | Título | Equipo | SP |
 |---|---|---|---|
