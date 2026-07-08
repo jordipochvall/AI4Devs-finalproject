@@ -36,4 +36,7 @@ USER novacasino
 COPY --from=build /app/nova-web-api/target/*.jar app.jar
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# -XX:MaxRAMPercentage raises the container-aware heap cap above the JDK's conservative 25% default,
+# so the app fits comfortably within a small container's memory (e.g. Render's free 512 MB tier)
+# instead of leaving most of it unused.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
