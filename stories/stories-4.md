@@ -12,7 +12,7 @@ Cuarto bloque del backlog, en continuidad con el MVP de [`stories.md`](stories.m
 
 > **Desglose en tickets:** [`../tickets/tickets-4.md`](../tickets/tickets-4.md).
 
-> **Estado: 2/8 implementadas.** HU-33 y HU-36 implementadas y verificadas en vivo. **HU-34 parcial** (`.github/workflows` versionado; falta el `Environment` de GitHub, bloqueado porque todavía no hay VPS/dominio real). **HU-35 bloqueada por el mismo motivo** (TLS necesita un dominio real). Se continúa con HU-37..40, que no dependen de tener un VPS. Detalle en [`../conversation.md`](../conversation.md).
+> **Estado: 6/8 implementadas.** HU-33, HU-36, HU-37, HU-38, HU-39 y HU-40 implementadas y verificadas. **HU-34 parcial** (`.github/workflows` versionado; falta el `Environment` de GitHub, bloqueado porque todavía no hay VPS/dominio real). **HU-35 bloqueada por el mismo motivo** (TLS necesita un dominio real). Detalle en [`../conversation.md`](../conversation.md).
 
 ## Unidades de estimación
 
@@ -32,10 +32,10 @@ Igual que en los bloques previos: las **historias** se estiman con **tallas** (S
 | [HU-34](HU-34.md) | Versionar y activar el pipeline de CI/CD para poder desplegar al VPS | Plataforma/DevOps | Should | S | Auditoría de despliegue | 🟡 Parcial (falta VPS) |
 | [HU-35](HU-35.md) | El demo público sólo se sirve por HTTPS y la API no queda expuesta directamente | Plataforma/DevOps | Must | S/M | Auditoría de despliegue | ⏳ Bloqueada (falta VPS) |
 | [HU-36](HU-36.md) | La API rechaza arrancar con secretos de despliegue débiles o de ejemplo | Plataforma/DevOps | Should | S | Auditoría de despliegue | ✅ Implementada |
-| [HU-37](HU-37.md) | Acotar la concurrencia de simulaciones para proteger el VPS del demo | Matemático/Plataforma | Should | S/M | Auditoría de despliegue | ⏳ Pendiente |
-| [HU-38](HU-38.md) | Las contraseñas de las cuentas semilla del demo se configuran por entorno | Plataforma/DevOps | Should | S | Auditoría de despliegue | ⏳ Pendiente |
-| [HU-39](HU-39.md) | Un error de render no deja la pantalla en blanco | Transversal | Could | S | Auditoría de despliegue | ⏳ Pendiente |
-| [HU-40](HU-40.md) | Endurecer la Content-Security-Policy del frontend | Transversal | Could | S | Auditoría de despliegue | ⏳ Pendiente |
+| [HU-37](HU-37.md) | Acotar la concurrencia de simulaciones para proteger el VPS del demo | Matemático/Plataforma | Should | S/M | Auditoría de despliegue | ✅ Implementada |
+| [HU-38](HU-38.md) | Las contraseñas de las cuentas semilla del demo se configuran por entorno | Plataforma/DevOps | Should | S | Auditoría de despliegue | ✅ Implementada |
+| [HU-39](HU-39.md) | Un error de render no deja la pantalla en blanco | Transversal | Could | S | Auditoría de despliegue | ✅ Implementada |
+| [HU-40](HU-40.md) | Endurecer la Content-Security-Policy del frontend | Transversal | Could | S | Auditoría de despliegue | ✅ Implementada |
 
 ## Cobertura
 
@@ -43,9 +43,9 @@ Igual que en los bloques previos: las **historias** se estiman con **tallas** (S
 - **HU-34** pone en marcha lo que **HU-24** ya diseñó pero nunca llegó a versionarse: `.github/workflows/` está en disco pero no en git, así que no hay CI/CD real hasta comprometerlo y configurar el entorno de destino (VPS).
 - **HU-35** cierra la exposición de red innecesaria para un demo **público**: TLS delante de `web` y dejar de publicar el puerto 8080 de `api` directamente al host.
 - **HU-36** evita un error de despliegue silencioso: que el `JWT_SECRET` de ejemplo (`admin`) o cualquier valor débil llegue a firmar sesiones en el VPS público. **✅ Implementada**: `JwtService` falla al arrancar con secretos < 32 bytes (verificado con un `docker run` puntual: `IllegalStateException` y el contenedor no llega a exponer el puerto); el `.env`/`.env.example` locales ya usan un placeholder/secreto no triviales.
-- **HU-37** protege los recursos limitados de un VPS de demo frente a un uso normal pero simultáneo (varias simulaciones de millones de giros a la vez).
-- **HU-38** mantiene las cuentas semilla (útiles para que un evaluador entre sin pedir alta) pero saca sus contraseñas del código fuente a variables de entorno propias del VPS.
-- **HU-39** y **HU-40** son mejoras de bajo esfuerzo y alto valor de cara a quien pruebe el demo por primera vez: no ver una pantalla en blanco ante un error, y una CSP más completa como mitigación barata mientras el token viva en `localStorage`.
+- **HU-37** protege los recursos limitados de un VPS de demo frente a un uso normal pero simultáneo (varias simulaciones de millones de giros a la vez). **✅ Implementada**: `ThreadPoolTaskExecutor` acotado y nombrado (`simulationTaskExecutor`) + rechazo de negocio (`TooManySimulationsException` → 429) si hay demasiadas `RUNNING`. Un primer intento nombró el bean igual que el `@Component SimulationExecutor` autodetectado por Spring, lo que impedía arrancar el contenedor (`BeanDefinitionOverrideException`) — detectado al reconstruir el contenedor de desarrollo, no por los tests unitarios; corregido renombrando el bean.
+- **HU-38** mantiene las cuentas semilla (útiles para que un evaluador entre sin pedir alta) pero saca sus contraseñas del código fuente a variables de entorno propias del VPS. **✅ Implementada**: `SeedDataLoader` recibe las contraseñas por constructor (`SEED_*_PASSWORD`, con *bridge* en `application.yml`); guardado explícito contra el caso "variable definida pero vacía" (no cae silenciosamente en una contraseña vacía). `scripts/smoke-test.sh` también actualizado.
+- **HU-39** y **HU-40** son mejoras de bajo esfuerzo y alto valor de cara a quien pruebe el demo por primera vez: no ver una pantalla en blanco ante un error, y una CSP más completa como mitigación barata mientras el token viva en `localStorage`. **✅ Implementadas**: `ErrorBoundary` global (verificado con test + suite completa 32/32 ficheros en verde) y CSP endurecida (verificada en vivo contra el contenedor `web` reconstruido; de paso se corrigió que el favicon `data:` llevaba tiempo bloqueado silenciosamente por la CSP al no tener `img-src` explícito).
 
 **Explícitamente fuera de alcance de este bloque:** todo lo listado en la nota de cabecera (Swagger público, sesión en `localStorage`, supuestos multi-nodo, consolidación de migraciones, observabilidad) — son válidos para una producción real regulada, pero no bloquean ni aportan valor inmediato a un demo en un único VPS.
 

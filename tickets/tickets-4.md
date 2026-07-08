@@ -4,7 +4,7 @@ Cuarto bloque de implementación, en continuidad con el MVP de [`tickets.md`](ti
 
 **Convenciones:** código `HU-N-EQUIPO-NN` · equipos **BE** (Backend), **FE** (Frontend), **QA**, **DEV** (DevOps/Plataforma) · estimación en **Story Points** Fibonacci (1, 2, 3, 5, 8, 13).
 
-> **Estado: 2/8 historias implementadas.** HU-33 y HU-36 implementadas y verificadas en vivo (rebuild del contenedor `api` de desarrollo + `curl` + un `docker run` puntual). HU-34 parcial (`.github/workflows` versionado; el `Environment` de GitHub queda bloqueado sin un VPS/dominio real). HU-35 bloqueada por el mismo motivo. Trazabilidad en [`../conversation.md`](../conversation.md).
+> **Estado: 6/8 historias implementadas.** HU-33, HU-36, HU-37, HU-38, HU-39 y HU-40 implementadas y verificadas (unit/IT tests + rebuild de los contenedores `api`/`web` de desarrollo + `curl`/`docker run` puntuales + suite frontend completa 32/32). HU-34 parcial (`.github/workflows` versionado; el `Environment` de GitHub queda bloqueado sin un VPS/dominio real). HU-35 bloqueada por el mismo motivo. Trazabilidad en [`../conversation.md`](../conversation.md).
 
 ## HU-33 — Bug: `/actuator/health` exige autenticación y rompe el propio despliegue (3 SP) — ✅ Implementada
 
@@ -40,35 +40,39 @@ Cuarto bloque de implementación, en continuidad con el MVP de [`tickets.md`](ti
 
 > **Verificado con `docker run` puntual** de la imagen reconstruida: `JWT_SECRET=admin` → `IllegalStateException` en el arranque, el contenedor no llega a exponer el puerto; con el secreto real (64+ bytes) generado por `openssl rand -base64 48`, arranca con normalidad.
 
-## HU-37 — Acotar la concurrencia de simulaciones para proteger el VPS del demo (5 SP)
+## HU-37 — Acotar la concurrencia de simulaciones para proteger el VPS del demo (5 SP) — ✅ Implementada
 
 | Código | Título | Equipo | SP |
 |---|---|---|---|
 | [HU-37-BE-01](HU-37/HU-37-BE-01-executor-y-limite-concurrencia.md) | Executor acotado y límite de simulaciones concurrentes | Backend | 3 |
 | [HU-37-QA-01](HU-37/HU-37-QA-01-tests-limite-concurrencia.md) | Test del límite de concurrencia de simulaciones | QA | 2 |
 
-## HU-38 — Las contraseñas de las cuentas semilla del demo se configuran por entorno (3 SP)
+> **Incidente detectado en vivo.** El primer nombre de bean (`"simulationExecutor"`) colisionaba con el `@Component SimulationExecutor` autodetectado por Spring — el contenedor `api` no arrancaba (`BeanDefinitionOverrideException`). Los tests unitarios no lo detectaron (no cargan contexto de Spring); renombrado a `"simulationTaskExecutor"` y verificado reconstruyendo el contenedor + lanzando una simulación real de extremo a extremo.
+
+## HU-38 — Las contraseñas de las cuentas semilla del demo se configuran por entorno (3 SP) — ✅ Implementada
 
 | Código | Título | Equipo | SP |
 |---|---|---|---|
 | [HU-38-BE-01](HU-38/HU-38-BE-01-contrasenas-semilla-por-entorno.md) | Externalizar las contraseñas semilla a variables de entorno | Backend | 2 |
 | [HU-38-QA-01](HU-38/HU-38-QA-01-tests-contrasenas-semilla.md) | Test de las contraseñas semilla configurables | QA | 1 |
 
-> **No se elimina el sembrado.** Las cuentas demo se mantienen (útiles para evaluadores); sólo dejan de tener contraseñas fijas en el código fuente.
+> **No se elimina el sembrado.** Las cuentas demo se mantienen (útiles para evaluadores); sólo dejan de tener contraseñas fijas en el código fuente. Guard explícito contra variables definidas-pero-vacías (no siembra una contraseña vacía por error).
 
-## HU-39 — Un error de render no deja la pantalla en blanco (3 SP)
+## HU-39 — Un error de render no deja la pantalla en blanco (3 SP) — ✅ Implementada
 
 | Código | Título | Equipo | SP |
 |---|---|---|---|
 | [HU-39-FE-01](HU-39/HU-39-FE-01-error-boundary.md) | `ErrorBoundary` global en el frontend | Frontend | 2 |
 | [HU-39-QA-01](HU-39/HU-39-QA-01-tests-error-boundary.md) | Test del `ErrorBoundary` | QA | 1 |
 
-## HU-40 — Endurecer la Content-Security-Policy del frontend (2 SP)
+## HU-40 — Endurecer la Content-Security-Policy del frontend (2 SP) — ✅ Implementada
 
 | Código | Título | Equipo | SP |
 |---|---|---|---|
 | [HU-40-FE-01](HU-40/HU-40-FE-01-endurecer-csp.md) | Añadir `object-src`, `base-uri`, `frame-ancestors`, `form-action` e `img-src` a la CSP | Frontend | 1 |
 | [HU-40-QA-01](HU-40/HU-40-QA-01-verificacion-csp.md) | Verificación de la CSP endurecida | QA | 1 |
+
+> **Hallazgo de paso.** El favicon `data:image/svg+xml` de `index.html` llevaba tiempo bloqueado silenciosamente por la CSP (sin `img-src` explícito, caía bajo `default-src 'self'`, que no permite `data:`); esta historia lo corrige.
 
 ## Resumen
 

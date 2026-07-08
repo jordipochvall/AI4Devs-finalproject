@@ -7,12 +7,12 @@
 Test que verifica el uso de las variables de entorno y el *fallback* de desarrollo
 
 ## Descripción
-Añadir un test sobre `SeedDataLoader` (o su lógica de resolución de contraseñas) que verifique: (a) sin las variables `SEED_*_PASSWORD` definidas, se usan las contraseñas de desarrollo actuales; (b) con las variables definidas, se usan esos valores al crear cada cuenta semilla (comprobable vía el `PasswordEncoder`/`matches` sobre el hash guardado).
+Añadido `SeedDataLoaderTest` (`JdbcTemplate` simulado, capturando el hash BCrypt pasado al `INSERT INTO users` de la cuenta admin): (a) con una contraseña vacía (simula una variable de entorno presente-pero-vacía), el hash capturado coincide con la contraseña de desarrollo (`admin123`), no con una cadena vacía; (b) con una contraseña personalizada, el hash capturado coincide con ella y no con la de desarrollo.
 
 ## Criterios de aceptación
-- **AC1**: Test que confirma el *fallback* a las contraseñas de desarrollo cuando no hay variables definidas.
-- **AC2**: Test que confirma que, con variables definidas, las cuentas semilla quedan creadas con esas contraseñas.
-- **AC3**: Verificación manual/documentada de que `scripts/smoke-test.sh` sigue pasando con la contraseña configurada del jugador semilla.
+- **AC1**: Test que confirma el *fallback* a las contraseñas de desarrollo cuando no hay variables definidas (o están vacías). ✅ `blankOverrideFallsBackToTheDevDefault_notAnEmptyPassword`.
+- **AC2**: Test que confirma que, con variables definidas, las cuentas semilla quedan creadas con esas contraseñas. ✅ `insertsUsersWithTheConfiguredPasswordsNotTheDevDefaults`.
+- **AC3**: Verificación manual/documentada de que `scripts/smoke-test.sh` sigue pasando con la contraseña configurada del jugador semilla. ✅ Documentado en `deploy/README.md`; no ejecutable de extremo a extremo todavía (HU-35 bloqueada, sin VPS real donde correr el script contra un despliegue).
 
 ## Prioridad
 Should Have

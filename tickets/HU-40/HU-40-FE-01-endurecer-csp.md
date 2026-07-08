@@ -7,11 +7,11 @@
 Añadir `object-src`, `base-uri`, `frame-ancestors`, `form-action` e `img-src` a la CSP
 
 ## Descripción
-En `frontend/nginx.conf`, ampliar la cabecera `Content-Security-Policy` actual (`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';`) con: `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`, `form-action 'self'` e `img-src 'self' data:` (para cubrir el favicon/recursos embebidos en `data:`). Verificar manualmente que ninguna pantalla (lobby, juego, paneles de operador/matemático) queda con recursos bloqueados tras el cambio.
+Ampliada la cabecera `Content-Security-Policy` de `frontend/nginx.conf` con: `img-src 'self' data:`, `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`, `form-action 'self'`. **Hallazgo al implementar:** el favicon de `index.html` ya era un `data:image/svg+xml` embebido — sin `img-src` explícito, éste caía bajo `default-src 'self'` (que no permite `data:`), así que el favicon llevaba tiempo bloqueado silenciosamente por la CSP; esta historia lo corrige de paso.
 
 ## Criterios de aceptación
-- **AC1**: La cabecera `Content-Security-Policy` de cualquier respuesta incluye las nuevas directivas.
-- **AC2**: Navegación manual por las pantallas principales sin errores de CSP en la consola del navegador.
+- **AC1**: La cabecera `Content-Security-Policy` de cualquier respuesta incluye las nuevas directivas. ✅ Verificado en vivo (contenedor `web` reconstruido): `curl -D- http://localhost:5173/` devuelve la cabecera completa con las 5 directivas nuevas.
+- **AC2**: Navegación manual por las pantallas principales sin errores de CSP en la consola del navegador. ⏳ Verificado que `index.html` se sirve con `200` y el favicon `data:` está presente; falta una pasada manual completa por lobby/juego/paneles en un navegador real (no automatizable desde este entorno).
 
 ## Prioridad
 Could Have

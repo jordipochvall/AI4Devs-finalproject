@@ -7,12 +7,12 @@
 Test que lanza más simulaciones que el límite y verifica el rechazo
 
 ## Descripción
-Añadir un test (unitario sobre `SimulationUseCase` con un `SimulationLaunchPort` de prueba que simule N simulaciones `RUNNING`, y/o un IT si aplica) que verifique que, alcanzado el límite configurado de simulaciones concurrentes, una petición adicional se rechaza con el error esperado, y que por debajo del límite se sigue aceptando con normalidad.
+Añadidos dos tests en `SimulationUseCaseTest` (`SimulationLaunchPort` mockeado con `countRunning()`): con el límite alcanzado, rechaza y ni siquiera consulta la config (`ownedConfigPaylineCount`/`createAndLaunch` nunca se llaman); por debajo del límite, acepta y lanza con normalidad. Añadido `EngineConfigTest.simulationExecutorIsBoundedToTheConfiguredSizes` que construye el `ThreadPoolTaskExecutor` con los tamaños configurados y verifica `corePoolSize`/`maxPoolSize`/capacidad de la cola.
 
 ## Criterios de aceptación
-- **AC1**: Test que, con el límite alcanzado, verifica el rechazo de una nueva simulación con el error esperado.
-- **AC2**: Test que, por debajo del límite, verifica la aceptación normal.
-- **AC3**: Test que confirma que el executor configurado no crece sin límite (tamaño de *pool* acotado).
+- **AC1**: Test que, con el límite alcanzado, verifica el rechazo de una nueva simulación con el error esperado. ✅ `launch_atConcurrencyLimit_throwsAndSkipsConfigLookup`.
+- **AC2**: Test que, por debajo del límite, verifica la aceptación normal. ✅ `launch_belowConcurrencyLimit_proceeds`.
+- **AC3**: Test que confirma que el executor configurado no crece sin límite (tamaño de *pool* acotado). ✅ `EngineConfigTest`.
 
 ## Prioridad
 Should Have

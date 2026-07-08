@@ -7,11 +7,12 @@
 Test que fuerza un error de render y verifica el *fallback*
 
 ## Descripción
-Añadir un test (Testing Library) que monte el `ErrorBoundary` con un componente hijo que lance una excepción durante el render, y verifique que se muestra el mensaje de *fallback* en vez de una pantalla en blanco, y que la acción de recuperación está presente y es funcional.
+Añadido `ErrorBoundary.test.tsx` (Testing Library): un caso confirma que, sin errores, los hijos se renderizan con normalidad; otro monta un componente que lanza una excepción y verifica que aparece el `role="alert"` con el botón de recuperación en vez de una pantalla en blanco.
 
 ## Criterios de aceptación
-- **AC1**: Test que fuerza un error de render y verifica que se muestra el mensaje de `ErrorBoundary`.
-- **AC2**: Test que verifica que la acción de recuperación (recargar/volver al inicio) está presente.
+- **AC1**: Test que fuerza un error de render y verifica que se muestra el mensaje de `ErrorBoundary`. ✅
+- **AC2**: Test que verifica que la acción de recuperación (recargar/volver al inicio) está presente. ✅
+- **Verificado también**: suite completa del frontend (32 ficheros, 114 tests) y `tsc --noEmit` en verde tras el cambio; `vite build` genera el bundle sin errores.
 
 ## Prioridad
 Could Have

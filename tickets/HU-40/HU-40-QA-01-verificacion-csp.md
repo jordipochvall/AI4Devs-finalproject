@@ -7,11 +7,11 @@
 Test/verificación de que la cabecera CSP incluye las nuevas directivas y nada se rompe
 
 ## Descripción
-Añadir una verificación (test de configuración de `nginx.conf` si el proyecto tiene *tooling* para ello, o una comprobación manual documentada) de que la cabecera `Content-Security-Policy` devuelta incluye las nuevas directivas, y una pasada manual de regresión por las pantallas principales de la aplicación confirmando que no aparecen recursos bloqueados por CSP en la consola del navegador.
+Verificado en vivo contra el contenedor `web` de desarrollo reconstruido: `curl -D- http://localhost:5173/` devuelve la cabecera `Content-Security-Policy` con las cinco directivas nuevas, e `index.html` (con el favicon `data:`) se sirve `200`.
 
 ## Criterios de aceptación
-- **AC1**: Verificación de que la cabecera CSP servida contiene `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`, `form-action 'self'` e `img-src`.
-- **AC2**: Pasada manual de regresión (lobby, juego, paneles) sin errores de CSP en consola.
+- **AC1**: Verificación de que la cabecera CSP servida contiene `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`, `form-action 'self'` e `img-src`. ✅
+- **AC2**: Pasada manual de regresión (lobby, juego, paneles) sin errores de CSP en consola. ⏳ No ejecutable desde este entorno (sin navegador); pendiente de una pasada manual en un navegador real antes de dar el bloque por cerrado.
 
 ## Prioridad
 Could Have
