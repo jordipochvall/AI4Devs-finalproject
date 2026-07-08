@@ -27,6 +27,9 @@ public interface SimulationRunJpaRepository extends JpaRepository<SimulationRunE
              WHERE s.status = 'RUNNING'""")
     int failRunningSimulations(@Param("message") String message, @Param("now") OffsetDateTime now);
 
+    /** Number of runs currently in a given status (HU-37: caps concurrent RUNNING simulations). */
+    long countByStatus(String status);
+
     /**
      * Operator's simulation history (HU-18), newest first, optionally filtered by config or by game
      * (a game maps to its config versions). Null filters are ignored.

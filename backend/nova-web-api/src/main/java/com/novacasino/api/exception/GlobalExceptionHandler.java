@@ -41,6 +41,7 @@ import com.novacasino.application.math.exception.ConfigNotFoundException;
 import com.novacasino.application.math.exception.SimulationNotFoundException;
 import com.novacasino.application.math.exception.InvalidSimulationParamsException;
 import com.novacasino.application.math.exception.SimulationNotCompletedException;
+import com.novacasino.application.math.exception.TooManySimulationsException;
 import com.novacasino.application.math.exception.ExplainerUnavailableException;
 import com.novacasino.application.math.validation.ConfigValidationException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -231,6 +232,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         body.setTitle(msg("error.validation.title", locale));
         body.setDetail(msg("error.simulation.spinsOutOfRange.detail", locale));
         return ResponseEntity.status(422).body(body);
+    }
+
+    // -------------------------------------------------------------------------
+    // Too many concurrent simulations (HU-37) — 429
+    // -------------------------------------------------------------------------
+
+    @ExceptionHandler(TooManySimulationsException.class)
+    ResponseEntity<ProblemDetail> handleTooManySimulations(final TooManySimulationsException ex) {
+        final Locale locale = LocaleContextHolder.getLocale();
+        final ProblemDetail body = ProblemDetail.forStatus(HttpStatus.TOO_MANY_REQUESTS);
+        body.setType(ABOUT_BLANK);
+        body.setTitle(msg("error.rateLimitExceeded.title", locale));
+        body.setDetail(msg("error.simulation.tooManyConcurrent.detail", locale));
+        return ResponseEntity.status(429).body(body);
     }
 
     @ExceptionHandler(LimitReachedException.class)

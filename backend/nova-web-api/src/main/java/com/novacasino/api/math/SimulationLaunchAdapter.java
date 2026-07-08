@@ -65,6 +65,12 @@ public class SimulationLaunchAdapter implements SimulationLaunchPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public long countRunning() {
+        return simRepo.countByStatus(SimulationRunEntity.RUNNING);
+    }
+
+    @Override
     public SimulationAcceptedDto createAndLaunch(final Long operatorId, final Long userId, final Long configId,
                                                  final long numSpins, final long betCents) {
         final SimulationRunEntity run = simRepo.save(

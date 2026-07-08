@@ -27,6 +27,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:?}
       ANTHROPIC_ENABLED: ${ANTHROPIC_ENABLED:-false}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Seed account passwords (HU-38): set real values for a public demo; blank falls back to the
+      # dev defaults (admin123, etc.) rather than to an empty password.
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_OPERATOR_PASSWORD: ${SEED_OPERATOR_PASSWORD:-}
+      SEED_MATH_PASSWORD: ${SEED_MATH_PASSWORD:-}
+      SEED_PLAYER_PASSWORD: ${SEED_PLAYER_PASSWORD:-}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
       interval: 15s

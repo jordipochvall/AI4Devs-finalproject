@@ -3,6 +3,7 @@ package com.novacasino.application.math;
 import com.novacasino.application.math.exception.ConfigNotFoundException;
 import com.novacasino.application.math.exception.InvalidSimulationParamsException;
 import com.novacasino.application.math.exception.SimulationNotFoundException;
+import com.novacasino.application.math.exception.TooManySimulationsException;
 import com.novacasino.common.dto.SimulationAcceptedDto;
 import com.novacasino.common.dto.SimulationStatusDto;
 import org.slf4j.Logger;
@@ -21,9 +22,11 @@ public class SimulationUseCase {
     static final long MAX_SPINS = 10_000_000L;
 
     private final SimulationLaunchPort port;
+    private final int maxConcurrentSimulations;
 
-    public SimulationUseCase(final SimulationLaunchPort port) {
+    public SimulationUseCase(final SimulationLaunchPort port, final int maxConcurrentSimulations) {
         this.port = port;
+        this.maxConcurrentSimulations = maxConcurrentSimulations;
     }
 
     /**
@@ -34,6 +37,11 @@ public class SimulationUseCase {
                                         final Long numSpins, final Long betCents) {
         if (numSpins == null || numSpins <= 0 || numSpins > MAX_SPINS) {
             throw new InvalidSimulationParamsException("numSpins must be between 1 and " + MAX_SPINS);
+        }
+        // HU-37: reject before touching config/payline lookups if the demo VPS is already at capacity.
+        if (port.countRunning() >= maxConcurrentSimulations) {
+            throw new TooManySimulationsException(
+                    "Too many simulations running (max " + maxConcurrentSimulations + ")");
         }
         final int paylineCount = port.ownedConfigPaylineCount(configId, operatorId)
                 .orElseThrow(() -> new ConfigNotFoundException(configId));

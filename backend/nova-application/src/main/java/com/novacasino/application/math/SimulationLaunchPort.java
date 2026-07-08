@@ -11,6 +11,9 @@ public interface SimulationLaunchPort {
     /** Payline count of a config owned by the operator (via its game); empty if missing/foreign. */
     Optional<Integer> ownedConfigPaylineCount(Long configId, Long operatorId);
 
+    /** Number of simulations currently {@code RUNNING}, across all operators (HU-37). */
+    long countRunning();
+
     /** Persists a RUNNING run and triggers its asynchronous execution, returning the 202 body. */
     SimulationAcceptedDto createAndLaunch(Long operatorId, Long userId, Long configId,
                                           long numSpins, long betCents);

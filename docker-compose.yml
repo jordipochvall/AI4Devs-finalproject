@@ -32,6 +32,11 @@ services:
       ANTHROPIC_ENABLED: ${ANTHROPIC_ENABLED:-false}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      # Seed account passwords (HU-38); blank falls back to the dev defaults (admin123, etc.)
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_OPERATOR_PASSWORD: ${SEED_OPERATOR_PASSWORD:-}
+      SEED_MATH_PASSWORD: ${SEED_MATH_PASSWORD:-}
+      SEED_PLAYER_PASSWORD: ${SEED_PLAYER_PASSWORD:-}
     ports:
       - "8080:8080"
     depends_on:

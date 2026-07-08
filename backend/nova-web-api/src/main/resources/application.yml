@@ -60,6 +60,16 @@ app:
   responsible-gaming:
     cooldown-seconds: ${RG_COOLDOWN_SECONDS:86400}
 
+  # Simulaciones masivas (HU-37): un VPS de demo tiene CPU/memoria limitadas y cada simulación ya
+  # reparte trabajo entre todos los núcleos, así que se acota tanto el número de simulaciones RUNNING
+  # a la vez (rechazo de negocio, 429) como el tamaño del executor asíncrono que las ejecuta.
+  simulation:
+    max-concurrent: ${SIMULATION_MAX_CONCURRENT:3}
+    executor:
+      core-pool-size: ${SIMULATION_EXECUTOR_CORE_POOL_SIZE:2}
+      max-pool-size: ${SIMULATION_EXECUTOR_MAX_POOL_SIZE:4}
+      queue-capacity: ${SIMULATION_EXECUTOR_QUEUE_CAPACITY:10}
+
   # Rate limiting anti-bot/anti-abuso (token bucket en memoria, single-node). Se aplica a
   # POST /api/v1/auth/login (clave por IP) y POST /api/v1/player/games/{id}/spin (clave por
   # usuario autenticado, o IP si no lo está). Al agotarse el cupo se responde 429 (RFC 9457).
@@ -71,6 +81,17 @@ app:
     spin:
       capacity: ${RATE_LIMIT_SPIN_CAPACITY:60}
       refill-period-seconds: ${RATE_LIMIT_SPIN_REFILL_SECONDS:60}
+
+# Seed account passwords (HU-38): kept as real accounts even on a public demo (so an evaluator can
+# log in without requesting one), but their passwords come from the environment instead of being
+# fixed in the source code. Blank/unset falls back to the classic dev values (SeedDataLoader guards
+# against a present-but-empty override too).
+seed:
+  password:
+    admin: ${SEED_ADMIN_PASSWORD:admin123}
+    operator: ${SEED_OPERATOR_PASSWORD:operator123}
+    math: ${SEED_MATH_PASSWORD:math123}
+    player: ${SEED_PLAYER_PASSWORD:player123}
 
 # AI explainability (HU-8 / HU-32). Disabled by default: without a key the explain endpoint answers
 # with a local, deterministic OfflineExplainer (heuristic summary of the metrics) instead of a 503.

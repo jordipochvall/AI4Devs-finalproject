@@ -20,6 +20,14 @@ Inyectados desde el gestor de secretos / GitHub Environments:
 `*_DB_URL`, `*_DB_USER`, `*_DB_PASSWORD`, `*_JWT_SECRET`, `*_ANTHROPIC_API_KEY`, `*_BASE_URL`
 (prefijos `STAGING_`/`PROD_`).
 
+**Cuentas semilla (HU-38).** El sembrado de cuentas demo (`admin@nova.test`, `operator@nova.test`,
+`math@nova.test`, `player{1,2,3}@nova.test`) se mantiene siempre — útil para que un evaluador entre
+sin pedir alta — pero sus contraseñas se pueden fijar por entorno: `SEED_ADMIN_PASSWORD`,
+`SEED_OPERATOR_PASSWORD`, `SEED_MATH_PASSWORD`, `SEED_PLAYER_PASSWORD`. En blanco/sin definir, caen
+en los valores de desarrollo (`admin123`, etc.). Si se fija `SEED_PLAYER_PASSWORD` en el despliegue,
+pasar el mismo valor a `scripts/smoke-test.sh` (variable de entorno del mismo nombre) para que el
+*smoke test* siga pudiendo loguearse.
+
 ## Artefactos
 
 | Archivo | Rol |

@@ -3,6 +3,7 @@ package com.novacasino.application.math;
 import com.novacasino.application.math.exception.ConfigNotFoundException;
 import com.novacasino.application.math.exception.InvalidSimulationParamsException;
 import com.novacasino.application.math.exception.SimulationNotFoundException;
+import com.novacasino.application.math.exception.TooManySimulationsException;
 import com.novacasino.common.dto.SimulationAcceptedDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ class SimulationUseCaseTest {
     private static final long OPERATOR = 1L;
     private static final long USER = 9L;
     private static final long CONFIG = 100L;
+    private static final int MAX_CONCURRENT = 3;
 
     private SimulationLaunchPort port;
     private SimulationUseCase useCase;
@@ -28,7 +30,8 @@ class SimulationUseCaseTest {
     @BeforeEach
     void setUp() {
         port = mock(SimulationLaunchPort.class);
-        useCase = new SimulationUseCase(port);
+        when(port.countRunning()).thenReturn(0L);
+        useCase = new SimulationUseCase(port, MAX_CONCURRENT);
     }
 
     @Test
@@ -38,6 +41,26 @@ class SimulationUseCaseTest {
         assertThatThrownBy(() -> useCase.launch(OPERATOR, USER, CONFIG, 10_000_001L, 100L))
                 .isInstanceOf(InvalidSimulationParamsException.class);
         verify(port, never()).ownedConfigPaylineCount(any(), any());
+    }
+
+    @Test
+    void launch_atConcurrencyLimit_throwsAndSkipsConfigLookup() {
+        when(port.countRunning()).thenReturn((long) MAX_CONCURRENT);
+        assertThatThrownBy(() -> useCase.launch(OPERATOR, USER, CONFIG, 1000L, 100L))
+                .isInstanceOf(TooManySimulationsException.class);
+        verify(port, never()).ownedConfigPaylineCount(any(), any());
+        verify(port, never()).createAndLaunch(any(), any(), any(), anyLong(), anyLong());
+    }
+
+    @Test
+    void launch_belowConcurrencyLimit_proceeds() {
+        when(port.countRunning()).thenReturn((long) (MAX_CONCURRENT - 1));
+        when(port.ownedConfigPaylineCount(CONFIG, OPERATOR)).thenReturn(Optional.of(5));
+        final SimulationAcceptedDto accepted =
+                new SimulationAcceptedDto(7L, "RUNNING", OffsetDateTime.now(), "/api/v1/math/simulations/7");
+        when(port.createAndLaunch(OPERATOR, USER, CONFIG, 1000L, 500L)).thenReturn(accepted);
+
+        assertThat(useCase.launch(OPERATOR, USER, CONFIG, 1000L, 500L).simulationId()).isEqualTo(7L);
     }
 
     @Test

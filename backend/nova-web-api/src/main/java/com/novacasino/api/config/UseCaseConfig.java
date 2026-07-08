@@ -118,8 +118,10 @@ public class UseCaseConfig {
     }
 
     @Bean
-    SimulationUseCase simulationUseCase(final SimulationLaunchPort simulationLaunchPort) {
-        return new SimulationUseCase(simulationLaunchPort);
+    SimulationUseCase simulationUseCase(
+            final SimulationLaunchPort simulationLaunchPort,
+            @Value("${app.simulation.max-concurrent:3}") final int maxConcurrentSimulations) {
+        return new SimulationUseCase(simulationLaunchPort, maxConcurrentSimulations);
     }
 
     @Bean

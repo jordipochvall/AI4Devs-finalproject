@@ -50,7 +50,7 @@ public class SimulationExecutor {
     }
 
     /** Executes the run in a background thread; never throws to the caller. */
-    @Async
+    @Async("simulationTaskExecutor")
     public void run(final Long simulationId, final Long configId, final long numSpins, final long betCents) {
         try {
             final GameConfigEntity config = configRepo.findById(configId)

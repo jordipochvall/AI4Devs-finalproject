@@ -2,6 +2,7 @@ package com.novacasino.api.seed;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,6 +24,11 @@ import java.util.Objects;
  * target (HU-31); they live as JSON resources under {@code /seed/*.json} (single source of truth,
  * also read by the RTP regression guard). Free-spins retrigger is disabled so the demo can never
  * hang (the engine supports it; convergence is the mathematician's responsibility, readme §3.3.3).
+ *
+ * <p>Seed accounts are kept even for a public demo (HU-38: they let an evaluator log in without
+ * requesting an account), but their passwords are configurable via {@code SEED_*_PASSWORD}
+ * environment variables instead of being fixed in the source code, defaulting to the classic
+ * dev/demo values when unset.
  */
 @Component
 public class SeedDataLoader implements ApplicationRunner {
@@ -31,9 +37,27 @@ public class SeedDataLoader implements ApplicationRunner {
 
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
+    private final String adminPassword;
+    private final String operatorPassword;
+    private final String mathPassword;
+    private final String playerPassword;
 
-    public SeedDataLoader(final JdbcTemplate jdbc) {
+    public SeedDataLoader(final JdbcTemplate jdbc,
+                          @Value("${seed.password.admin:admin123}") final String adminPassword,
+                          @Value("${seed.password.operator:operator123}") final String operatorPassword,
+                          @Value("${seed.password.math:math123}") final String mathPassword,
+                          @Value("${seed.password.player:player123}") final String playerPassword) {
         this.jdbc = jdbc;
+        // A container env var explicitly set to "" (e.g. an unfilled .env line) counts as "present"
+        // for Spring's ${..:default} resolution, so it would NOT fall back — guard against that here.
+        this.adminPassword = orDefault(adminPassword, "admin123");
+        this.operatorPassword = orDefault(operatorPassword, "operator123");
+        this.mathPassword = orDefault(mathPassword, "math123");
+        this.playerPassword = orDefault(playerPassword, "player123");
+    }
+
+    private static String orDefault(final String value, final String defaultValue) {
+        return (value == null || value.isBlank()) ? defaultValue : value;
     }
 
     @Override
@@ -50,14 +74,14 @@ public class SeedDataLoader implements ApplicationRunner {
         final Long operatorId = jdbc.queryForObject(
                 "SELECT id FROM operators WHERE code = 'novacasino-default'", Long.class);
 
-        // --- Users ---
-        insertUser(operatorId, "admin@nova.test",    "admin123",    "ADMIN",        "1975-01-01", "es");
-        insertUser(operatorId, "operator@nova.test", "operator123", "OPERATOR",     "1980-01-01", "es");
+        // --- Users (passwords configurable via SEED_*_PASSWORD, HU-38) ---
+        insertUser(operatorId, "admin@nova.test",    adminPassword,    "ADMIN",        "1975-01-01", "es");
+        insertUser(operatorId, "operator@nova.test", operatorPassword, "OPERATOR",     "1980-01-01", "es");
         final Long mathUserId = insertUser(operatorId,
-                "math@nova.test",    "math123",     "MATH_ANALYST", "1985-06-15", "es");
-        final Long p1 = insertUser(operatorId, "player1@nova.test", "player123", "PLAYER", "1990-03-20", "es");
-        final Long p2 = insertUser(operatorId, "player2@nova.test", "player123", "PLAYER", "1988-07-12", "es");
-        final Long p3 = insertUser(operatorId, "player3@nova.test", "player123", "PLAYER", "1995-11-30", "en");
+                "math@nova.test",    mathPassword,     "MATH_ANALYST", "1985-06-15", "es");
+        final Long p1 = insertUser(operatorId, "player1@nova.test", playerPassword, "PLAYER", "1990-03-20", "es");
+        final Long p2 = insertUser(operatorId, "player2@nova.test", playerPassword, "PLAYER", "1988-07-12", "es");
+        final Long p3 = insertUser(operatorId, "player3@nova.test", playerPassword, "PLAYER", "1995-11-30", "en");
 
         // --- Wallets for players (1,000 EUR = 100,000 cents) ---
         insertWallet(operatorId, p1, 100_000L);
