@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://REPLACE_WITH_RENDER_URL.onrender.com/api/$1"
+      "destination": "https://ai4devs-finalproject-l7n1.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
