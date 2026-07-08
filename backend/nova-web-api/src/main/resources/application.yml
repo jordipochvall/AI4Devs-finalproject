@@ -37,6 +37,18 @@ server:
   error:
     include-message: always
 
+# HU-33: only "health" is exposed over HTTP (Spring Boot's own default, made explicit here) and
+# without details, so the public healthcheck (deploy/docker-compose.prod.yml, scripts/smoke-test.sh)
+# reveals nothing about the app beyond UP/DOWN. It is permitted without auth in SecurityConfig.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 app:
   jwt:
     secret: ${JWT_SECRET}
