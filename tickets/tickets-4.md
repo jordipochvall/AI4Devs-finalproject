@@ -4,7 +4,7 @@ Cuarto bloque de implementación, en continuidad con el MVP de [`tickets.md`](ti
 
 **Convenciones:** código `HU-N-EQUIPO-NN` · equipos **BE** (Backend), **FE** (Frontend), **QA**, **DEV** (DevOps/Plataforma) · estimación en **Story Points** Fibonacci (1, 2, 3, 5, 8, 13).
 
-> **Estado: 1/8 historias implementadas.** HU-33 implementada y verificada en vivo (rebuild del contenedor `api` de desarrollo + `curl`). HU-34 parcial (`.github/workflows` versionado; el `Environment` de GitHub queda bloqueado sin un VPS/dominio real). HU-35 bloqueada por el mismo motivo. Trazabilidad en [`../conversation.md`](../conversation.md).
+> **Estado: 2/8 historias implementadas.** HU-33 y HU-36 implementadas y verificadas en vivo (rebuild del contenedor `api` de desarrollo + `curl` + un `docker run` puntual). HU-34 parcial (`.github/workflows` versionado; el `Environment` de GitHub queda bloqueado sin un VPS/dominio real). HU-35 bloqueada por el mismo motivo. Trazabilidad en [`../conversation.md`](../conversation.md).
 
 ## HU-33 — Bug: `/actuator/health` exige autenticación y rompe el propio despliegue (3 SP) — ✅ Implementada
 
@@ -31,12 +31,14 @@ Cuarto bloque de implementación, en continuidad con el MVP de [`tickets.md`](ti
 | [HU-35-DEV-01](HU-35/HU-35-DEV-01-tls-proxy.md) | TLS automático delante de `web` | DevOps | 3 |
 | [HU-35-DEV-02](HU-35/HU-35-DEV-02-cerrar-puerto-api.md) | Dejar de publicar el puerto de la API al host | DevOps | 1 |
 
-## HU-36 — La API rechaza arrancar con secretos de despliegue débiles o de ejemplo (3 SP)
+## HU-36 — La API rechaza arrancar con secretos de despliegue débiles o de ejemplo (3 SP) — ✅ Implementada
 
 | Código | Título | Equipo | SP |
 |---|---|---|---|
 | [HU-36-BE-01](HU-36/HU-36-BE-01-validar-jwt-secret.md) | Rechazar `JWT_SECRET` débil al arrancar | Backend | 2 |
 | [HU-36-DEV-01](HU-36/HU-36-DEV-01-placeholder-env-example.md) | Placeholder no productivo en `.env.example` | DevOps | 1 |
+
+> **Verificado con `docker run` puntual** de la imagen reconstruida: `JWT_SECRET=admin` → `IllegalStateException` en el arranque, el contenedor no llega a exponer el puerto; con el secreto real (64+ bytes) generado por `openssl rand -base64 48`, arranca con normalidad.
 
 ## HU-37 — Acotar la concurrencia de simulaciones para proteger el VPS del demo (5 SP)
 

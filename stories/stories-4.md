@@ -12,7 +12,7 @@ Cuarto bloque del backlog, en continuidad con el MVP de [`stories.md`](stories.m
 
 > **Desglose en tickets:** [`../tickets/tickets-4.md`](../tickets/tickets-4.md).
 
-> **Estado: 1/8 implementadas.** HU-33 implementada y verificada en vivo. **HU-34 parcial** (`.github/workflows` versionado; falta el `Environment` de GitHub, bloqueado porque todavía no hay VPS/dominio real). **HU-35 bloqueada por el mismo motivo** (TLS necesita un dominio real). Se continúa con HU-36..40, que no dependen de tener un VPS. Detalle en [`../conversation.md`](../conversation.md).
+> **Estado: 2/8 implementadas.** HU-33 y HU-36 implementadas y verificadas en vivo. **HU-34 parcial** (`.github/workflows` versionado; falta el `Environment` de GitHub, bloqueado porque todavía no hay VPS/dominio real). **HU-35 bloqueada por el mismo motivo** (TLS necesita un dominio real). Se continúa con HU-37..40, que no dependen de tener un VPS. Detalle en [`../conversation.md`](../conversation.md).
 
 ## Unidades de estimación
 
@@ -31,7 +31,7 @@ Igual que en los bloques previos: las **historias** se estiman con **tallas** (S
 | [HU-33](HU-33.md) | Bug: `/actuator/health` exige autenticación y rompe el propio despliegue | Plataforma/DevOps | Must | S | Auditoría de despliegue | ✅ Implementada |
 | [HU-34](HU-34.md) | Versionar y activar el pipeline de CI/CD para poder desplegar al VPS | Plataforma/DevOps | Should | S | Auditoría de despliegue | 🟡 Parcial (falta VPS) |
 | [HU-35](HU-35.md) | El demo público sólo se sirve por HTTPS y la API no queda expuesta directamente | Plataforma/DevOps | Must | S/M | Auditoría de despliegue | ⏳ Bloqueada (falta VPS) |
-| [HU-36](HU-36.md) | La API rechaza arrancar con secretos de despliegue débiles o de ejemplo | Plataforma/DevOps | Should | S | Auditoría de despliegue | ⏳ Pendiente |
+| [HU-36](HU-36.md) | La API rechaza arrancar con secretos de despliegue débiles o de ejemplo | Plataforma/DevOps | Should | S | Auditoría de despliegue | ✅ Implementada |
 | [HU-37](HU-37.md) | Acotar la concurrencia de simulaciones para proteger el VPS del demo | Matemático/Plataforma | Should | S/M | Auditoría de despliegue | ⏳ Pendiente |
 | [HU-38](HU-38.md) | Las contraseñas de las cuentas semilla del demo se configuran por entorno | Plataforma/DevOps | Should | S | Auditoría de despliegue | ⏳ Pendiente |
 | [HU-39](HU-39.md) | Un error de render no deja la pantalla en blanco | Transversal | Could | S | Auditoría de despliegue | ⏳ Pendiente |
@@ -42,7 +42,7 @@ Igual que en los bloques previos: las **historias** se estiman con **tallas** (S
 - **HU-33** corrige un **bug que impide que el propio despliegue documentado arranque**: el *healthcheck* de `deploy/docker-compose.prod.yml` y `scripts/smoke-test.sh` asumen `/actuator/health` accesible sin token, pero al implementarla se descubrió una causa más profunda de lo esperado — **`spring-boot-starter-actuator` ni siquiera era una dependencia del proyecto** (el *endpoint* no existía), además de que `SecurityConfig` lo habría bloqueado igualmente. Es el bloqueante nº 1 y no depende de nada más del bloque. **✅ Implementada** y verificada en vivo (`GET /actuator/health` → `200 {"status":"UP"}` sin token; el resto de rutas, incluido `/actuator/env`, sigue en `401`).
 - **HU-34** pone en marcha lo que **HU-24** ya diseñó pero nunca llegó a versionarse: `.github/workflows/` está en disco pero no en git, así que no hay CI/CD real hasta comprometerlo y configurar el entorno de destino (VPS).
 - **HU-35** cierra la exposición de red innecesaria para un demo **público**: TLS delante de `web` y dejar de publicar el puerto 8080 de `api` directamente al host.
-- **HU-36** evita un error de despliegue silencioso: que el `JWT_SECRET` de ejemplo (`admin`) o cualquier valor débil llegue a firmar sesiones en el VPS público.
+- **HU-36** evita un error de despliegue silencioso: que el `JWT_SECRET` de ejemplo (`admin`) o cualquier valor débil llegue a firmar sesiones en el VPS público. **✅ Implementada**: `JwtService` falla al arrancar con secretos < 32 bytes (verificado con un `docker run` puntual: `IllegalStateException` y el contenedor no llega a exponer el puerto); el `.env`/`.env.example` locales ya usan un placeholder/secreto no triviales.
 - **HU-37** protege los recursos limitados de un VPS de demo frente a un uso normal pero simultáneo (varias simulaciones de millones de giros a la vez).
 - **HU-38** mantiene las cuentas semilla (útiles para que un evaluador entre sin pedir alta) pero saca sus contraseñas del código fuente a variables de entorno propias del VPS.
 - **HU-39** y **HU-40** son mejoras de bajo esfuerzo y alto valor de cara a quien pruebe el demo por primera vez: no ver una pantalla en blanco ante un error, y una CSP más completa como mitigación barata mientras el token viva en `localStorage`.
