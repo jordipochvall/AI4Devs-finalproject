@@ -4,8 +4,7 @@ import com.novacasino.infrastructure.persistence.entity.UserEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -18,19 +17,33 @@ import java.util.Date;
 
 /**
  * Creates and validates JWT Bearer tokens (HS256). The JWT secret is normalised to 256 bits
- * via SHA-256 so short values still work in development. In production use a secret with at
- * least 32 bytes of entropy.
+ * via SHA-256, but the source secret itself must already carry at least 32 bytes of entropy
+ * (HU-36): a short or example secret (e.g. the placeholder in {@code .env.example}) makes the
+ * derived key trivially guessable regardless of its hashed length, so the app refuses to start
+ * rather than silently signing sessions with a weak secret.
  */
 @Service
 public class JwtService {
 
-    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
+    /** Minimum entropy of app.jwt.secret (HU-36): fail-fast at startup below this. */
+    static final int MIN_SECRET_BYTES = 32;
 
     @Value("${app.jwt.secret}")
     private String secret;
 
     @Value("${app.jwt.ttl-seconds}")
     private long ttlSeconds;
+
+    @PostConstruct
+    void validateSecret() {
+        final int length = secret == null ? 0 : secret.getBytes(StandardCharsets.UTF_8).length;
+        if (length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "app.jwt.secret (JWT_SECRET) must be at least " + MIN_SECRET_BYTES
+                            + " bytes long, got " + length
+                            + ". Generate one with: openssl rand -base64 48");
+        }
+    }
 
     /** Issues a signed JWT carrying the user's id (subject), email and role. */
     public String generateToken(final UserEntity user) {
@@ -77,12 +90,8 @@ public class JwtService {
     /** Derives a 256-bit HMAC key from the configured secret via SHA-256. */
     private SecretKey signingKey() {
         try {
-            final byte[] raw = secret.getBytes(StandardCharsets.UTF_8);
-            if (raw.length < 32) {
-                log.warn("JWT_SECRET is shorter than 32 bytes; use a longer secret in production.");
-            }
             final MessageDigest sha = MessageDigest.getInstance("SHA-256");
-            final byte[] keyBytes = sha.digest(raw);
+            final byte[] keyBytes = sha.digest(secret.getBytes(StandardCharsets.UTF_8));
             return new SecretKeySpec(keyBytes, "HmacSHA256");
         } catch (final NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
