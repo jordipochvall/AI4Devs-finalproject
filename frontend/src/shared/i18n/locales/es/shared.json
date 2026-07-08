@@ -39,6 +39,11 @@
     "es": "Español",
     "en": "English"
   },
+  "errorBoundary": {
+    "title": "Algo ha ido mal",
+    "message": "Ha ocurrido un error inesperado. Puedes intentar recargar la página.",
+    "reload": "Recargar"
+  },
   "compliance": {
     "seal": "Operador autorizado por la DGOJ",
     "plus18": "+18",

@@ -39,6 +39,11 @@
     "es": "Español",
     "en": "English"
   },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred. You can try reloading the page.",
+    "reload": "Reload"
+  },
   "compliance": {
     "seal": "Operator authorised by DGOJ",
     "plus18": "+18",
