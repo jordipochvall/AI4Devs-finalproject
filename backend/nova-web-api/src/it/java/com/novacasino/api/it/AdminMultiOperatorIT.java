@@ -30,6 +30,7 @@ class AdminMultiOperatorIT extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdAt").isNotEmpty()) // regression: was null right after creation
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(json);
     }

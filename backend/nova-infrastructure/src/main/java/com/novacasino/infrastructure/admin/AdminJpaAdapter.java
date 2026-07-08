@@ -56,7 +56,10 @@ public class AdminJpaAdapter implements AdminPort {
         user.setLocale("es");
         userRepo.save(user);
 
-        return toDto(operator);
+        // created_at is DB-computed (insertable=false); the in-memory entity still has it null right
+        // after save(), so read it back explicitly instead of returning a DTO with createdAt: null.
+        return new OperatorDto(operator.getId(), operator.getCode(), operator.getName(), operator.isActive(),
+                operatorRepo.findCreatedAtById(operator.getId()));
     }
 
     @Override
