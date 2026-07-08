@@ -1,0 +1,101 @@
+name: CD
+
+# Continuous delivery (HU-24, decision D9): build & publish versioned images on main, deploy to
+# staging automatically with health checks, then promote to production with manual approval and a
+# rehearsed rollback. Secrets (DB, JWT, ANTHROPIC_API_KEY) come from the secret manager, never baked
+# into the image.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  # 1) Build and publish version-tagged API and web images to the registry.
+  build-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute version tag
+        id: meta
+        run: echo "version=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to the container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-api:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-api:latest
+
+      - name: Build & push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-web:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-web:latest
+
+  # 2) Deploy to staging: apply DB migrations (Flyway runs on app start) and run smoke tests.
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build-images
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging (IaC)
+        run: ./deploy/deploy.sh staging "${{ needs.build-images.outputs.version }}"
+        env:
+          SPRING_DATASOURCE_URL: ${{ secrets.STAGING_DB_URL }}
+          SPRING_DATASOURCE_USERNAME: ${{ secrets.STAGING_DB_USER }}
+          SPRING_DATASOURCE_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.STAGING_JWT_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.STAGING_ANTHROPIC_API_KEY }}
+
+      - name: Smoke test staging
+        run: ./scripts/smoke-test.sh "${{ secrets.STAGING_BASE_URL }}"
+
+  # 3) Promote to production: requires manual approval (GitHub Environment protection) + rollback.
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment: production   # configure required reviewers in repo settings → Environments
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production (IaC)
+        run: ./deploy/deploy.sh production "${{ needs.build-images.outputs.version }}"
+        env:
+          SPRING_DATASOURCE_URL: ${{ secrets.PROD_DB_URL }}
+          SPRING_DATASOURCE_USERNAME: ${{ secrets.PROD_DB_USER }}
+          SPRING_DATASOURCE_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.PROD_ANTHROPIC_API_KEY }}
+
+      - name: Smoke test production
+        id: smoke
+        run: ./scripts/smoke-test.sh "${{ secrets.PROD_BASE_URL }}"
+
+      - name: Rollback on failed smoke test
+        if: failure()
+        run: ./deploy/rollback.sh production
