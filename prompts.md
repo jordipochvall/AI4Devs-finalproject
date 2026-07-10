@@ -482,5 +482,110 @@ A continuación se ejecuta:
 
 Cada historia incluye narrativa estándar (*Como… quiero… para…*), prioridad/estimación, **criterios de aceptación en formato BDD (Gherkin en español)** y una tabla de **verificación INVEST** (Independiente, Negociable, Valiosa, Estimable, Small, Testable) más el alcance excluido.
 
+---
 
+## Fase 9 · Rol Consultor Arquitecto Senior — Revisión y mejoras de diseño (punto 2/3 del readme)
 
+### Prompt 29-31 — Diagnóstico consultivo: motor de doble vía y replay "guardar-y-renderizar"
+
+**Pregunta del usuario:**
+
+> Eres un arquitecto senior… actúas como consultor para revisar este proyecto. No quiero críticas capciosas, quiero críticas sobre temas importantes que aporten valor.
+
+**Respuesta del asistente:** dos decisiones arquitectónicas de fondo, elegidas por el usuario entre los temas planteados. (1) **Motor de doble vía**: un único `SpinKernel` + dos materializaciones vía sink/visitor — `CountingSink` (simulador, cero-alloc) y `MaterializingSink` (producción); la fidelidad "lo simulado = lo jugado" queda garantizada **por construcción**, no por disciplina. (2) **Replay = guardar-y-renderizar, no recalcular**: el replay muestra el `result` inmutable ya guardado; así el motor evoluciona (v2, v3…) sin mantener N versiones, con un **golden-master** en CI como *tripwire* del determinismo.
+
+### Prompt 32 — El RTP es un input declarado por el matemático, no un output calculado
+
+**Pregunta del usuario:**
+
+> ¿No es en realidad parte del trabajo del matemático? La idea es proporcionarle herramientas para ayudarle, no sustituirle.
+
+**Respuesta del asistente:** reencuadre de todo el modelo de simulación bajo ese principio: `rtp_target`/`volatility_target` pasan a ser **declarados**, no calculados; la plataforma solo **mide y descompone**. Principio rector documentado en el readme: *"la plataforma mide y descompone; el matemático declara y decide."*
+
+---
+
+## Fase 12-13 · Revisión de errores de definición y ambigüedades (punto 4 del readme)
+
+### Prompt 35-36 — Errores de definición y ambigüedades detectados antes de programar
+
+**Pregunta del usuario:** revisión como arquitecto buscando "errores de definición" (no capciosos); después, lectura crítica como developer senior de gambling que aterriza sin saber nada del proyecto.
+
+**Respuesta del asistente:** el hallazgo más grave (**F1**): la `paytable` paga "sobre la apuesta por línea" pero la API de spin solo recibía `betCents` total, sin regla que ligara apuesta↔líneas — **imposible calcular el premio**. Resuelto con `lineBet = betCents / paylines.length`. La segunda pasada añadió **11 reglas de negocio** no explícitas (evaluación de líneas con WILD, alcance del multiplicador de free spins, tiras de rodillo circulares, concurrencia optimista del wallet). Ambas rondas evitaron descubrir estas ambigüedades a mitad de la implementación del motor.
+
+---
+
+## Fase 14-25 · Implementación del MVP (12 historias, 40 tickets)
+
+### Prompt 56/57/59/76 — El motor de juego y el cierre del MVP
+
+**Respuesta del asistente:** núcleo del producto en `nova-domain` (Java puro, sin Spring/JPA): `GameCompiler`→`CompiledGame` (primitivos cacheados) y `SpinKernel` (cero-alloc, aritmética entera, cascada de free spins). **Hallazgo:** el config "Egipcio" de ejemplo del readme no estaba balanceado (el retrigger divergía) — el motor debe tolerarlo, pero el balanceo es responsabilidad del matemático (esto anticipó el bug de RTP que se resolvería mucho después en HU-31). Probado con ArchUnit + property-based (jqwik) + **golden-master** (corpus congelado que rompe el build ante *drift* del motor). **🎉 MVP al 100% (129/129 SP)**: 12 historias y 40 tickets implementados, probados y documentados, cubriendo las tres superficies (jugador, operador, matemático) de principio a fin.
+
+---
+
+## Fase 26 · Backlog de evolución (post-MVP, `HU-13`…`HU-26`)
+
+### Prompt 77 — Crear el backlog post-MVP (`stories-2.md` + 14 historias)
+
+**Pregunta del usuario:** crear el resto de historias para completar la app más allá del MVP.
+
+**Respuesta del asistente:** **14 historias `HU-13`…`HU-26`** que completan los 11 endpoints *post-MVP* ya especificados en el contrato del MVP y materializan las decisiones diferidas de §1.5 (integridad *tamper-evident*, informes DGOJ, particionado, despliegue cloud, multi-operador, jackpots). Implementadas en su totalidad en fases posteriores (89 unit + 107 IT verdes).
+
+---
+
+## Fase transversal · Refactor a hexagonal estricto (punto 2 del readme)
+
+### Prompt 88/95 — Refactor a hexagonal estricto: de principio a fin
+
+**Pregunta del usuario:** "la B" — poblar `nova-application`/`nova-common` con la arquitectura hexagonal estricta ya diseñada pero nunca aplicada (los módulos estaban vacíos pese a que los POMs ya la cableaban).
+
+**Respuesta del asistente:** **17 casos de uso migrados** con un patrón repetido (puerto en `nova-application`, adaptador `@Component` en infraestructura, `@Bean` en `UseCaseConfig`, guard `ApplicationArchTest` de ArchUnit). Decisión de diseño explícita al cierre: `SpinService`/`IdempotencyService`/`JackpotService` **permanecen** en `nova-web-api` porque su reintento captura `OptimisticLockingFailureException` (Spring) y moverlos violaría la propia regla ArchUnit — el pragmatismo sobre la pureza dogmática.
+
+---
+
+## Fase · Identidad visual y Design System (punto 1.3 y nuevo punto 5 del readme)
+
+### Prompt 112 — Auditoría UX/UI + Design System (HU-28..30)
+
+**Pregunta del usuario:** actuar como experto en usabilidad y diseño; detectar puntos de mejora (fondos temáticos, tipografía, responsive sin scroll, giro de rodillos natural).
+
+**Respuesta del asistente:** base de diseño (`shared/theme/`: fuentes auto-alojadas, tokens, componentes canónicos) y refactor de `<SlotGame>` a rodillos por columna con parada escalonada y layout sin scroll. **Esta es la fase que crea el nuevo §5 "Especificaciones de frontend" del readme**, renumerando Historias/Tickets/Pull Requests a §6/§7/§8. (Precedida por varias rondas de generación iterativa de *assets* de audio/imagen con IA, ya que el repo nunca había incluido ninguno.)
+
+---
+
+## Fase · Bug de RTP y "ask the AI" funcional (bloque 3, `HU-31`/`HU-32`)
+
+### Prompt 114 — HU-31: recalibración del RTP de los juegos semilla (bug ~3000%)
+
+**Respuesta del asistente:** diagnóstico confirmado con un arnés de medición: el motor era correcto, las 3 configs semilla no estaban calibradas (RTP originales de hasta 3517%). Recalibradas y extraídas a JSON como fuente única, con guard de regresión que falla si el RTP se sale de banda. *(Un incidente posterior reveló que una versión antigua rota podía re-publicarse por error, al ser `game_configs` append-only — mitigado mostrando fecha/notas de cada versión en el panel del matemático.)*
+
+### Prompt 117 — HU-32: "ask the AI" funcional con modo offline sin key
+
+**Respuesta del asistente:** nuevo `OfflineExplainer` (activo por defecto) que devuelve un resumen heurístico determinista de las métricas en vez de un `503` — "ask the AI" funciona out-of-the-box sin coste ni API key. La activación real de Claude degrada a `503` ante cualquier fallo del proveedor en vez de `500`.
+
+---
+
+## Fase · Auditoría de preparación para el despliegue (bloque 4, `HU-33`…`HU-40`)
+
+### Prompt 121-122 — Auditoría de producción, re-triada para un demo público (no producción real)
+
+**Pregunta del usuario:** "actúa como auditor de software experto en QA... problemas para la salida a producción" — y, antes de convertir cada hallazgo en historia, el usuario **replanteó el objetivo real**: no es una producción regulada, es una demo con acceso público.
+
+**Respuesta del asistente:** el re-triaje cambia qué hallazgos importan — se descartan explícitamente (Swagger público, JWT en `localStorage`, rate limiter multi-nodo) y se mantienen 8 historias que sí bloquean o aportan valor real a un demo público (el `/actuator/health` roto era literalmente bloqueante para el propio *healthcheck* de despliegue).
+
+### Prompt 126-127 — Bloque 4 implementado y revisión manual de los 35 endpoints reales
+
+**Pregunta del usuario:** "Sí, hazlas todas" (HU-37..40); después, "revisión por todos los endpoints reales".
+
+**Respuesta del asistente:** concurrencia de simulaciones acotada (**incidente detectado en vivo, no por los tests**: una colisión de nombre de bean con un `@Component` autodetectado impedía arrancar el contenedor), `ErrorBoundary` y CSP endurecida. La revisión posterior de los 35 endpoints reales encontró un bug genuino (`POST /admin/operators` devolvía `createdAt: null` por una columna calculada por la BBDD que nunca se releía tras `save()`), corregido con una consulta escalar dedicada.
+
+---
+
+## Fase · Despliegue de la demo pública (Vercel + Render + Neon)
+
+### Prompt 128-129 — Decisión de arquitectura de despliegue y ejecución verificada
+
+**Pregunta del usuario:** "Ahora quiero poder subir esto en un entorno para una demo... ¿Cómo lo ves [Vercel para todo + Neon]?"
+
+**Respuesta del asistente:** verificado que Vercel sí soporta `Dockerfile.vercel`, pero se descarta para el backend: correría como *Vercel Function* (escala a cero), incompatible con las simulaciones en segundo plano de HU-37. Elegido en su lugar: Vercel solo para el frontend (proxy server-side sin CORS) + Render (contenedor Docker persistente) + Neon (Postgres, endpoint directo por los *advisory locks* de Flyway). Ejecutado y verificado en vivo de extremo a extremo tras resolver dos incidencias de configuración de Render (ruta del Dockerfile, variable de entorno olvidada).
+
+> **Demo pública verificada**: https://ai-4-devs-finalproject-omega.vercel.app

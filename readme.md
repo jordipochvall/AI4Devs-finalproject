@@ -23,9 +23,10 @@
    - 4.2. [Catálogo de endpoints](#42-catálogo-de-endpoints)
    - 4.3. [Ficha de cada endpoint](#43-ficha-de-cada-endpoint)
    - 4.4. [Especificación OpenAPI y ejemplos](#44-especificación-openapi-31-y-ejemplos--endpoints-prioritarios)
-5. [Historias de usuario](#5-historias-de-usuario)
-6. [Tickets de trabajo](#6-tickets-de-trabajo)
-7. [Pull requests](#7-pull-requests)
+5. [Especificaciones de frontend](#5-especificaciones-de-frontend)
+6. [Historias de usuario](#6-historias-de-usuario)
+7. [Tickets de trabajo](#7-tickets-de-trabajo)
+8. [Pull requests](#8-pull-requests)
 
 ---
 
@@ -47,13 +48,15 @@ El alcance de esta primera versión cubre 3 video slots jugables (dos 5x3 con bo
 
 ### **0.4. URL del proyecto:**
 
-Pendiente de despliegue público. Esta primera fase contempla únicamente ejecución local mediante Docker Compose (ver sección [1.4](#14-instrucciones-de-instalación)). El despliegue en cloud se valorará en fases posteriores.
+**Demo pública:** https://ai-4-devs-finalproject-omega.vercel.app (frontend en Vercel; backend en Render, `https://ai4devs-finalproject-l7n1.onrender.com`; base de datos en Neon). El backend corre en el plan gratuito de Render, que *duerme* tras 15 min sin tráfico — la primera carga tras un rato de inactividad puede tardar unos segundos más de lo normal mientras despierta el contenedor.
+
+También puede ejecutarse en local con Docker Compose (ver sección [1.4](#14-instrucciones-de-instalación)); ambas vías comparten el mismo código. Detalle del despliegue en [`deploy/README.md`](deploy/README.md) y en [2.4](#24-infraestructura-y-despliegue).
 
 > Puede ser pública o privada, en cuyo caso deberás compartir los accesos de manera segura. Puedes enviarlos a [alvaro@lidr.co](mailto:alvaro@lidr.co) usando algún servicio como [onetimesecret](https://onetimesecret.com/).
 
 ### 0.5. URL o archivo comprimido del repositorio
 
-Repositorio público de GitHub: `https://github.com/<owner>/AI4Devs-finalproject` (sustituir `<owner>` por el usuario/organización propietaria del fork).
+Repositorio público de GitHub: `https://github.com/jordipochvall/AI4Devs-finalproject`.
 
 > Puedes tenerlo alojado en público o en privado, en cuyo caso deberás compartir los accesos de manera segura. Puedes enviarlos a [alvaro@lidr.co](mailto:alvaro@lidr.co) usando algún servicio como [onetimesecret](https://onetimesecret.com/). También puedes compartir por correo un archivo zip con el contenido
 
@@ -274,13 +277,13 @@ BACKOFFICE MATEMÁTICO — SIMULADOR + IA
 
 ### **1.4. Instrucciones de instalación:**
 
-Las instrucciones definitivas se publicarán en la fase de implementación. A continuación se documenta el procedimiento previsto, alineado con la arquitectura aprobada en este PRD.
+A continuación se documenta el procedimiento para ejecutar la plataforma en local. Para probarla sin instalar nada, usa la demo pública de [0.4](#04-url-del-proyecto).
 
 #### Requisitos previos
 
 - Docker Desktop 4.x o Docker Engine + Docker Compose v2
 - Git
-- Una API key de Anthropic (variable `ANTHROPIC_API_KEY`) para la funcionalidad de *AI explainability* en el backoffice matemático. Sin ella, el resto de la plataforma funciona; solo se desactiva esa feature.
+- (Opcional) Una API key de Anthropic (`ANTHROPIC_API_KEY` + `ANTHROPIC_ENABLED=true`) para que la *AI explainability* del backoffice matemático responda vía Claude. Sin ella (o con `ANTHROPIC_ENABLED=false`, el valor por defecto) la funcionalidad sigue respondiendo: cae en un explicador local determinista (heurística sobre las métricas de la simulación) en vez de desactivarse.
 
 #### Variables de entorno
 
@@ -293,14 +296,16 @@ Todas se declaran en `.env` (copiado de `.env.example`). El `docker-compose.yml`
 | `POSTGRES_PASSWORD` | Contraseña de PostgreSQL. | Sí | `novacasino` (cambiar fuera de local) |
 | `JWT_SECRET` | Secreto HS256 para firmar los JWT. | Sí | — (generar uno; mín. 32 bytes) |
 | `JWT_TTL_SECONDS` | Validez del access token, en segundos. | No | `3600` |
-| `ANTHROPIC_API_KEY` | API key de Anthropic para *AI explainability*. Si falta, la feature se desactiva. | No | — (vacío) |
+| `ANTHROPIC_ENABLED` | Activa el *explainer* real vía Claude. En `false` (por defecto), el backoffice matemático usa un explicador local determinista, sin coste ni key. | No | `false` |
+| `ANTHROPIC_API_KEY` | API key de Anthropic; solo se usa si `ANTHROPIC_ENABLED=true`. | No | — (vacío) |
 | `ANTHROPIC_MODEL` | Modelo de Claude usado por el *explainer*. | No | `claude-haiku-4-5` |
+| `SEED_ADMIN_PASSWORD` / `SEED_OPERATOR_PASSWORD` / `SEED_MATH_PASSWORD` / `SEED_PLAYER_PASSWORD` | Contraseñas de las cuentas semilla, por si se quiere fijar un valor distinto al de desarrollo (recomendado en un despliegue público). | No | `admin123` / `operator123` / `math123` / `player123` |
 
 #### Pasos de instalación local
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/<owner>/AI4Devs-finalproject.git
+git clone https://github.com/jordipochvall/AI4Devs-finalproject.git
 cd AI4Devs-finalproject
 
 # 2. Copiar la plantilla de variables de entorno y editarla
@@ -358,7 +363,7 @@ Este apartado consolida en un único lugar los supuestos sobre los que se constr
 
 #### Decisiones diferidas (post-MVP)
 
-> **✅ Estado.** Estas decisiones diferidas **ya están abordadas** por el backlog de evolución (`HU-13`…`HU-26`, [stories/stories-2.md](stories/stories-2.md)): **D1** (HU-13…HU-18), **D2** (HU-13), **D3/D12** (HU-20, integridad *tamper-evident*; la firma con *anchor* externo sigue como ampliación), **D4** (HU-23, BRIN + runbook de particionado), **D5** (HU-15), **D6** (HU-21), **D7** (HU-19), **D8** (HU-22), **D9** (HU-24), **D10** (HU-18), **D11** jackpots (HU-26; el dinero real con pasarela de pago permanece fuera de alcance por diseño de saldo virtual). El multi-tenancy operativo lo activa HU-25.
+> **✅ Estado.** Estas decisiones diferidas **ya están abordadas** por el backlog de evolución (`HU-13`…`HU-26`, [stories/stories-2.md](stories/stories-2.md)): **D1** (HU-13…HU-18), **D2** (HU-13), **D3/D12** (HU-20, integridad *tamper-evident*; la firma con *anchor* externo sigue como ampliación), **D4** (HU-23, BRIN + runbook de particionado), **D5** (HU-15), **D6** (HU-21), **D7** (HU-19), **D8** (HU-22), **D9** (demo pública real en Vercel + Render + Neon, ver [0.4](#04-url-del-proyecto) y [2.4](#24-infraestructura-y-despliegue); HU-24 aportó la *tooling* IaC/CI-CD para un VPS propio, que queda como vía alternativa bloqueada en HU-34/HU-35 sin VPS real), **D10** (HU-18), **D11** jackpots (HU-26; el dinero real con pasarela de pago permanece fuera de alcance por diseño de saldo virtual). El multi-tenancy operativo lo activa HU-25.
 
 | # | Diferido | Motivo / disparador para abordarlo |
 |---|---|---|
@@ -370,7 +375,7 @@ Este apartado consolida en un único lugar los supuestos sobre los que se constr
 | D6 | Generación de informes oficiales RFJ para la DGOJ | La arquitectura los soporta; no se generan en esta versión. |
 | D7 | Límites de pérdida y autoexclusión completos | Preparados a nivel de diseño; no implementados. |
 | D8 | Accesibilidad WCAG 2.1 AA | Fuera del alcance v1. |
-| D9 | Despliegue cloud público | El MVP solo contempla ejecución local con Docker Compose. |
+| D9 | Despliegue cloud público | ✅ Resuelto: demo pública en Vercel (frontend) + Render (backend) + Neon (BBDD), ver [0.4](#04-url-del-proyecto). La vía alternativa originalmente planeada (imágenes GHCR sobre un VPS propio, HU-24/34/35) sigue preparada pero bloqueada por no disponer de VPS/dominio real. |
 | D10 | *Prompt caching* en la integración con Claude | Optimización de coste; se aborda si el uso de la feature de IA crece. |
 | D11 | Pasarelas de pago/cobro y jackpots progresivos | Fuera del roadmap inmediato. |
 | D12 | Versionado ejecutable del motor (`engine_version`, *registry* de versiones) y firma del `result` | **No necesario en MVP**: el replay es *guardar-y-renderizar* (2.5.3), así que el motor evoluciona sin mantener N versiones; el *golden-master* (2.6) ya avisa de rupturas de determinismo. Se abordaría solo si se requiriese recomputación retrocompatible certificada o firma de evidencia (enlaza con D3). |
@@ -797,12 +802,12 @@ AI4Devs-finalproject/
 │   │   ├── src/main/
 │   │   │   ├── java/com/novacasino/api/
 │   │   │   │   ├── NovaCasinoApplication.java
-│   │   │   │   ├── controller/    # PlayerController, OperatorController, MathController, AuthController
-│   │   │   │   ├── security/      # JwtFilter, JwtService, SecurityConfig
-│   │   │   │   └── config/        # OpenApiConfig, I18nConfig, CorsConfig
+│   │   │   │   ├── auth/, player/, operator/, math/, admin/  # un paquete vertical por superficie (p. ej. player/PlayerController.java), no por tipo de fichero
+│   │   │   │   ├── security/      # JwtAuthFilter, JwtService, RateLimitFilter, UserDetailsServiceImpl
+│   │   │   │   └── config/        # SecurityConfig, EngineConfig, I18nConfig, UseCaseConfig
 │   │   │   └── resources/
 │   │   │       ├── application.yml
-│   │   │       ├── db/migration/  # Flyway: V1 schema, V2 triggers, V3 seed (MVP) · V4–V10 evolución (refresh, auditoría comercial, juego responsable, integridad, rol ADMIN, jackpot, BRIN)
+│   │   │       ├── db/migration/  # Flyway: V1 schema, V2 triggers, V3 seed (MVP) · V4–V10 evolución (refresh, auditoría comercial, juego responsable, integridad, rol ADMIN, jackpot, BRIN) · V11–V16 (nombres comerciales + recalibración de RTP semilla)
 │   │   │       └── games/         # JSON de configuración de los 3 juegos (semilla)
 │   │   ├── src/test/java/         # Unit tests de controllers (MockMvc + Surefire)
 │   │   ├── src/it/java/           # Integration tests de API (Failsafe + Testcontainers)
@@ -862,7 +867,7 @@ flowchart LR
     Browser -- "5173 (lobby/operator/math)" --> WEB
     WEB -- "/api/* proxy_pass" --> API
     API -- "JDBC :5432" --> PG
-    API -- "HTTPS<br/>solo si ANTHROPIC_API_KEY" --> Anthropic
+    API -- "HTTPS<br/>solo si ANTHROPIC_ENABLED=true" --> Anthropic
 
     classDef cont fill:#268bd2,stroke:#073642,color:#fff
     classDef db fill:#859900,stroke:#073642,color:#fff
@@ -887,14 +892,20 @@ flowchart LR
     Dev([Desarrollador]) -- "git push" --> GH[(GitHub repo)]
     GH -- "trigger" --> CI["GitHub Actions<br/>build · test · package"]
     CI -- "OK" --> Tag["Tag de versión"]
-    Tag -. "siguiente fase" .-> CD["GHCR images<br/>(no incluido en MVP)"]
+    GH -- "auto-deploy" --> VC["Vercel<br/>frontend estático"]
+    GH -- "auto-deploy" --> RD["Render<br/>backend Docker"]
+    RD -- "JDBC" --> NE[("Neon<br/>Postgres")]
+    VC -- "/api/* rewrite server-side" --> RD
+    Tag -. "vía alternativa" .-> CD["GHCR images + VPS propio<br/>(HU-24; bloqueado sin VPS real, HU-34/35)"]
     Dev -- "docker compose up<br/>(local)" --> Local["Stack local"]
 
     classDef dev fill:#fdf6e3,stroke:#657b83,color:#073642
     classDef ci fill:#268bd2,stroke:#073642,color:#fff
+    classDef live fill:#859900,stroke:#073642,color:#fff
     classDef futuro fill:#93a1a1,stroke:#586e75,color:#073642,stroke-dasharray:5 5
     class Dev dev
     class GH,CI,Tag,Local ci
+    class VC,RD,NE live
     class CD futuro
 ```
 
@@ -904,7 +915,7 @@ flowchart LR
 2. **`perf`** — *job* dedicado que ejecuta el test de rendimiento del simulador (10M de spins en <10 min). Se separa de `build-test` para no penalizar cada commit, pero forma parte del pipeline: una regresión de rendimiento rompe el build.
 3. **`e2e`** — levanta el stack con `docker compose up` y ejecuta la suite Playwright de `e2e/` (*happy path*: login → spin → resultado visible).
 
-**Despliegue cloud**: queda explícitamente fuera del MVP. La arquitectura está preparada para Render / Railway / Fly.io publicando las imágenes Docker, pero no se entrega en esta fase.
+**Despliegue cloud (demo pública real)**: frontend en **Vercel** (build estático de `frontend/`, con `vercel.json` haciendo de *reverse proxy* server-side de `/api/*` hacia el backend — así el navegador solo ve un origen y no hace falta CORS) y backend en **Render** (`backend/Dockerfile`, contenedor Docker persistente; se descartó el propio soporte Docker de Vercel porque ahí el backend correría como *Vercel Function*, que escala a cero y no encaja con las simulaciones en segundo plano de HU-37); base de datos en **Neon** (Postgres gestionado, connection string directo sin `-pooler` por compatibilidad con los *advisory locks* de Flyway). Ambos servicios se despliegan automáticamente desde GitHub. Detalle completo en [`deploy/README.md`](deploy/README.md). La vía alternativa originalmente planeada (imágenes GHCR sobre un VPS propio con TLS, HU-24/HU-34/HU-35) sigue preparada pero bloqueada por no disponer de VPS/dominio real.
 
 ---
 
@@ -952,7 +963,7 @@ Cada giro registra su `seed`; con él, el motor es **completamente determinista*
 
 | Práctica | Implementación |
 |---|---|
-| **CORS** | Lista blanca de orígenes en `CorsConfig`. |
+| **CORS** | No hace falta: en la demo pública, `frontend/vercel.json` reescribe `/api/*` hacia el backend en Render en el servidor (mismo origen visto por el navegador); en local, `nginx.conf` hace el mismo `proxy_pass`. Al no haber nunca más de un origen visible para el navegador, la política de mismo origen basta y no existe una clase `CorsConfig`. |
 | **CSRF** | Desactivado por ser API stateless con JWT (Spring Security recomendación). |
 | **Rate limiting** | `RateLimitFilter` (Bucket4j, *token bucket* en memoria single-node) en la cadena de seguridad sobre `POST /api/v1/auth/login` (clave por IP, anti fuerza-bruta) y `POST /api/v1/player/games/*/spin` (clave por usuario autenticado, o IP si no lo está). Al agotar el cupo responde `429` (RFC 9457) con cabecera `Retry-After`. Cupos configurables en `app.rate-limit.*` (por defecto login 10/min, spin 60/min). |
 | **Idempotencia** | Cada `POST .../spin` y `POST .../recharge` lleva una *idempotency key* (cabecera `Idempotency-Key`); la unicidad `(user_id, endpoint, idem_key)` la garantiza el índice de BBDD. El backend deduplica: un doble-submit o un reintento de red **devuelve la respuesta original tal cual** (un *snapshot* del momento en que se ejecutó), sin generar un segundo giro/recarga ni un segundo movimiento de saldo. Por contrato, las cifras embebidas en ese replay (p. ej. `balancePost`) son las del instante original y **no se refrescan**; el saldo en vivo se consulta aparte (`GET /player/wallet`). |
@@ -980,8 +991,8 @@ Estrategia: **pirámide clásica** densa en la base, con énfasis en el motor ma
 
 ```mermaid
 flowchart TB
-    subgraph Top["E2E (1 test)"]
-        E2E["Playwright<br/>login → spin → resultado visible"]
+    subgraph Top["E2E (5 specs)"]
+        E2E["Playwright<br/>lobby · spin · auto-spin · i18n · juego responsable"]
     end
     subgraph Mid["Integración (~10 tests)"]
         IT["Spring Boot Test + Testcontainers<br/>Postgres real · controllers · auditoría"]
@@ -1011,7 +1022,7 @@ flowchart TB
 - **Fidelidad simulador↔producción**: para una misma semilla y `CompiledGame`, el resultado que produce el `SpinKernel` es idéntico por ambas vías (`CountingSink` y `MaterializingSink`); un test compara los agregados de una corrida pequeña con la materialización giro a giro.
 - **ArchUnit**: dos reglas. (1) en `nova-domain`, "ninguna clase de `nova-domain.*` importa `org.springframework.*` ni `jakarta.persistence.*`"; (2) en `nova-application` (`ApplicationArchTest`), "ninguna clase de `com.novacasino.application..` depende de `com.novacasino.infrastructure..`, `com.novacasino.api..` ni `org.springframework..`". Falla el build si alguien acopla por error.
 - **Integration con Testcontainers** (en `src/it/java`): arranca un Postgres 18 real, aplica migraciones Flyway, ejecuta `POST /api/v1/player/spin` con JWT y verifica que (a) la respuesta es correcta, (b) hay una nueva fila en `game_rounds` con todos sus campos, (c) cualquier intento de UPDATE/DELETE sobre el row falla con la excepción del trigger.
-- **E2E con Playwright** (en `e2e/`): un único *happy path* que arranca el `docker-compose`, abre el navegador, hace login con un usuario semilla, entra a un juego, hace spin y verifica que el balance cambia.
+- **E2E con Playwright** (en `e2e/`): 5 specs que arrancan el `docker-compose` y abren el navegador — `lobby.spec.ts` (login con usuario semilla → lobby), `spin.spec.ts` (giro y cambio de balance), `autospin.spec.ts` (auto-spin y sus salvaguardas), `i18n.spec.ts` (conmutación ES/EN) y `compliance.spec.ts` (mensajes de juego responsable y sello DGOJ).
 
 **Cobertura objetivo**:
 
@@ -1537,7 +1548,7 @@ Soporte de la **idempotencia** de las operaciones con efecto económico (`spin` 
 
 **Triggers de inmutabilidad.** Una única función PL/pgSQL `fn_forbid_update_delete()` lanza `RAISE EXCEPTION` ante cualquier `UPDATE` o `DELETE`. La invocan triggers `BEFORE UPDATE OR DELETE` sobre las tablas histórico-regulatorias: en el MVP `game_rounds`, `wallet_transactions`, `game_configs` y `game_config_publications` (migración `V2`); la evolución añade `game_commercial_audits` (`V5`) y `jackpot_grants` (`V9`) reutilizando la misma función.
 
-> **Migraciones de la evolución (post-MVP).** Sobre `V1`–`V3` (MVP), el backlog de evolución añade: **`V4`** `refresh_tokens` (HU-13) · **`V5`** `game_commercial_audits` (HU-15) · **`V6`** `player_limits` + `self_exclusions` (HU-19) · **`V7`** cadena de integridad en `game_rounds` (`prev_hash`/`row_hash` + trigger `BEFORE INSERT`, HU-20) · **`V8`** rol `ADMIN` en el `CHECK` de `users.role` (HU-25) · **`V9`** `jackpot_pools` + `jackpot_grants` (HU-26) · **`V10`** índice BRIN sobre `game_rounds.created_at` (HU-23). Todas son aditivas.
+> **Migraciones de la evolución (post-MVP).** Sobre `V1`–`V3` (MVP), el backlog de evolución añade: **`V4`** `refresh_tokens` (HU-13) · **`V5`** `game_commercial_audits` (HU-15) · **`V6`** `player_limits` + `self_exclusions` (HU-19) · **`V7`** cadena de integridad en `game_rounds` (`prev_hash`/`row_hash` + trigger `BEFORE INSERT`, HU-20) · **`V8`** rol `ADMIN` en el `CHECK` de `users.role` (HU-25) · **`V9`** `jackpot_pools` + `jackpot_grants` (HU-26) · **`V10`** índice BRIN sobre `game_rounds.created_at` (HU-23). El bloque 3 (cierre de huecos) añade **`V11`** nombres comerciales de los juegos y **`V12`**–**`V16`** la recalibración del RTP de las configs semilla (HU-31: el motor era correcto, las configs semilla no estaban calibradas al target declarado). Todas son aditivas.
 
 ### **3.3. Esquema del JSON de configuración de juego (`game_configs.config`)**
 
@@ -2497,7 +2508,40 @@ Fichero canónico: [`tickets/HU-1/HU-1-DB-01-...`](tickets/HU-1/HU-1-DB-01-esque
 
 **Pull Request 1**
 
+- **Rama:** `feature-entrega1-JPV` → `main`
+- **Título:** Entrega 1 — Descripción del producto, arquitectura, modelo de datos, especificación de la API e historias de usuario
+- **Resumen.** Primera entrega del TFM: documentación completa de diseño antes de escribir código de aplicación. Define qué se va a construir (producto, arquitectura, datos, contrato de API) y cómo se descompone en historias de usuario, sentando la base sobre la que se apoyan las entregas 2 (implementación) y 3 (endurecimiento y despliegue).
+- **Cambios incluidos** (6 commits sobre `readme.md` y `prompts.md`):
+  - **1. Descripción general del producto** — objetivo, funcionalidades principales, diseño/UX e instrucciones de instalación (§1).
+  - **2. Arquitectura** — diagrama de arquitectura, componentes principales, estructura de alto nivel del repo, infraestructura/despliegue, seguridad y estrategia de tests (§2).
+  - **3. Modelo de datos + 4. Especificación de la API** — diagrama entidad-relación, descripción de las entidades principales, esquema JSON de `game_configs.config`, principios/convenciones REST y catálogo de endpoints (§3, §4).
+  - **Auditoría de los puntos previos** — pasada de coherencia entre §1–§4 antes de continuar con las historias de usuario.
+  - **5. Historias de usuario** — desglose del backlog inicial en HU con criterios de aceptación (§5).
+  - **Prompts** — registro en `prompts.md` de los prompts usados para generar cada sección anterior.
+- **Archivos modificados:** `readme.md` (+2181/-83), `prompts.md` (+479).
+- **Cómo se validó.** Entrega puramente documental (todavía no existía código de aplicación); la verificación fue una revisión de coherencia manual entre secciones (p. ej. que el vocabulario de §3.3 — *reels/paylines/paytable* — se reutilizara en §4, ver commit "Auditoria puntos previos") en vez de un plan de pruebas automatizado.
+
 **Pull Request 2**
 
+- **Rama:** `feature-entrega2-JPV` → `main`
+- **Título:** Entrega 2 — Implementación del MVP (HU-1…HU-12): motor de juego, backend, frontend y tests E2E
+- **Resumen.** Segunda entrega: convierte el diseño de la Entrega 1 en una aplicación funcional completa. Implementa las **12 historias del MVP** (`stories/stories.md`) siguiendo el **orden topológico** de su grafo de dependencias documentado en `implementation.md` (fundaciones → HU-11 → HU-4 → HU-5 → HU-6 → HU-7 → HU-12 → HU-1 → HU-2 → HU-3 → HU-9 → HU-10 → HU-8), completando cada historia entera (**BE → FE → QA**) antes de pasar a la siguiente: **40 tickets · 129 SP**.
+- **Cambios incluidos** (5 commits): `MVP` (grueso de la implementación) · `Historias HU-06 y HU-07` · `Historias 11, 4 y 5` · `Refinamiento de stories y tickets` · `All stories and tickets`.
+- **Alcance funcional.** Motor de tragaperras data-driven (reels/paylines/paytable) con spin idempotente, lobby y saldo del jugador, registro/login con roles, gestión y recarga de jugadores, i18n ES/EN, auto-spin con salvaguardas, panel de matemático con simulador Monte Carlo y "ask the AI" (HU-8).
+- **Archivos modificados:** 317 ficheros, +23.329/-63 líneas — `backend/` (168, los 6 módulos Maven: `nova-common`, `nova-domain`, `nova-application`, `nova-infrastructure`, `nova-simulator`, `nova-web-api`), `frontend/` (83, React + Vite), `e2e/` (8, Playwright: `autospin`, `compliance`, `i18n`, `lobby`, `spin`), `tickets/`/`stories/` (54), `docker-compose.yml`, `.env.example`, `implementation.md` (nuevo, orden de implementación).
+- **Cómo se validó.** Suite de tests unitarios e de integración del backend + tests de frontend + suite Playwright E2E (los 5 flujos citados arriba) en verde antes de dar la entrega por completa.
+
 **Pull Request 3**
+
+- **Rama:** `feature-entrega3-JPV` → `main`
+- **Título:** Entrega 3 — Backlog post-MVP (HU-13…HU-32), refactor hexagonal estricto y demo pública desplegada (HU-33…HU-40)
+- **Resumen.** Tercera y última entrega: 30 commits que llevan el MVP de la Entrega 2 hasta un producto endurecido y **desplegado en una demo pública real**, en tres bloques sucesivos de backlog más un refactor de arquitectura transversal.
+- **Cambios incluidos por bloque:**
+  - **Bloque 2 — post-MVP** (`stories-2.md`, `HU-13`…`HU-26`, **47 tickets · 136 SP**): los 11 endpoints especificados en el §4.2 del readme pero no construidos en el MVP, más las decisiones diferidas D2–D12 (§1.5) — entre otras, refresh tokens, auditoría comercial, juego responsable, cadena de integridad tamper-evident, rol `ADMIN` multi-operador y jackpot. 6 migraciones Flyway nuevas (`V4`…`V10`).
+  - **Bloque 3 — cierre de huecos** (`stories-3.md`, `HU-27`…`HU-32`, **16 tickets · 35 SP**): nacido de tres auditorías propias (doc↔frontend, usabilidad/diseño, calidad) — un endpoint sin consumidor de UI, mejoras de diseño/UX del juego, un bug de RTP fuera de rango en las configs semilla y dejar "ask the AI" operativo con un modo offline sin API key.
+  - **Refactor hexagonal estricto**: migración de ~19 casos de uso a `nova-application` con puertos + adaptadores (`@Component` en infraestructura/web) + `@Bean` en `UseCaseConfig`, con `ApplicationArchTest` (ArchUnit) impidiendo que `nova-application` dependa de Spring/infraestructura/web.
+  - **Bloque 4 — demo pública** (`stories-4.md`, `HU-33`…`HU-40`, **16 tickets · 26 SP**): auditoría de preparación para el despliegue, re-triada explícitamente para el objetivo real (demo educativa en un VPS/PaaS, no producción regulada) — healthcheck público, CI/CD versionado, secreto JWT validado al arrancar, concurrencia de simulaciones acotada, contraseñas semilla por entorno, `ErrorBoundary` global y CSP endurecida.
+  - **Despliegue real de la demo** (esta fase, sin HU propia): `frontend/vercel.json` (proxy de Vercel al backend, sin CORS), `backend/Dockerfile` ajustado (`-XX:MaxRAMPercentage`), y puesta en marcha efectiva en **Vercel + Render + Neon**, documentada en `deploy/README.md` y verificada en vivo (login, spin y simulación end-to-end contra la URL pública).
+- **Archivos modificados:** 530 ficheros, +22.903/-2.184 líneas — `backend/` (260), `frontend/` (142), `tickets/`+`stories/` (115), `.github/` (workflows CI/CD), `deploy/`, `scripts/`, `conversation.md` (registro completo de la fase, con prompts numerados).
+- **Cómo se validó.** Por bloque: suites unitarias + de integración (Testcontainers/Postgres) en verde en cada fase; revisión manual en vivo de los 35 endpoints reales con los 4 roles; y, para el despliegue final, verificación end-to-end contra la demo pública real (`/actuator/health`, login y flujo de juego a través de Vercel → Render → Neon).
 

@@ -1928,4 +1928,27 @@ El objetivo pasa de "VPS propio" (bloqueado, sin VPS/dominio real) a una demo gr
 - **`deploy/README.md`**: nueva sección "Demo pública gratuita (Vercel + Render + Neon)" con el orden de despliegue (Neon → Render → Vercel) y limitaciones conocidas (*spin down* a los 15 min en Render, *scale-to-zero* en Neon). El pipeline ghcr.io/VPS de HU-24 queda intacto para cuando haya un VPS real.
 - **Decisión técnica en Neon**: usar el endpoint **directo** (sin `-pooler`) — el pooler de Neon es PgBouncer en modo *transaction*, incompatible con los *advisory locks* de sesión que usa Flyway para coordinar migraciones.
 - Commit `cb3dd63` sobre `feature-entrega3-JPV` (sin push todavía). Pendiente: el usuario ejecuta los pasos manuales en los tres dashboards (Neon ya creado); antes de que Render pueda desplegar hace falta subir la rama a GitHub (12 commits por delante de `origin`).
+
+### Prompt 129 — Despliegue real ejecutado: incidencias de Render y verificación end-to-end
+
+Tras generar el secreto JWT y hacer `git push` de la rama, el usuario ejecutó los pasos manuales guiado en el chat.
+- **Fallo 1 (build Docker en Render)**: `failed to read dockerfile: open Dockerfile: no such file or directory` — configuración de **Root Directory**/**Dockerfile Path** de Render en un monorepo: con `Root Directory=backend`, el `Dockerfile Path` debe ser `Dockerfile` (relativo a ese root), no `backend/Dockerfile` (relativo a la raíz del repo).
+- **Fallo 2 (arranque)**: `Could not resolve placeholder 'JWT_SECRET'` — faltaba la variable de entorno en el dashboard de Render (guiado a revisarla/pegarla).
+- **Verificado en vivo** contra el backend real de Render: `/actuator/health` → `200 UP`; login con `player1@nova.test` → `200` con JWT válido. Actualizado `frontend/vercel.json` con la URL real de Render (placeholder sustituido), commit + push (`6e71c3f`).
+- **Incidencias de Vercel**: el import no dejaba fijar Root Directory (hay que pulsar "Edit" y luego clicar el propio campo para desplegar el selector de carpetas) ni rama (Vercel despliega la rama por defecto del repo en GitHub; hubo que ponerla como *default branch* en GitHub). La primera URL que dio el usuario era la de un *deployment* concreto (protegida por Vercel Authentication, con hash `-3oyhwen2y-`, no la de producción); se identificó y localizó el dominio de producción real (`ai-4-devs-finalproject-omega.vercel.app`).
+- **Verificación end-to-end**: `/`, `/login` → `200` con CSP correcta; el *rewrite* `/api/*` a través de Vercel falló una vez con `ROUTER_EXTERNAL_TARGET_ERROR` (Render dormido, *cold start* en curso) y funcionó al reintentar tras despertar el contenedor — comportamiento esperado del plan free, no un bug.
+- **Aclaraciones de dominio**: un jugador auto-registrado empieza con saldo 0 por diseño (§3.2.3; usar las cuentas semilla `player{1,2,3}@nova.test` con 1.000€ para probar) y la cuenta `math@nova.test` da acceso al rol `MATH_ANALYST`.
+
+> **Demo pública verificada y funcionando de extremo a extremo**: https://ai-4-devs-finalproject-omega.vercel.app (Vercel → Render → Neon).
+
+### Prompt 130 — Rellenado el §8 Pull Requests y auditoría de coherencia final del readme.md
+
+**Pull Requests (§8):** a petición del usuario, se generó el texto de las 3 Pull Requests documentando las 3 ramas de entrega (`feature-entrega{1,2,3}-JPV`, nunca mergeadas a `main` vía PR real) a partir del diff/log real de cada rama: PR1 (Entrega 1, solo documentación, secciones 1-5), PR2 (Entrega 2, MVP completo, 317 ficheros), PR3 (Entrega 3, bloques 2-4 + refactor hexagonal + despliegue, 530 ficheros).
+
+**Auditoría de coherencia del readme.md** ("revisa si es coherente con lo implementado"): cruce completo del documento (2536 líneas) contra el código, las migraciones Flyway y los controllers reales. Hallazgos y correcciones aplicadas (todas, a petición expresa):
+- **Críticos**: §0.4 "URL del proyecto" seguía diciendo "pendiente de despliegue público" (ya existía la demo); §2.4.2 y el diagrama de despliegue seguían diciendo "cloud fuera del MVP"; §1.5/D9 desactualizada — las tres corregidas para reflejar Vercel+Render+Neon.
+- **Importantes**: dos menciones a una clase `CorsConfig` **inexistente** (§2.5.4 y el árbol de ficheros de §2.2.1, este último además describía mal la estructura del backend como "por tipo de fichero" en vez de por paquete vertical) — corregidas ambas; placeholders `<owner>` sustituidos por el usuario real de GitHub.
+- **Menores**: Índice desincronizado (faltaba la entrada de §5 "Especificaciones de frontend", anclas de Historias/Tickets/PRs apuntaban a números viejos); §1.4 con lenguaje de "fase de implementación" nunca actualizado y sin documentar `ANTHROPIC_ENABLED`/`SEED_*_PASSWORD`; §3 sin las migraciones V11-V16; §2.6 con "E2E (1 test)" en vez de los 5 *specs* de Playwright reales.
+
+> Todas las correcciones aplicadas directamente sobre `readme.md`, sin tocar historias/tickets ni diagramas C4.
 - **Rastro no destructivo dejado por la revisión** (a petición del usuario, se deja tal cual): cuenta admin recreada, operador demo "Review Operator", +10€ de recarga en player2, autoexclusión de 1 día en player3, una config borrador v8 sin publicar en Tesoro del Nilo (activa sigue siendo v5), un par de simulaciones/explicaciones de prueba.
